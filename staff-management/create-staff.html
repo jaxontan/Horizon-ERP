@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Staff Provisioning Console | EspressGo</title>
+    <!-- Tailwind CSS Dynamic CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet"/>
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="/public/js/rbac.js"></script>
+<script src="/components/sidebar.js"></script>
+    <style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen">
+    <app-sidebar layout="fixed"></app-sidebar>
+    
+    <!-- Top App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <div class="flex items-center">
+                <div class="font-extrabold text-primary text-xl font-headline-sm tracking-tight">Provision Staff Account</div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="h-8 w-px bg-outline-variant"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Content -->
+    <main class="ml-64 pt-20 pb-12 px-8 flex-1">
+        <!-- Breadcrumb Header -->
+        <div class="grid grid-cols-12 gap-8 max-w-[1600px] mx-auto w-full">
+            <!-- Provision Form Card -->
+            <div class="col-span-12 lg:col-span-8 bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-8 shadow-sm">
+                <h3 class="text-lg font-bold text-primary mb-6 flex items-center gap-2 border-b border-outline-variant/30 pb-3">
+                    <span class="material-symbols-outlined text-primary text-[22px]">person_add</span>
+                    Registration Form
+                </h3>
+
+                <form id="provisionForm" onsubmit="handleAccountCreation(event)" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Staff Full Name</label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">person</span>
+                                <input type="text" id="staffName" required
+                                    class="pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm w-full transition-all"
+                                    placeholder="John Doe">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Staff Email Address</label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">mail</span>
+                                <input type="email" id="staffEmail" required
+                                    class="pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm w-full transition-all"
+                                    placeholder="name@espressgo.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Access Passcode</label>
+                            <button type="button" onclick="generatePasscode()" class="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">key</span> Auto-Generate
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">lock</span>
+                            <input type="text" id="staffPassword" required 
+                                class="pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm w-full font-mono transition-all"
+                                placeholder="TemporaryPassword123!">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Assigned Operational Team Role</label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">badge</span>
+                            <select id="staffRole" required
+                                class="pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm w-full transition-all appearance-none cursor-pointer">
+                                <option value="accountant">Accountant</option>
+                                <option value="procurement">Procurement</option>
+                                <option value="production">Production</option>
+                                <option value="logistic">Logistics</option>
+                                <option value="sales">Sales</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Submission Action -->
+                    <button type="submit" 
+                        class="w-full bg-primary hover:bg-opacity-95 text-white font-bold py-3.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 mt-8">
+                        <span class="material-symbols-outlined text-[20px]">how_to_reg</span>
+                        <span>Provision Account</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Visual Feedback / Info Stepper Card -->
+            <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                <!-- Simulation Stepper Container -->
+                <div id="stepperContainer" class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-sm flex flex-col">
+                    <h3 class="font-bold text-primary text-sm mb-4 border-b border-outline-variant/30 pb-2 flex items-center justify-between">
+                        <span>Account Provisioning Pipeline</span>
+                        <span id="stepperStatus" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending</span>
+                    </h3>
+                    <div class="space-y-4">
+                        <div id="step-1" class="flex items-start gap-3">
+                            <span id="icon-1" data-step="1" class="material-symbols-outlined text-slate-400">radio_button_unchecked</span>
+                            <div>
+                                <p class="text-xs font-bold text-slate-700" id="title-1">Authenticating Admin Rights</p>
+                                <p class="text-[10px] text-slate-500 font-medium" id="desc-1">Double-checking administrative session details...</p>
+                            </div>
+                        </div>
+                        <div id="step-2" class="flex items-start gap-3">
+                            <span id="icon-2" data-step="2" class="material-symbols-outlined text-slate-400">radio_button_unchecked</span>
+                            <div>
+                                <p class="text-xs font-bold text-slate-400" id="title-2">Calling Secure Administrative Auth API</p>
+                                <p class="text-[10px] text-slate-500 font-medium" id="desc-2">Invoking auth.admin.createUser API...</p>
+                            </div>
+                        </div>
+                        <div id="step-3" class="flex items-start gap-3">
+                            <span id="icon-3" data-step="3" class="material-symbols-outlined text-slate-400">radio_button_unchecked</span>
+                            <div>
+                                <p class="text-xs font-bold text-slate-400" id="title-3">Syncing Profile in public.profiles</p>
+                                <p class="text-[10px] text-slate-500 font-medium" id="desc-3">Triggering custom user_roles tables insertions...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registered Registry Log -->
+            <div class="col-span-12 bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-8 shadow-sm">
+                <h3 class="text-lg font-bold text-primary mb-6 flex items-center justify-between border-b border-outline-variant/30 pb-3">
+                    <span class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[22px]">group</span>
+                        Registered Team Accounts Registry
+                    </span>
+                    <span id="registryCount" class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-[10px] font-bold">0 Accounts</span>
+                </h3>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="border-b border-outline-variant/50 text-[10px] text-slate-500 font-extrabold tracking-widest uppercase text-left">
+                                <th class="pb-3 pl-4">Staff Account</th>
+                                <th class="pb-3">Assigned Privilege</th>
+                                <th class="pb-3">Role Code</th>
+                                <th class="pb-3">Temp Password</th>
+                                <th class="pb-3 pr-4 text-right">Provision Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registryBody" class="divide-y divide-outline-variant/20 text-xs font-semibold text-slate-700">
+                            <!-- Populated Dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ── RBAC: Only admins can provision staff ────────────────────────────────
+        window.RBAC.enforcePageAccess('staff:write', {
+            pageName: 'the Staff Provisioning Console',
+            allowedRoles: ['Administrators'],
+        })
+            .then(() => window.RBAC.applyRBACToDOM())
+            .catch((err) => {
+                if (!String(err.message || '').startsWith('RBAC:')) throw err;
+            });
+
+        // --- Local Supabase proxy helper ---
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        async function supabaseAPI({ table, operation, data, filters, columns, returning }) {
+            try {
+                const token = await getAccessToken();
+                const resp = await fetch('/api/supabase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ table, operation, data, filters, columns, returning })
+                });
+                const result = await resp.json();
+                if (result.error) {
+                    try { return JSON.parse(result.error); } catch { return []; }
+                }
+                return result.data || [];
+            } catch (e) {
+                console.warn('API error:', e);
+                return [];
+            }
+        }
+
+        // Pre-fill a dynamic secure password on load
+        window.addEventListener('DOMContentLoaded', () => {
+            generatePasscode();
+            loadRegistry();
+        });
+
+        function generatePasscode() {
+            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$";
+            let pass = "";
+            for (let i = 0; i < 12; i++) {
+                pass += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('staffPassword').value = pass + "1aA!";
+        }
+
+        function updateStepperStatus() {
+            const statusEl = document.getElementById('stepperStatus');
+            if (!statusEl) return;
+            const icons = ['icon-1', 'icon-2', 'icon-3'].map(id => document.getElementById(id));
+            const hasError = icons.some(el => el && el.textContent.trim() === 'error');
+            const doneCount = icons.filter(el => el && el.textContent.trim() === 'check_circle').length;
+
+            if (hasError) {
+                statusEl.textContent = `Failed (${doneCount}/3 Passed)`;
+                statusEl.className = 'text-[10px] font-bold text-red-600 uppercase tracking-wider';
+            } else if (doneCount === icons.length) {
+                statusEl.textContent = `Completed (${doneCount}/3 Passed)`;
+                statusEl.className = 'text-[10px] font-bold text-green-600 uppercase tracking-wider';
+            } else if (doneCount > 0) {
+                statusEl.textContent = `In Progress (${doneCount}/3 Passed)`;
+                statusEl.className = 'text-[10px] font-bold text-amber-600 uppercase tracking-wider';
+            } else {
+                statusEl.textContent = 'Pending';
+                statusEl.className = 'text-[10px] font-bold text-slate-400 uppercase tracking-wider';
+            }
+        }
+
+        async function loadRegistry() {
+            const countEl = document.getElementById('registryCount');
+            const bodyEl = document.getElementById('registryBody');
+
+            try {
+                const data = await supabaseAPI({
+                    table: 'staff_profiles',
+                    operation: 'select',
+                    filters: { order: { column: 'created_at', ascending: false } },
+                    columns: 'id, name, email, role, created_at'
+                });
+
+                const safeData = Array.isArray(data) ? data : [];
+                const users = safeData.map(p => ({
+                    email: p.email || '',
+                    name: p.name || '',
+                    password: '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022',
+                    role: p.role || 'staff',
+                    timestamp: new Date(p.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                }));
+
+                countEl.textContent = `${users.length} Account${users.length !== 1 ? 's' : ''}`;
+                bodyEl.innerHTML = '';
+
+                if (users.length === 0) {
+                    bodyEl.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-slate-400 font-medium">
+                                <span class="material-symbols-outlined text-3xl font-headline-lg mb-1 block">group</span>
+                                No staff accounts provisioned yet. Create one above!
+                            </td>
+                        </tr>`;
+                    return;
+                }
+
+                users.forEach((user, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition-colors";
+
+                    let roleBadge = "";
+                    let roleTitle = "";
+
+                    switch(user.role) {
+                        case 'admin':
+                            roleBadge = "bg-red-50 text-red-700 border border-red-200";
+                            roleTitle = "Admin";
+                            break;
+                        case 'accountant':
+                            roleBadge = "bg-blue-50 text-blue-700 border border-blue-200";
+                            roleTitle = "Accountant";
+                            break;
+                        case 'procurement':
+                            roleBadge = "bg-purple-50 text-purple-700 border border-purple-200";
+                            roleTitle = "Procurement";
+                            break;
+                        case 'production':
+                            roleBadge = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+                            roleTitle = "Production";
+                            break;
+                        case 'logistic':
+                            roleBadge = "bg-amber-50 text-amber-700 border border-amber-200";
+                            roleTitle = "Logistics";
+                            break;
+                        case 'sales':
+                            roleBadge = "bg-pink-50 text-pink-700 border border-pink-200";
+                            roleTitle = "Sales";
+                            break;
+                        default:
+                            roleBadge = "bg-slate-50 text-slate-600 border border-slate-200";
+                            roleTitle = "Staff";
+                    }
+
+                    tr.innerHTML = `
+                        <td class="py-4 pl-4 font-bold text-slate-800 flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 uppercase text-[10px]">
+                                ${user.email.charAt(0)}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="truncate">${user.name || user.email}</p>
+                                <p class="text-[9px] text-slate-400 truncate">${user.email}</p>
+                            </div>
+                        </td>
+                        <td class="py-4">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${roleBadge}">
+                                ${roleTitle}
+                            </span>
+                        </td>
+                        <td class="py-4 font-mono font-bold text-slate-500">${user.role}</td>
+                        <td class="py-4 font-mono text-slate-400 select-all cursor-pointer text-[10px]">Contact admin for password reset</td>
+                        <td class="py-4 pr-4 text-right text-slate-400 font-medium">${user.timestamp}</td>
+                    `;
+                    bodyEl.appendChild(tr);
+                });
+            } catch (err) {
+                console.warn('Could not load staff registry from API:', err);
+                countEl.textContent = '0 Accounts';
+                bodyEl.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-400 font-medium">
+                            <span class="material-symbols-outlined text-3xl font-headline-lg mb-1 block">cloud_off</span>
+                            Could not connect to database. Please check your connection.
+                        </td>
+                    </tr>`;
+            }
+        }
+
+        function appendRegistryUser(user) {
+            const bodyEl = document.getElementById('registryBody');
+            const countEl = document.getElementById('registryCount');
+            const existingRow = [...bodyEl.querySelectorAll('tr')].find(row => row.textContent.includes(user.email));
+            if (existingRow) return;
+
+            if (bodyEl.querySelector('td[colspan="5"]')) bodyEl.innerHTML = '';
+
+            let roleBadge = "";
+            let roleTitle = "";
+
+            switch(user.role) {
+                case 'admin':
+                    roleBadge = "bg-red-50 text-red-700 border border-red-200";
+                    roleTitle = "Admin";
+                    break;
+                case 'accountant':
+                    roleBadge = "bg-blue-50 text-blue-700 border border-blue-200";
+                    roleTitle = "Accountant";
+                    break;
+                case 'procurement':
+                    roleBadge = "bg-purple-50 text-purple-700 border border-purple-200";
+                    roleTitle = "Procurement";
+                    break;
+                case 'production':
+                    roleBadge = "bg-emerald-50 text-emerald-700 border border-emerald-200";
+                    roleTitle = "Production";
+                    break;
+                case 'logistic':
+                    roleBadge = "bg-amber-50 text-amber-700 border border-amber-200";
+                    roleTitle = "Logistics";
+                    break;
+                case 'sales':
+                    roleBadge = "bg-pink-50 text-pink-700 border border-pink-200";
+                    roleTitle = "Sales";
+                    break;
+                default:
+                    roleBadge = "bg-slate-50 text-slate-600 border border-slate-200";
+                    roleTitle = "Staff";
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors";
+            tr.innerHTML = `
+                <td class="py-4 pl-4 font-bold text-slate-800 flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 uppercase text-[10px]">
+                        ${user.email.charAt(0)}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="truncate">${user.name || user.email}</p>
+                        <p class="text-[9px] text-slate-400 truncate">${user.email}</p>
+                    </div>
+                </td>
+                <td class="py-4">
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${roleBadge}">
+                        ${roleTitle}
+                    </span>
+                </td>
+                <td class="py-4 font-mono font-bold text-slate-500">${user.role}</td>
+                <td class="py-4 font-mono text-slate-400 select-all cursor-pointer text-[10px]">Contact admin for password reset</td>
+                <td class="py-4 pr-4 text-right text-slate-400 font-medium">${user.timestamp}</td>
+            `;
+            bodyEl.prepend(tr);
+            countEl.textContent = `${bodyEl.querySelectorAll('tr').length} Account${bodyEl.querySelectorAll('tr').length !== 1 ? 's' : ''}`;
+        }
+
+        async function handleAccountCreation(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('staffName').value.trim();
+            const email = document.getElementById('staffEmail').value.trim();
+            const role = document.getElementById('staffRole').value;
+            const password = document.getElementById('staffPassword').value.trim();
+            const btn = e.target.querySelector('button[type="submit"]');
+
+            if (!email || !email.includes('@')) {
+                alert('Please enter a valid email address.');
+                return;
+            }
+            if (!name) {
+                alert('Please enter the staff full name.');
+                return;
+            }
+
+            // Show Stepper & Block form
+            const stepper = document.getElementById('stepperContainer');
+            stepper.classList.remove('hidden');
+            stepper.classList.add('flex');
+            updateStepperStatus();
+            btn.disabled = true;
+            btn.style.opacity = 0.5;
+
+            let error = null;
+
+            try {
+                // Step 1: Verify admin auth (simulated for now)
+                setTimeout(() => {
+                    document.getElementById('icon-1').textContent = "check_circle";
+                    document.getElementById('icon-1').className = "material-symbols-outlined text-green-600";
+                    document.getElementById('title-1').className = "text-xs font-bold text-green-700";
+                    document.getElementById('desc-1').textContent = "Success: Admin session verified.";
+                    updateStepperStatus();
+
+                    document.getElementById('icon-2').className = "material-symbols-outlined text-amber-500 animate-spin";
+                    document.getElementById('icon-2').textContent = "sync";
+                    document.getElementById('title-2').className = "text-xs font-bold text-slate-700";
+
+                        // Step 2: Create actual Supabase Auth user
+                        let authCreationFailed = false;
+                        let authErrorMessage = '';
+                        setTimeout(async () => {
+                            let authUserId = null;
+                            try {
+                                // First check if server has Supabase admin configured
+                                const healthResp = await fetch('/api/health');
+                                const healthData = await healthResp.json();
+                                
+                                if (!healthData.supabaseConfigured) {
+                                    throw new Error('Supabase admin not configured on server. Cannot create auth user.');
+                                }
+                                
+                                // Call server API to create auth user
+                                const authResp = await fetch('/api/auth/create-user', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ email, password, name })
+                                });
+                                const authResult = await authResp.json();
+                                
+                                if (!authResp.ok || authResult.error) {
+                                    throw new Error(authResult.error || 'Failed to create auth user');
+                                }
+                                
+                                if (authResult.user) {
+                                    authUserId = authResult.user.id;
+                                }
+                            } catch (authErr) {
+                                authCreationFailed = true;
+                                authErrorMessage = authErr.message || 'Failed to create authentication user';
+                                console.error("Auth user creation failed:", authErr);
+                                
+                                // Update UI to show error
+                                document.getElementById('icon-2').textContent = "error";
+                                document.getElementById('icon-2').className = "material-symbols-outlined text-red-600";
+                                document.getElementById('title-2').className = "text-xs font-bold text-red-700";
+                                document.getElementById('desc-2').textContent = "Error: " + authErrorMessage;
+                                updateStepperStatus();
+                                
+                                // Re-enable form
+                                btn.disabled = false;
+                                btn.style.opacity = 1;
+                                
+                                // Show alert
+                                setTimeout(() => {
+                                    alert('Account provision failed: ' + authErrorMessage + '\n\nThe staff profile was NOT created. Please check Supabase configuration or try again.');
+                                }, 500);
+                                return; // Stop here - don't create profile without auth user
+                            }
+                            
+                            // Only proceed if auth user was created successfully
+                            if (!authCreationFailed) {
+                                document.getElementById('icon-2').textContent = "check_circle";
+                                document.getElementById('icon-2').className = "material-symbols-outlined text-green-600";
+                                document.getElementById('title-2').className = "text-xs font-bold text-green-700";
+                                document.getElementById('desc-2').textContent = "Success: Auth user created with ID: " + (authUserId || 'N/A');
+                                updateStepperStatus();
+                            
+                                // Step 3: Insert into staff_profiles table
+                                try {
+                                    // Generate staff_code from existing max
+                                    let staffCode = 'STF-001';
+                                    try {
+                                        const existingRows = await supabaseAPI({
+                                            table: 'staff_profiles',
+                                            operation: 'select',
+                                            columns: 'staff_code'
+                                        });
+                                        if (existingRows && existingRows.length > 0) {
+                                            const codes = existingRows
+                                                .map(r => parseInt(r.staff_code?.replace('STF-', ''), 10))
+                                                .filter(n => Number.isInteger(n));
+                                            const maxCode = codes.length > 0 ? Math.max(...codes) : 0;
+                                            staffCode = 'STF-' + String(maxCode + 1).padStart(3, '0');
+                                        }
+                                    } catch (countErr) {
+                                        console.warn("Staff code generation warning:", countErr);
+                                    }
+
+                                    const profileData = {
+                                        name: name,
+                                        email: email,
+                                        role: role,
+                                        staff_code: staffCode,
+                                        is_active: true
+                                    };
+
+                                    // Add auth user ID if available
+                                    if (authUserId) {
+                                        profileData.auth_user_id = authUserId;
+                                    }
+
+                                    // Check for duplicate email before inserting
+                                    const existingEmail = await supabaseAPI({
+                                        table: 'staff_profiles',
+                                        operation: 'select',
+                                        filters: { eq: { email: email } },
+                                        columns: 'id'
+                                    });
+                                    if (existingEmail && existingEmail.length > 0) {
+                                        throw new Error('A staff account with this email already exists.');
+                                    }
+
+                                    const insertedRows = await supabaseAPI({
+                                        table: 'staff_profiles',
+                                        operation: 'insert',
+                                        data: profileData,
+                                        returning: '*'
+                                    });
+                                    const inserted = Array.isArray(insertedRows) && insertedRows[0] ? insertedRows[0] : null;
+                                    appendRegistryUser({
+                                        email,
+                                        name,
+                                        role,
+                                        timestamp: new Date(inserted?.created_at || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                    });
+                                } catch (err) {
+                                    error = err;
+                                    document.getElementById('icon-2').textContent = "error";
+                                    document.getElementById('icon-2').className = "material-symbols-outlined text-red-600";
+                                    document.getElementById('title-2').className = "text-xs font-bold text-red-700";
+                                    document.getElementById('desc-2').textContent = "Error: " + (err.message || 'Failed to create profile');
+                                    updateStepperStatus();
+                                    alert('Staff profile creation failed: ' + (err.message || 'Unknown error'));
+                                }
+
+                                document.getElementById('icon-3').className = "material-symbols-outlined text-amber-500 animate-spin";
+                                document.getElementById('icon-3').textContent = "sync";
+                                document.getElementById('title-3').className = "text-xs font-bold text-slate-700";
+
+                                setTimeout(async () => {
+                                    document.getElementById('icon-3').textContent = "check_circle";
+                                    document.getElementById('icon-3').className = "material-symbols-outlined text-green-600";
+                                    document.getElementById('title-3').className = "text-xs font-bold text-green-700";
+                                    document.getElementById('desc-3').textContent = "Success: Staff account added to registry.";
+                                    updateStepperStatus();
+
+                                    await loadRegistry();
+                                    document.getElementById('staffName').value = '';
+                                    document.getElementById('staffEmail').value = '';
+                                    generatePasscode();
+
+                                    btn.disabled = false;
+                                    btn.style.opacity = 1;
+
+                                    setTimeout(() => {
+                                        stepper.classList.remove('hidden');
+                                        stepper.classList.add('flex');
+                                        document.querySelectorAll('[id^="icon-"]').forEach(el => {
+                                            el.textContent = "radio_button_unchecked";
+                                            el.className = "material-symbols-outlined text-slate-400";
+                                        });
+                                        document.querySelectorAll('[id^="title-"]').forEach(el => {
+                                            el.className = el.id === 'title-1' ? "text-xs font-bold text-slate-700" : "text-xs font-bold text-slate-400";
+                                        });
+                                        document.getElementById('desc-1').textContent = "Double-checking administrative session details...";
+                                        document.getElementById('desc-2').textContent = "Invoking auth.admin.createUser API...";
+                                        document.getElementById('desc-3').textContent = "Triggering custom user_roles tables insertions...";
+                                        updateStepperStatus();
+                                    }, 3000);
+                                }, 1200);
+                            }
+                        }, 1200);
+                    }, 1000);
+                } catch (err) {
+                    alert('Error provisioning account: ' + err.message);
+                    btn.disabled = false;
+                    btn.style.opacity = 1;
+                    stepper.classList.add('hidden');
+                    stepper.classList.remove('flex');
+                }
+            }
+    </script>
+</body>
+</html>

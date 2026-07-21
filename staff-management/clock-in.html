@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Attendance Terminal | EspressGo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js?v=20260705a"></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        
+        /* High-fidelity glowing pulse scan ring */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.5; }
+        }
+        .pulse-scan-ring {
+            animation: pulse-ring 2.5s infinite ease-in-out;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+
+<body class="bg-surface-bright text-on-surface font-body-md selection:bg-secondary-container antialiased flex min-h-screen">
+    <!-- Sidebar Element -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Main Content Area -->
+    <main class="ml-64 flex-1 min-h-screen flex flex-col transition-all duration-300">
+
+        <!-- Page Header -->
+        <header class="bg-white border-b border-outline-variant px-8 h-16 flex items-center justify-between sticky top-0 z-30">
+            <h2 class="text-xl font-headline-sm font-bold text-[#031635] flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">schedule</span>
+                Attendance Terminal
+            </h2>
+            <div class="flex items-center gap-3">
+                <div id="signed-in-as" class="hidden items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-[10px] font-bold uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-[14px]">badge</span>
+                    <span>Signing in as: <span id="signed-in-as-name" class="font-extrabold"></span></span>
+                </div>
+                <button onclick="clockSelfIn()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">login</span>
+                    <span>Clock In</span>
+                </button>
+                <button onclick="clockSelfOut()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">logout</span>
+                    <span>Clock Out</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Body Grid Content -->
+        <div class="flex-1 p-8 space-y-8 w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- RIGHT COLUMN: Console controls & Employee simulator list (lg:col-span-5) -->
+                <div class="lg:col-span-12 space-y-6">
+
+                    <!-- Employee Simulator Directory -->
+                    <div class="bg-white border border-outline-variant rounded-2xl p-6 shadow-sm flex flex-col">
+                        <div class="mb-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[16px] text-slate-500">group</span>
+                                <span>Staff Directory</span>
+                            </h3>
+                            <p class="text-[10px] text-slate-400 mt-1 font-semibold">Live status of all staff members. Use Clock In / Clock Out above to record attendance.</p>
+                        </div>
+                        
+                        <!-- List rows -->
+                        <div class="max-h-[280px] overflow-y-auto space-y-2 pr-1" id="sim-staff-list">
+                            <!-- Load Dynamically -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- SECURE INTEGRATED TIMESHEET SYSTEM -->
+            <div class="bg-white border border-outline-variant rounded-2xl shadow-sm overflow-hidden mt-8 animate-fade-in" id="timesheet-container">
+                <!-- Timesheet Header -->
+                <div class="px-6 py-4 border-b border-outline-variant bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                            <span class="material-symbols-outlined font-extrabold text-lg">calendar_month</span>
+                        </div>
+                        <div>
+                            <h3 class="font-extrabold text-sm header-font text-[#031635] tracking-tight">Attendance Timesheet Log</h3>
+                            <p class="text-[10px] text-slate-500 font-medium mt-0.5">Real-time attendance record for all staff clock-in and clock-out events.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Timesheet Status -->
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all">
+                        <span class="material-symbols-outlined text-[14px]">lock_open</span>
+                        <span>Timesheet Available</span>
+                    </div>
+                </div>
+
+                <!-- Timesheet Content Area -->
+                <div id="timesheet-content" class="p-8 relative min-h-[260px] flex items-center justify-center bg-slate-50/20">
+                    <!-- Unlocked State View Table -->
+                    <div id="timesheet-unlocked-card" class="w-full space-y-6">
+                        <!-- Stats Grid inside timesheet -->
+                        <div class="grid grid-cols-3 gap-4 bg-slate-50 border border-slate-100 p-4 rounded-xl">
+                            <div class="text-center py-1">
+                                <p class="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Registered Staff</p>
+                                <p class="text-base font-extrabold text-slate-800 mt-0.5" id="timesheet-stat-total">6</p>
+                            </div>
+                            <div class="text-center py-1">
+                                <p class="text-[9px] uppercase font-bold text-emerald-600 tracking-wider">Present On-Duty</p>
+                                <p class="text-base font-extrabold text-emerald-700 mt-0.5" id="timesheet-stat-in">3</p>
+                            </div>
+                            <div class="text-center py-1">
+                                <p class="text-[9px] uppercase font-bold text-rose-600 tracking-wider">Clocked Out</p>
+                                <p class="text-base font-extrabold text-rose-700 mt-0.5" id="timesheet-stat-out">3</p>
+                            </div>
+                        </div>
+
+                        <!-- Live Timesheet Log Table Grid -->
+                        <div class="overflow-x-auto border border-slate-200/80 rounded-xl bg-white shadow-sm">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-600 text-[10px] font-extrabold uppercase tracking-wider border-b border-slate-100">
+                                        <th class="py-3 px-4">Staff Member</th>
+                                        <th class="py-3 px-4">Staff ID</th>
+                                        <th class="py-3 px-4">Designation</th>
+                                        <th class="py-3 px-4">Event Status</th>
+                                        <th class="py-3 px-4">Time</th>
+                                        <th class="py-3 px-4">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="timesheet-table-rows" class="text-[11px] text-slate-700 font-semibold divide-y divide-slate-100">
+                                    <!-- Populated Dynamically -->
+                                </tbody>
+                            </table>
+                            <div id="timesheet-empty-state" class="hidden p-8 text-center text-slate-400 text-xs font-bold">
+                                No attendance activity logged yet.
+                            </div>
+                        </div>
+
+                        <!-- Panel Status -->
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-4">
+                            <span class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">check_circle</span>
+                                Timesheet Active
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Staff Selection Modal -->
+    <div id="clock-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="bg-primary px-6 py-4 flex items-center justify-between">
+                <h3 class="text-white font-extrabold text-sm header-font" id="modal-title">Select Staff</h3>
+                <button onclick="closeClockModal()" class="text-white/70 hover:text-white transition-colors">
+                    <span class="material-symbols-outlined text-xl font-headline-sm">close</span>
+                </button>
+            </div>
+            <div class="p-4 max-h-[400px] overflow-y-auto space-y-2" id="modal-staff-list">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Feedback Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-[#031635] text-white border border-slate-800 px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-lg" id="toast-icon">check_circle</span>
+        </div>
+        <div>
+            <h5 class="text-xs font-extrabold header-font text-white" id="toast-title">Clock-In Recorded</h5>
+            <p class="text-[10px] text-slate-400 mt-0.5" id="toast-body">The staff database was synchronized successfully.</p>
+        </div>
+    </div>
+
+    <!-- Script Terminal Logic -->
+    <script>
+        // Staff data loaded from Supabase
+        const defaultStaff = [];
+
+        // Edge Function API helper
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        async function supabaseAPI({ table, operation, data, filters, columns, returning }) {
+            const resp = await fetch('/api/supabase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table, operation, data, filters, columns, returning })
+            });
+            const result = await resp.json();
+            if (result.error && result.data !== undefined) return result.data;
+            if (result.error) return [];
+            return result.data || [];
+        }
+
+        // Supabase client (kept for reference)
+        const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+
+        let db = [];
+        let selectedStaff = null;
+
+        // --- Supabase Data Loading ---
+        // Cached map: staffId -> latest event { type, ts } so status survives polling
+        const latestEventByStaff = new Map();
+
+        async function loadStaffFromSupabase() {
+            try {
+                const data = await supabaseAPI({
+                    table: 'staff_profiles',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { eq: { is_active: true } }
+                });
+
+                db = (data || []).map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    role: s.role,
+                    email: s.email || '',
+                    photo: s.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=475f87&color=fff&size=128`,
+                    status: deriveStatusFromLatestEvent(s.id),
+                    lastEvent: null
+                }));
+            } catch (err) {
+                console.warn('Error loading staff from Supabase:', err);
+                db = [];
+            }
+        }
+
+        // Derive a staff member's status from their most recent attendance_logs event.
+        // clock_in  -> Clocked In; clock_out -> Clocked Out; no events -> Clocked Out.
+        function deriveStatusFromLatestEvent(staffId) {
+            const last = latestEventByStaff.get(staffId);
+            return last && last.type === 'clock_in' ? 'Clocked In' : 'Clocked Out';
+        }
+
+        async function syncAttendanceLogToSupabase(logEntry) {
+            const staffProfile = db.find(s => s.id === logEntry.staffId);
+            if (!staffProfile) return null;
+
+            try {
+                const inserted = await supabaseAPI({
+                    table: 'attendance_logs',
+                    operation: 'insert',
+                    data: {
+                        staff_id: logEntry.staffId,
+                        staff_name: staffProfile.name,
+                        event_type: logEntry.type === 'Clocked In' ? 'clock_in' : 'clock_out',
+                        event_time: logEntry.timestamp,
+                        event_date: logEntry.date,
+                        mode: logEntry.mode || 'Attendance Terminal'
+                    },
+                    returning: '*'
+                });
+                window.__lastAttendanceLog = Array.isArray(inserted) ? inserted[0] : null;
+                return window.__lastAttendanceLog;
+            } catch (err) {
+                console.warn('Error syncing attendance log to Supabase:', err);
+                // Return a mock object so the clocking can continue
+                return { id: 'local_' + Date.now(), ...logEntry };
+            }
+        }
+
+        async function loadAttendanceLogsFromSupabase() {
+            try {
+                const data = await supabaseAPI({
+                    table: 'attendance_logs',
+                    operation: 'select',
+                    columns: '*'
+                });
+
+                const rows = (data || [])
+                    .slice()
+                    .sort((a, b) => new Date(a.event_time) - new Date(b.event_time));
+
+                // Track latest event per staff
+                latestEventByStaff.clear();
+                rows.forEach(log => {
+                    const prev = latestEventByStaff.get(log.staff_id);
+                    if (!prev || new Date(log.event_time) >= new Date(prev.ts)) {
+                        latestEventByStaff.set(log.staff_id, { type: log.event_type, ts: log.event_time });
+                    }
+                });
+
+                return rows.map(log => {
+                    const staff = db.find(s => s.id === log.staff_id);
+                    return {
+                        id: log.id,
+                        staffId: log.staff_id,
+                        name: log.staff_name || (staff ? staff.name : 'Unknown'),
+                        email: staff ? (staff.email || '') : '',
+                        role: staff ? staff.role : 'Staff',
+                        avatar: staff ? staff.photo : `https://ui-avatars.com/api/?name=${encodeURIComponent(log.staff_name || 'U')}&background=475f87&color=fff&size=64`,
+                        type: log.event_type === 'clock_in' ? 'Clocked In' : 'Clocked Out',
+                        time: new Date(log.event_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        date: log.event_date,
+                        timestamp: log.event_time,
+                        mode: log.mode || 'Biometric Reticle Kiosk'
+                    };
+                });
+            } catch (err) {
+                console.warn('Error loading attendance logs:', err);
+                return [];
+            }
+        }
+
+        // Load DB from Supabase (staff + their latest event so status is correct)
+        async function loadDB() {
+            await loadStaffFromSupabase();
+            await loadAttendanceLogsFromSupabase();
+            // Re-stamp each staff's status now that latestEventByStaff is populated
+            db = db.map(s => ({ ...s, status: deriveStatusFromLatestEvent(s.id) }));
+        }
+
+        function startInitialStaffRefresh() {
+            let attempts = 0;
+            const timer = setInterval(async () => {
+                attempts += 1;
+                if (selectedStaff) {
+                    clearInterval(timer);
+                    return;
+                }
+
+                try {
+                    await loadDB();
+                    renderDirectory();
+                } catch (err) {
+                    console.warn('Staff directory refresh failed:', err);
+                }
+
+                if (attempts >= 20) clearInterval(timer);
+            }, 1500);
+        }
+
+        // Render Directory list
+        function renderDirectory() {
+            const listEl = document.getElementById('sim-staff-list');
+            listEl.innerHTML = '';
+            
+            db.forEach(s => {
+                const isClockedIn = s.status === 'Clocked In';
+                const pillClass = isClockedIn 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                    : 'bg-rose-50 text-rose-700 border-rose-200';
+                
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-white hover:bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-left transition-all flex items-center justify-between gap-3 shadow-sm select-none cursor-default";
+                btn.setAttribute('type', 'button');
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <img src="${s.photo}" class="w-8 h-8 rounded-lg object-cover border border-slate-100 shrink-0" />
+                        <div class="truncate">
+                            <h4 class="font-bold text-[11px] text-slate-800 truncate">${s.name}</h4>
+                            <p class="text-[9px] text-slate-400 font-semibold mt-0.5 truncate">${s.email || s.role}</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[8px] font-bold border tracking-wider shrink-0 uppercase ${pillClass}">${s.status}</span>
+                `;
+                listEl.appendChild(btn);
+            });
+        }
+
+        // Open Clock-In Modal
+
+        async function commitClocking(targetStatus) {
+            if (!selectedStaff) return;
+
+            const now = new Date();
+            // event_time = true UTC instant (was: UTC date glued to local time,
+            // which bucketed events into the wrong day for any TZ != UTC).
+            const eventTimestamp = now.toISOString();
+            // event_date = local calendar date so the timesheet shows the day the user
+            // actually clocked in (independent of the server / browser TZ).
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            // 2. Sync attendance log to Supabase (non-blocking)
+            const logEntry = {
+                id: 'LOG_' + Date.now(),
+                staffId: selectedStaff.id,
+                name: selectedStaff.name,
+                role: selectedStaff.role,
+                avatar: selectedStaff.photo,
+                type: targetStatus,
+                time: timeStr,
+                date: dateStr,
+                timestamp: eventTimestamp,
+                mode: `Attendance Terminal`
+            };
+
+            // Attempt to persist (will return null on failure, but we continue)
+            const persisted = await syncAttendanceLogToSupabase(logEntry);
+
+            // Update latest-event cache from the persisted row, then derive status
+            if (persisted && persisted.staff_id) {
+                latestEventByStaff.set(persisted.staff_id, {
+                    type: persisted.event_type,
+                    ts: persisted.event_time
+                });
+            }
+            const newStatus = deriveStatusFromLatestEvent(selectedStaff.id);
+
+            // Update in-memory DB to reflect authoritative status
+            db = db.map(s => {
+                if (s.id === selectedStaff.id) {
+                    return { ...s, status: newStatus, lastEvent: eventTimestamp };
+                }
+                return s;
+            });
+
+            // Show Toast Alert
+            showToast(
+                targetStatus === 'Clocked In' ? 'Clock-In Recorded' : 'Clock-Out Recorded',
+                `Attendance recorded for ${selectedStaff.name} successfully at ${timeStr}.`
+            );
+
+            // Re-render
+            renderDirectory();
+            clearSelectedStaff();
+            renderTimesheet();
+        }
+
+        async function renderTimesheet() {
+            const total = db.length;
+            const present = db.filter(s => s.status === 'Clocked In').length;
+            const absent = db.filter(s => s.status === 'Clocked Out').length;
+
+            document.getElementById('timesheet-stat-total').innerText = total;
+            document.getElementById('timesheet-stat-in').innerText = present;
+            document.getElementById('timesheet-stat-out').innerText = absent;
+
+            const tableBody = document.getElementById('timesheet-table-rows');
+            tableBody.innerHTML = "";
+
+            // Load logs from Supabase
+            const logs = await loadAttendanceLogsFromSupabase();
+
+            if (logs.length === 0) {
+                document.getElementById('timesheet-empty-state').classList.remove('hidden');
+                return;
+            } else {
+                document.getElementById('timesheet-empty-state').classList.add('hidden');
+            }
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/50 transition-colors";
+                
+                let pillClass = "";
+                if (log.type === "Clocked In") {
+                    pillClass = "bg-emerald-50 text-emerald-700 border-emerald-100";
+                } else {
+                    pillClass = "bg-rose-50 text-rose-700 border-rose-100";
+                }
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 flex items-center gap-2">
+                        <img src="${log.avatar}" class="w-6 h-6 rounded-lg object-cover border border-slate-100" />
+                        <span>${log.name}</span>
+                    </td>
+                    <td class="py-3 px-4 font-mono text-slate-400 text-[10px]">${log.email || log.staffId}</td>
+                    <td class="py-3 px-4 text-slate-500">${log.role}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider ${pillClass}">${log.type}</span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-500">${log.time}</td>
+                    <td class="py-3 px-4 text-slate-500">${log.date}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Clear the in-flight selection after a clock action completes
+        function clearSelectedStaff() {
+            selectedStaff = null;
+        }
+
+        // Live Header System Clock
+        function updateClockTime() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+
+            const el = document.getElementById('statusBarTime');
+            if (el) el.innerText = `${hours}:${minutes} ${ampm}`;
+        }
+
+        let modalActionType = ''; // 'clock_in' or 'clock_out'
+
+        // --- Identity helpers (self-only clocking) ---
+        // Pull the signed-in staff identity off window.__staffIdentity, which is
+        // populated by components/sidebar.js (and rbac.js) from the server
+        // cookie. Until it's ready, we can't determine "self" — the header
+        // buttons stay disabled and the modal locks everyone out.
+        function getSelfIdentity() {
+            const ident = (window.__staffIdentity && typeof window.__staffIdentity === 'object')
+                ? window.__staffIdentity
+                : null;
+            if (!ident) return null;
+            return {
+                email: String(ident.email || '').trim().toLowerCase(),
+                name: ident.name || '',
+                role: ident.role || '',
+                staffId: ident.staff_id || null,
+            };
+        }
+
+        // Find the staff_profiles row that matches the signed-in user. We match on
+        // email (case-insensitive) because staff_id in the cookie is the auth user
+        // id, not the staff_profiles primary key.
+        function findSelfStaffProfile() {
+            const self = getSelfIdentity();
+            if (!self) return null;
+            const target = self.email;
+            if (!target) return null;
+            return db.find(s => String(s.email || '').trim().toLowerCase() === target) || null;
+        }
+
+        // Open Clock-In Modal
+        async function openClockInModal() {
+            modalActionType = 'clock_in';
+            document.getElementById('modal-title').innerText = 'Clock In - Select Staff';
+            // Always pull the freshest attendance logs before showing the modal so
+            // disabled/enabled state matches the real DB, not a stale in-memory copy.
+            await loadAttendanceLogsFromSupabase();
+            renderModalStaffList();
+            document.getElementById('clock-modal').classList.remove('hidden');
+            document.getElementById('clock-modal').classList.add('flex');
+        }
+
+        // Open Clock-Out Modal
+        async function openClockOutModal() {
+            modalActionType = 'clock_out';
+            document.getElementById('modal-title').innerText = 'Clock Out - Select Staff';
+            await loadAttendanceLogsFromSupabase();
+            renderModalStaffList();
+            document.getElementById('clock-modal').classList.remove('hidden');
+            document.getElementById('clock-modal').classList.add('flex');
+        }
+
+        // Clock-In / Clock-Out for the currently signed-in user only.
+        // If the staff profile can't be resolved (e.g. staff_profiles row missing
+        // for the logged-in email) we surface a toast explaining why.
+        async function clockSelfIn() {
+            await clockSelf('Clocked In');
+        }
+
+        async function clockSelfOut() {
+            await clockSelf('Clocked Out');
+        }
+
+        async function clockSelf(targetStatus) {
+            const self = getSelfIdentity();
+            if (!self || !self.email) {
+                showToast('Sign-in required', 'No staff session detected. Please sign in first.');
+                return;
+            }
+
+            // Pull freshest attendance state before deciding
+            await loadAttendanceLogsFromSupabase();
+            db = db.map(s => ({ ...s, status: deriveStatusFromLatestEvent(s.id) }));
+
+            const profile = findSelfStaffProfile();
+            if (!profile) {
+                showToast(
+                    'Profile not found',
+                    `No staff profile matches ${self.email}. Ask an admin to create your staff record.`
+                );
+                return;
+            }
+
+            const currentStatus = deriveStatusFromLatestEvent(profile.id);
+            const otherSide = targetStatus === 'Clocked In' ? 'Clocked Out' : 'Clocked In';
+            if (currentStatus === targetStatus) {
+                showToast(
+                    'Already Recorded',
+                    `${profile.name} is already ${targetStatus}. No duplicate entry will be created.`
+                );
+                return;
+            }
+            // Sanity: if neither state matches what the UI expects, treat it as
+            // the opposite and continue (e.g. a missing clock-in event).
+            void otherSide;
+
+            selectedStaff = profile;
+            await commitClocking(targetStatus);
+        }
+
+        // Render the "Signing in as" pill in the page header.
+        function renderSignedInAsBanner() {
+            const banner = document.getElementById('signed-in-as');
+            const nameEl = document.getElementById('signed-in-as-name');
+            if (!banner || !nameEl) return;
+            const self = getSelfIdentity();
+            if (self && self.email) {
+                nameEl.textContent = self.name || self.email;
+                banner.classList.remove('hidden');
+                banner.classList.add('flex');
+            } else {
+                banner.classList.add('hidden');
+                banner.classList.remove('flex');
+            }
+        }
+
+        // Disable the header buttons until we know who the signed-in user is.
+        function applyHeaderLockState() {
+            const self = getSelfIdentity();
+            const hasSession = !!(self && self.email);
+            document.querySelectorAll('header button').forEach((btn) => {
+                // Skip the close button inside the modal — header only has the
+                // two clock buttons so this is safe.
+                btn.disabled = !hasSession;
+                btn.classList.toggle('opacity-50', !hasSession);
+                btn.classList.toggle('cursor-not-allowed', !hasSession);
+            });
+        }
+
+        // Close Modal
+        function closeClockModal() {
+            document.getElementById('clock-modal').classList.add('hidden');
+            document.getElementById('clock-modal').classList.remove('flex');
+        }
+
+        // Render Staff List in Modal
+        function renderModalStaffList() {
+            const listEl = document.getElementById('modal-staff-list');
+            listEl.innerHTML = '';
+
+            if (db.length === 0) {
+                listEl.innerHTML = '<p class="text-center text-slate-400 text-sm py-8">No staff found.</p>';
+                return;
+            }
+
+            // Refresh status from the latest-event cache so the modal always reflects the DB
+            db = db.map(s => ({ ...s, status: deriveStatusFromLatestEvent(s.id) }));
+
+            const isClockingIn = modalActionType === 'clock_in';
+            const selfEmail = (getSelfIdentity() && getSelfIdentity().email) || '';
+
+            db.forEach(s => {
+                const alreadyInThisState = isClockingIn
+                    ? s.status === 'Clocked In'
+                    : s.status === 'Clocked Out';
+
+                const isSelf = selfEmail && String(s.email || '').trim().toLowerCase() === selfEmail;
+                const notSelf = !isSelf;
+                // Disable when: the user is trying to clock someone else in/out,
+                // OR the row is already in the requested state.
+                const locked = notSelf || alreadyInThisState;
+                const reason = alreadyInThisState
+                    ? (isClockingIn ? 'Already Clocked In' : 'Already Clocked Out')
+                    : (notSelf ? 'You can only clock yourself in/out' : (isClockingIn ? 'Tap to Clock In' : 'Tap to Clock Out'));
+
+                const btn = document.createElement('button');
+                btn.disabled = locked;
+                btn.className = locked
+                    ? "w-full bg-slate-50 border border-slate-200 p-3 rounded-xl text-left flex items-center gap-3 shadow-sm opacity-50 cursor-not-allowed"
+                    : "w-full bg-white hover:bg-slate-50 border border-slate-200 p-3 rounded-xl text-left transition-all flex items-center gap-3 shadow-sm";
+
+                if (!locked) {
+                    btn.onclick = () => handleClockAction(s.id);
+                }
+
+                btn.innerHTML = `
+                    <img src="${s.photo}" class="w-10 h-10 rounded-xl object-cover border border-slate-100" />
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                            <span>${s.name}</span>
+                            ${isSelf ? '<span class="px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[9px] font-extrabold uppercase tracking-wider">You</span>' : ''}
+                        </h4>
+                        <p class="text-[10px] text-slate-400 font-medium">${s.role}</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400">${reason}</span>
+                `;
+                listEl.appendChild(btn);
+            });
+        }
+
+        // Handle Clock Action
+        async function handleClockAction(staffId) {
+            const staff = db.find(s => s.id === staffId);
+            if (!staff) return;
+
+            // Hard-stop: a user can only act on their own staff profile. Anyone
+            // trying to clock a colleague from the modal hits this guard.
+            const selfEmail = (getSelfIdentity() && getSelfIdentity().email) || '';
+            if (!selfEmail || String(staff.email || '').trim().toLowerCase() !== selfEmail) {
+                showToast(
+                    'Action blocked',
+                    'You can only clock yourself in or out.'
+                );
+                return;
+            }
+
+            const targetStatus = modalActionType === 'clock_in' ? 'Clocked In' : 'Clocked Out';
+
+            // Re-derive current status from the latest event in the cache
+            const currentStatus = deriveStatusFromLatestEvent(staff.id);
+            if (currentStatus === targetStatus) {
+                showToast(
+                    'Already Recorded',
+                    `${staff.name} is already ${targetStatus}. No duplicate entry will be created.`
+                );
+                return;
+            }
+
+            selectedStaff = staff;
+            closeClockModal();
+            await commitClocking(targetStatus);
+        }
+
+        // Toast Trigger
+        function showToast(title, body) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-body').innerText = body;
+            
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // Boot
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Wait for the staff session probe to land so we know who "self" is.
+            // Without this the header buttons would unlock before we can decide
+            // which row to clock, and a different user could slip through the
+            // identity check.
+            try {
+                if (window.RBAC && typeof window.RBAC.identityReady === 'function') {
+                    await window.RBAC.identityReady();
+                }
+            } catch (err) {
+                console.warn('identityReady failed:', err);
+            }
+
+            try {
+                await loadDB();
+            } catch (err) {
+                console.warn('Could not load staff from Supabase:', err);
+            }
+            renderSignedInAsBanner();
+            applyHeaderLockState();
+            renderDirectory();
+            try {
+                await renderTimesheet();
+            } catch (err) {
+                console.warn('Could not load timesheet:', err);
+            }
+            startInitialStaffRefresh();
+            updateClockTime();
+            setInterval(updateClockTime, 1000);
+        });
+
+        // Re-render identity-dependent UI whenever the sidebar finishes
+        // populating __staffIdentity (covers the race where the inline script
+        // runs before components/sidebar.js connects).
+        window.addEventListener('staff-identity-ready', () => {
+            renderSignedInAsBanner();
+            applyHeaderLockState();
+        });
+    </script>
+</body>
+</html>

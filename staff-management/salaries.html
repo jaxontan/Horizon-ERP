@@ -1,0 +1,2855 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Staff Salaries & Payroll | EspressGo</title>
+    <!-- Tailwind CSS Dynamic CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet"/>
+            <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+            <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="/public/js/rbac.js"></script>
+<script src="/components/sidebar.js"></script>
+    <style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        
+        /* Premium custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen">
+    <!-- Component-based App Sidebar -->
+    <app-sidebar layout="fixed"></app-sidebar>
+    
+    <!-- Top Premium App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-xl font-headline-sm">payments</span>
+                <div class="font-extrabold text-primary text-xl font-headline-sm tracking-tight">EspressGo Salaries Console</div>
+            </div>
+            <div class="flex items-center gap-6">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Content Area -->
+    <main class="ml-64 pt-20 pb-12 px-8 flex-grow">
+        
+        <!-- Breadcrumb & Page Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+            <div>
+                <h2 class="text-3xl font-headline-lg font-extrabold tracking-tight text-on-surface">Staff Salaries & Payroll</h2>
+                <div class="flex items-center gap-2 mt-1">
+                    <p class="text-xs text-on-surface-variant font-medium">Review operational employee logs, adjust base rates, calculate gross payroll, and authorize payouts.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1.5 bg-white border border-outline-variant rounded-xl px-3 py-2 shadow-sm">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Cycle:</label>
+                    <select id="main-cycle-select" class="bg-transparent text-xs font-semibold outline-none focus:ring-0 cursor-pointer text-slate-700">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <button onclick="openPayrollControlModal()"
+                        class="bg-primary hover:bg-opacity-95 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-sm">tune</span>
+                    <span>Payroll Controls</span>
+                </button>
+            </div>
+        </div>
+        <!-- Dashboard KPI Row -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <!-- Card 1: Total monthly payroll -->
+            <div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-[10px] uppercase font-extrabold tracking-widest text-slate-500">Total Payroll</span>
+                    <span class="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 material-symbols-outlined text-lg">monetization_on</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-headline-md font-extrabold text-slate-800 tracking-tight" id="kpi-total-payroll">$0.00</h3>
+                    <p class="text-[10px] font-semibold text-slate-700 mt-1" id="kpi-total-sublabel">Current month projection</p>
+                </div>
+            </div>
+
+            <!-- Card 2: Active staff counts -->
+            <div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-[10px] uppercase font-extrabold tracking-widest text-slate-500">Salaried Staff</span>
+                    <span class="p-1.5 rounded-lg bg-blue-50 text-blue-600 material-symbols-outlined text-lg">badge</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-headline-md font-extrabold text-slate-800 tracking-tight" id="kpi-staff-count">0</h3>
+                    <p class="text-[10px] font-semibold text-slate-700 mt-1">Active roster payroll lines</p>
+                </div>
+            </div>
+
+            <!-- Card 3: Paid/Pending status ratio -->
+            <div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-[10px] uppercase font-extrabold tracking-widest text-slate-500">Paid Ratio</span>
+                    <span class="p-1.5 rounded-lg bg-purple-50 text-purple-600 material-symbols-outlined text-lg">hourglass_empty</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-headline-md font-extrabold text-slate-800 tracking-tight" id="kpi-paid-ratio">0%</h3>
+                    <p class="text-[10px] font-semibold text-slate-700 mt-1" id="kpi-pending-count">0 draft lines</p>
+                </div>
+            </div>
+
+            <!-- Card 4: Cycle Information -->
+            <div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-[10px] uppercase font-extrabold tracking-widest text-slate-500">Cycle Info</span>
+                    <span class="p-1.5 rounded-lg bg-amber-50 text-amber-600 material-symbols-outlined text-lg">calendar_month</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-headline-md font-extrabold text-slate-800 tracking-tight" id="kpi-cycle-month">—</h3>
+                    <div class="space-y-0.5 mt-1">
+                        <p class="text-[10px] font-semibold text-slate-700" id="kpi-adjust-period">Period: — days</p>
+                        <p class="text-[10px] font-semibold text-slate-700" id="kpi-payday">Pay Day: —</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roster & History Grid Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12 items-start">
+            <!-- Left Column: Salaries Board (2/3 width) -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Salaries Board: Table, Filters, Search -->
+                <div class="bg-white border border-outline-variant rounded-2xl shadow-sm overflow-hidden">
+                    <!-- Table Action Filters Bar -->
+                    <div class="p-5 border-b border-outline-variant/60 bg-slate-50 flex flex-col sm:flex-row gap-4 justify-between items-center">
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <div class="relative w-full sm:w-64">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+                                <input type="text" id="salary-search" oninput="filterSalaries()"
+                                    class="pl-10 pr-4 py-2 bg-white border border-outline-variant rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-xs w-full transition-all"
+                                    placeholder="Search staff name or role...">
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Filter status:</span>
+                            <div class="bg-white border border-outline-variant rounded-xl p-1 flex gap-1 shadow-sm text-[10px] font-bold">
+                                <button onclick="changeStatusFilter('ALL')" id="filter-btn-all" class="px-3 py-1.5 rounded-lg transition-all bg-primary text-white">All</button>
+                                <button onclick="changeStatusFilter('Draft')" id="filter-btn-draft" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-all">Draft</button>
+                                <button onclick="changeStatusFilter('Paid')" id="filter-btn-paid" class="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-all">Paid</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table content container -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="border-b border-outline-variant text-[10px] text-slate-400 font-extrabold tracking-widest uppercase text-left bg-slate-50/50">
+                                    <th class="py-4 pl-6">Staff Member</th>
+                                    <th class="py-4">Base Rate & Type</th>
+                                    <th class="py-4">Logged Hours</th>
+                                    <th class="py-4">Bonus</th>
+                                    <th class="py-4">Deductions</th>
+                                    <th class="py-4">Estimated Gross</th>
+                                    <th class="py-4">Payment Status</th>
+                                    <th class="py-4 pr-6 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salaries-table-body" class="divide-y divide-outline-variant/30 text-xs font-semibold text-slate-700">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Payroll Runs History (1/3 width) -->
+            <div class="lg:col-span-1">
+                <div class="bg-white border border-outline-variant rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                    <div class="p-5 border-b border-outline-variant/60 bg-slate-50 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-xl font-headline-sm">history</span>
+                            <span class="font-bold text-slate-800 text-sm">Payroll Runs History</span>
+                        </div>
+                        <span class="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold tracking-wide uppercase shadow-sm" id="history-runs-count">0 Runs</span>
+                    </div>
+                    
+                    <div class="p-5 divide-y divide-outline-variant/30 space-y-4 max-h-[500px] overflow-y-auto" id="payroll-history-container">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Adjust Staff Payroll Modal -->
+    <div id="payroll-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border border-outline-variant rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-outline-variant bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-xl font-headline-sm">edit_square</span>
+                    <h3 class="text-base font-bold text-slate-800">Adjust Staff Payroll Details</h3>
+                </div>
+                <button onclick="closePayrollModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Content Form -->
+            <form id="payroll-form" onsubmit="savePayrollAdjustment(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-staff-id">
+                
+                <!-- Staff info display -->
+                <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4 flex items-center gap-3">
+                    <img id="edit-staff-avatar" class="w-10 h-10 rounded-full border border-slate-300 shrink-0" src="" alt="Avatar">
+                    <div>
+                        <h4 class="font-extrabold text-slate-800 text-sm" id="edit-staff-name">-</h4>
+                        <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide" id="edit-staff-role-id">-</p>
+                    </div>
+                </div>
+
+                <!-- Fields grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Salary Model Type</label>
+                        <select id="edit-salary-type" onchange="toggleHourlyFields()"
+                                class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            <option value="Monthly">Monthly Fixed</option>
+                            <option value="Hourly">Hourly Rate</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5" id="label-base-rate">Base Rate ($)</label>
+                        <input type="number" step="0.01" id="edit-base-rate" required
+                               class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Logged Hours</label>
+                        <input type="number" id="edit-hours-worked" required
+                               class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Bonus ($)</label>
+                        <input type="number" step="0.01" id="edit-bonus" required
+                               class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Deductions ($)</label>
+                        <input type="number" step="0.01" id="edit-deductions" required
+                               class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Payment Payout Status</label>
+                    <select id="edit-payment-status"
+                            class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                        <option value="Draft">Draft</option>
+                        <option value="Paid">Paid Out</option>
+                    </select>
+                </div>
+
+                <!-- Footer buttons -->
+                <div class="flex justify-end gap-2 border-t border-outline-variant/30 pt-4 mt-6">
+                    <button type="button" onclick="closePayrollModal()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[10px] font-bold transition-colors uppercase tracking-wider">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-bold shadow hover:bg-opacity-95 transition-all uppercase tracking-wider">
+                        Save Adjustments
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Process Payroll Dialog Modal -->
+    <div id="bulk-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border border-outline-variant rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-6 text-center space-y-4">
+                <div class="mx-auto w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-2xl font-headline-md">account_balance_wallet</span>
+                </div>
+                <div>
+                    <h3 class="text-base font-extrabold text-slate-800">Authorize Monthly Payroll Payout?</h3>
+                    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+                        This action will mark all currently <span class="font-bold text-amber-600">Pending</span> salaries on this screen as <span class="font-bold text-emerald-600">Paid Out</span> and archive the payment run in the history ledger.
+                    </p>
+                </div>
+
+                <!-- Cycle Month Selector -->
+                <div class="text-left space-y-1.5 px-4">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payroll Cycle Month</label>
+                    <div id="payroll-cycle-display" class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold text-slate-700"></div>
+                    <p class="text-[10px] text-slate-400 mt-1" id="bulk-cycle-hint">Pending lines from the cycle currently shown in the table above will be marked Paid and a new run will be logged.</p>
+                </div>
+
+                <div class="flex gap-2 justify-center pt-4">
+                    <button onclick="closeBulkProcessModal()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[10px] font-bold transition-colors uppercase tracking-wider w-24">
+                        Abort
+                    </button>
+                    <button onclick="confirmBulkProcessPayroll()"
+                            id="bulk-confirm-btn"
+                            class="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-bold shadow hover:bg-opacity-95 transition-all uppercase tracking-wider w-36">
+                        Confirm Payout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Company Settings Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border border-outline-variant rounded-2xl w-full max-w-sm shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-outline-variant bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-xl font-headline-sm">settings</span>
+                    <h3 class="text-base font-bold text-slate-800">Payroll Settings</h3>
+                </div>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Content Form -->
+            <form id="settings-form" onsubmit="savePayrollSettings(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Payroll Pay Day (1–31)</label>
+                    <input type="number" min="1" max="31" id="settings-pay-day" required
+                           class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Adjustment Period After Pay Day (1–7 days)</label>
+                    <input type="number" min="1" max="7" id="settings-adjustment-days" required
+                           class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                    <p class="text-[9px] text-slate-400 mt-1">Staff can still adjust salaries during this window; changes carry to next cycle</p>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Lock Cutover Hour (0-23)</label>
+                    <input type="number" min="0" max="23" id="settings-lock-hour" required
+                           class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Lock Cutover Minute (0-59)</label>
+                    <input type="number" min="0" max="59" id="settings-lock-min" required
+                           class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                </div>
+
+                <!-- Footer buttons -->
+                <div class="flex justify-end gap-2 border-t border-outline-variant/30 pt-4 mt-6">
+                    <button type="button" onclick="closeSettingsModal()"
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[10px] font-bold transition-colors uppercase tracking-wider">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-bold shadow hover:bg-opacity-95 transition-all uppercase tracking-wider">
+                        Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Unified Payroll Controls Modal -->
+    <div id="payroll-control-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border border-outline-variant rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-outline-variant bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-xl font-headline-sm">tune</span>
+                    <h3 class="text-base font-bold text-slate-800">Payroll Controls</h3>
+                </div>
+                <button onclick="closePayrollControlModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 space-y-6">
+                <!-- Settings Section -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 pb-2 border-b border-outline-variant/50">
+                        <span class="material-symbols-outlined text-slate-500 text-lg">schedule</span>
+                        <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Payroll Schedule</span>
+                    </div>
+                    
+                    <form id="payroll-control-settings-form" onsubmit="savePayrollSettingsFromControl(event)" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Pay Day (1-31)</label>
+                                <input type="number" min="1" max="31" id="ctrl-pay-day" required
+                                       class="w-full py-2 px-2 bg-slate-50 border border-outline-variant rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Adjustment Days</label>
+                                <input type="number" min="1" max="7" id="ctrl-adjustment-days" required
+                                       class="w-full py-2 px-2 bg-slate-50 border border-outline-variant rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Lock Hour (0-23)</label>
+                                <input type="number" min="0" max="23" id="ctrl-lock-hour" required
+                                       class="w-full py-2 px-2 bg-slate-50 border border-outline-variant rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Lock Minute (0-59)</label>
+                                <input type="number" min="0" max="59" id="ctrl-lock-min" required
+                                       class="w-full py-2 px-2 bg-slate-50 border border-outline-variant rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                        </div>
+                        <button type="submit"
+                                class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold shadow transition-all uppercase tracking-wider">
+                            Save Schedule Settings
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Divider -->
+                <div class="flex items-center gap-3">
+                    <div class="flex-grow h-px bg-outline-variant/50"></div>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or</span>
+                    <div class="flex-grow h-px bg-outline-variant/50"></div>
+                </div>
+
+                <!-- Process Section -->
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2 pb-2 border-b border-outline-variant/50">
+                        <span class="material-symbols-outlined text-slate-500 text-lg">payments</span>
+                        <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Process Payroll</span>
+                    </div>
+                    
+                    <div id="process-cycle-info" class="bg-slate-50 rounded-lg p-3 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Cycle</span>
+                            <span class="text-xs font-bold text-slate-800" id="process-cycle-label">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Status</span>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider" id="process-cycle-status">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Pending Lines</span>
+                            <span class="text-xs font-bold text-slate-800" id="process-pending-count">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Total Amount</span>
+                            <span class="text-xs font-bold text-slate-800" id="process-total-amount">-</span>
+                        </div>
+                    </div>
+
+                    <p class="text-[10px] text-slate-400 leading-relaxed" id="process-hint">
+                        Pending lines will be marked Paid Out and archived in the history ledger.
+                    </p>
+
+                    <button onclick="confirmProcessPayrollFromControl()"
+                            id="ctrl-process-btn"
+                            class="w-full py-2.5 bg-primary hover:bg-opacity-95 text-white rounded-lg text-[10px] font-bold shadow transition-all uppercase tracking-wider flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-sm">check_circle</span>
+                        Confirm Payroll Payout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Detail Breakdown Modal -->
+    <div id="history-detail-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border border-outline-variant rounded-2xl w-full max-w-xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-outline-variant bg-slate-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-xl font-headline-sm">summarize</span>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800" id="history-modal-title">Payroll Run Breakdown</h3>
+                        <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide" id="history-modal-subtitle">-</p>
+                    </div>
+                </div>
+                <button onclick="closeHistoryDetailModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Content (Breakdown Table) -->
+            <div class="p-6 space-y-4 max-h-[300px] overflow-y-auto">
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="border-b border-outline-variant text-[10px] text-slate-400 font-extrabold tracking-widest uppercase text-left bg-slate-50/50">
+                                <th class="py-3 pl-3">Staff</th>
+                                <th class="py-3">Type</th>
+                                <th class="py-3">Hours</th>
+                                <th class="py-3">Bonus/Deduct</th>
+                                <th class="py-3 pr-3 text-right">Gross Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-modal-table-body" class="divide-y divide-outline-variant/30 text-[11px] font-semibold text-slate-700">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Footer summary -->
+            <div class="p-6 bg-slate-50 border-t border-outline-variant flex items-center justify-between gap-3">
+                <div>
+                    <span class="text-[9px] uppercase font-extrabold tracking-widest text-slate-400 block">Total Disbursed</span>
+                    <span class="text-lg font-extrabold text-slate-800" id="history-modal-total">$0.00</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="closeHistoryDetailModal()"
+                            class="px-5 py-2 bg-primary text-white rounded-xl text-[10px] font-bold shadow hover:bg-opacity-95 transition-all uppercase tracking-wider">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast Notification -->
+    <div id="toast-success" class="hidden fixed bottom-6 right-6 z-50 bg-emerald-800 border border-emerald-700 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3 max-w-sm transform translate-y-12 transition-all duration-300">
+        <span class="material-symbols-outlined bg-emerald-700/60 p-1.5 rounded-xl text-emerald-100 text-[20px]">check_circle</span>
+        <div>
+            <h4 class="text-xs font-bold" id="toast-title">Payroll Processed Successfully!</h4>
+            <p class="text-[10px] text-emerald-200 mt-0.5" id="toast-desc">Accounts have been disbursed and synchronized.</p>
+        </div>
+    </div>
+
+    <!-- Salaries Control Scripts Logic -->
+    <script>
+        // Edge Function API helper
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        async function supabaseAPI({ table, operation, data, filters, columns, returning }) {
+            const resp = await fetch('/api/supabase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table, operation, data, filters, columns, returning })
+            });
+            const result = await resp.json();
+            if (resp.status >= 400) {
+                throw new Error(result.error || `HTTP ${resp.status}`);
+            }
+            const returnedData = result.data || [];
+            if (result.redirected_payroll_cycle) {
+                returnedData.redirected_payroll_cycle = result.redirected_payroll_cycle;
+            }
+            return returnedData;
+        }
+
+        // Invalidate the 30s client-side read cache after writes so a follow-up
+        // re-read of the salaries table doesn't return a stale shape.
+        function invalidateSalariesCache() {
+            if (typeof window.invalidateSupabaseCache === 'function') {
+                window.invalidateSupabaseCache('salaries');
+                window.invalidateSupabaseCache('payroll_runs');
+            }
+        }
+
+        const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+
+        // ── RBAC: Block non-admin from write access ──────────────────────────────
+        window.RBAC.enforcePageAccess('salary:read', {
+            pageName: 'Staff Salaries',
+            allowedRoles: ['Administrators', 'Accountants'],
+        })
+            .then(() => window.RBAC.applyRBACToDOM())
+            .catch((err) => {
+                if (!String(err.message || '').startsWith('RBAC:')) throw err;
+            });
+
+        let companySettings = { pay_day: 25, payroll_adjustment_days: 7 };
+
+        async function loadCompanySettings() {
+            try {
+                const res = await supabaseAPI({
+                    table: 'company_settings',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { eq: { id: 1 } }
+                });
+                if (res && res.length > 0) {
+                    companySettings = {
+                        pay_day: res[0].pay_day || 25,
+                        payroll_lock_hour: res[0].payroll_lock_hour ?? 23,
+                        payroll_lock_min: res[0].payroll_lock_min ?? 59,
+                        payroll_adjustment_days: res[0].payroll_adjustment_days || 7
+                    };
+                }
+            } catch (err) {
+                console.warn('Failed to load company settings:', err);
+            }
+        }
+
+        function isOnOrAfterPayDay(cycleLabel) {
+            if (!cycleLabel) return false;
+            const parsed = parseCycleLabel(cycleLabel);
+            if (!parsed) return false;
+
+            const payDay = companySettings.pay_day || 25;
+            const year = parsed.year;
+            const month = parsed.month;
+
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth(); // 0-indexed
+
+            // If this is the current month, check if pay day + lock time has passed
+            if (year === currentYear && month === currentMonth) {
+                const maxDays = new Date(year, month + 1, 0).getDate();
+                const clampedPayDay = Math.min(payDay, maxDays);
+                const triggerDate = new Date(year, month, clampedPayDay, companySettings.payroll_lock_hour ?? 23, companySettings.payroll_lock_min ?? 59);
+                return today >= triggerDate;
+            }
+
+            // For past months, it's always after pay day
+            if (year < currentYear || (year === currentYear && month < currentMonth)) {
+                return true;
+            }
+
+            // Future months are not yet
+            return false;
+        }
+
+        let salariesData = [];
+        let activeFilter = 'ALL';
+        let staffList = [];
+        let historyList = [];
+        let cycleDetailsMap = {}; // cycle label → array of staff detail objects
+        let scheduledCycles = [];  // future months shown as scheduled (no data yet)
+        let pendingPayrollSave = Promise.resolve();
+        let isConfirmingPayroll = false;
+        let lastRecomputedCycle = null;
+        // The cycle label that the dashboard currently reflects. Everything
+        // (table, KPIs, bulk-process) is scoped to this single cycle.
+        let activeCycle = currentCycleLabel();
+        // Lifecycle classification of the active cycle relative to today:
+        //   'future'  → strictly after the calendar month we are in now
+        //   'current' → the calendar month we are in now
+        //   'past'    → before the calendar month we are in now
+        // Used to gate Adjust/Process buttons and to auto-lock missed cycles.
+        let activeCycleClass = cycleClass(activeCycle);
+        // Map of cycle label → how many payroll_runs rows already exist for it.
+        // Each cycle gets exactly one Paid run under the new model; this map
+        // is used by the cycle dropdown to show the "(Paid / Locked)" tag and
+        // by `switchActiveCycle` to detect "past month with no run" cases.
+        let paidCycleCounts = new Map();
+
+        // Initialize paidCycleCounts from historyList (valid runs only)
+        function initializePaidCycleCounts() {
+            paidCycleCounts.clear();
+            historyList.forEach(r => {
+                if (r.totalPaid > 0) {
+                    paidCycleCounts.set(r.cycle, 1);
+                }
+            });
+        }
+
+        // Helpers for the selected payroll cycle (e.g. "July 2026").
+        function parseCycleLabel(label) {
+            if (!label) return null;
+            const months = ['January','February','March','April','May','June',
+                            'July','August','September','October','November','December'];
+            const parts = label.split(' ');
+            if (parts.length !== 2) return null;
+            const monthIdx = months.indexOf(parts[0]);
+            const year = parseInt(parts[1], 10);
+            if (monthIdx < 0 || isNaN(year)) return null;
+            return { year, month: monthIdx };
+        }
+
+        function cycleDateRange(label) {
+            const parsed = parseCycleLabel(label);
+            if (!parsed) return null;
+            const start = new Date(parsed.year, parsed.month, 1);
+            const end = new Date(parsed.year, parsed.month + 1, 1);
+            return { start, end };
+        }
+
+        // Classify a cycle label relative to today's calendar month. Anything
+        // strictly after the current month is 'future', the same month is
+        // 'current', anything earlier is 'past'. Unknown labels default to
+        // 'future' (the safest side: unpayable, editable).
+        function cycleClass(cycleLabel) {
+            const parsed = parseCycleLabel(cycleLabel);
+            if (!parsed) return 'future';
+            const now = new Date();
+            const cycleMonth = new Date(parsed.year, parsed.month, 1);
+            const thisMonth  = new Date(now.getFullYear(), now.getMonth(), 1);
+            if (cycleMonth.getTime() === thisMonth.getTime()) return 'current';
+            if (cycleMonth.getTime() >  thisMonth.getTime()) return 'future';
+            return 'past';
+        }
+
+        // --- Attendance → Salaries aggregator ---
+        // Pairs every clock_in with the next clock_out (per staff, ordered by time)
+        // inside the selected payroll cycle window and sums the durations in hours.
+        // Staff records with hours_overridden=true are left untouched.
+        //
+        // IMPORTANT: now that salaries is cycle-scoped, this must only update
+        // rows for the active cycle. Without this filter it would re-aggregate
+        // a previous paid-out month's row using the new cycle's attendance.
+        async function recomputeHoursFromAttendance(cycleLabel) {
+            const range = cycleDateRange(cycleLabel);
+            if (!range) return;
+
+            let logs = [];
+            try {
+                logs = await supabaseAPI({
+                    table: 'attendance_logs',
+                    operation: 'select',
+                    columns: '*'
+                });
+            } catch (err) {
+                console.warn('Could not load attendance logs for hour aggregation:', err);
+                return;
+            }
+
+            const startMs = range.start.getTime();
+            const endMs = range.end.getTime();
+
+            // Group ordered events per staff within the cycle window.
+            const eventsByStaff = new Map();
+            (logs || [])
+                .map(log => ({
+                    staffId: log.staff_id,
+                    type: log.event_type,
+                    ts: new Date(log.event_time).getTime(),
+                    raw: log
+                }))
+                .filter(e => !isNaN(e.ts) && e.ts >= startMs && e.ts < endMs)
+                .sort((a, b) => a.ts - b.ts)
+                .forEach(e => {
+                    if (!eventsByStaff.has(e.staffId)) eventsByStaff.set(e.staffId, []);
+                    eventsByStaff.get(e.staffId).push(e);
+                });
+
+            const totalsByStaff = new Map();
+            eventsByStaff.forEach((events, staffId) => {
+                let openIn = null;
+                let totalMs = 0;
+                for (const ev of events) {
+                    if (ev.type === 'clock_in') {
+                        // Reset any dangling open-in (forget it — we can't pair it).
+                        openIn = ev.ts;
+                    } else if (ev.type === 'clock_out' && openIn !== null) {
+                        if (ev.ts > openIn) {
+                            totalMs += ev.ts - openIn;
+                        }
+                        openIn = null;
+                    }
+                }
+                totalsByStaff.set(staffId, totalMs / (1000 * 60 * 60)); // ms → hours
+            });
+
+            // Fetch the cycle's salary rows so we know which ones have manual overrides.
+            // Only rows belonging to this cycle are eligible for hour refresh.
+            let salaryRows = [];
+            try {
+                salaryRows = await supabaseAPI({
+                    table: 'salaries',
+                    operation: 'select',
+                    columns: 'id, staff_id, hours_worked, hours_overridden, cycle',
+                    filters: { eq: { cycle: cycleLabel } }
+                });
+            } catch (err) {
+                console.warn('Could not load salaries for hour sync:', err);
+                return;
+            }
+
+            const syncTasks = [];
+            for (const row of salaryRows || []) {
+                if (row.hours_overridden) continue;
+                const next = totalsByStaff.get(row.staff_id) || 0;
+                const rounded = Math.round(next * 100) / 100;
+                const current = parseFloat(row.hours_worked || 0);
+                if (Math.abs(current - rounded) < 0.005) continue;
+                syncTasks.push(
+                    supabaseAPI({
+                        table: 'salaries',
+                        operation: 'update',
+                        data: {
+                            hours_worked: rounded,
+                            hours_source: 'attendance',
+                            hours_synced_at: new Date().toISOString()
+                        },
+                        filters: { eq: { id: row.id } }
+                    }).catch(err => console.warn('Hour sync update failed:', err))
+                );
+            }
+            await Promise.all(syncTasks);
+            invalidateSalariesCache();
+        }
+
+        // --- Supabase Data Loading ---
+        async function loadStaffList() {
+            try {
+                const data = await supabaseAPI({
+                    table: 'staff_profiles',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { eq: { is_active: true } }
+                });
+
+                staffList = (data || []).map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    role: s.role,
+                    email: s.email || '',
+                    photo: s.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=475f87&color=fff&size=128`,
+                    staff_code: s.staff_code
+                }));
+            } catch (err) {
+                console.warn('Error loading staff:', err);
+                staffList = [];
+            }
+        }
+
+        async function loadSalariesData(cycleLabel) {
+            try {
+                // We always have a current cycle label; without it, fall back to
+                // the calendar month so the page still renders in a sane state.
+                const targetCycle = cycleLabel || currentCycleLabel();
+                const data = await supabaseAPI({
+                    table: 'salaries',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { eq: { cycle: targetCycle } }
+                });
+
+                salariesData = (data || []).map(s => ({
+                    staffId: s.staff_id,
+                    salaryType: s.salary_type || 'Monthly',
+                    baseRate: parseFloat(s.base_rate || 0),
+                    hoursWorked: parseFloat(s.hours_worked || 0),
+                    bonus: Math.max(0, parseFloat(s.bonus || 0)),
+                    deductions: Math.max(0, parseFloat(s.deductions || 0)),
+                    paymentStatus: s.payment_status
+                }));
+            } catch (err) {
+                console.warn('Error loading salaries:', err);
+                salariesData = [];
+            }
+        }
+
+        // If we are looking at a cycle that has no salary rows yet (e.g. the
+        // operator just clicked "August 2026" for the first time), create one
+        // Pending row per active staff. We clone the most recent base rate /
+        // salary type from the staff's previously-paid cycle so the new cycle
+        // doesn't reset their pay arrangement.
+        async function seedCycleRowsForActiveStaff(cycleLabel) {
+            if (!cycleLabel) return;
+
+            // Check which staff already have rows in THIS cycle (not the previous
+            // cycle's salariesData, which causes false positives when switching).
+            let existingInCycle = new Set();
+            try {
+                const rows = await supabaseAPI({
+                    table: 'salaries',
+                    operation: 'select',
+                    columns: 'staff_id',
+                    filters: { eq: { cycle: cycleLabel } }
+                });
+                (rows || []).forEach(r => existingInCycle.add(r.staff_id));
+            } catch (err) {
+                console.warn('Could not check existing rows for seeding:', err);
+                return;
+            }
+
+            // Fetch all salaries across cycles so we can grab the latest
+            // base_rate / salary_type per staff.
+            let allRows = [];
+            try {
+                allRows = await supabaseAPI({
+                    table: 'salaries',
+                    operation: 'select',
+                    columns: 'staff_id, salary_type, base_rate',
+                    filters: {}
+                });
+            } catch (err) {
+                console.warn('Could not load historical salary rows for seeding:', err);
+                return;
+            }
+
+            const latestByStaff = new Map();
+            (allRows || []).forEach(r => {
+                latestByStaff.set(r.staff_id, {
+                    salaryType: r.salary_type || 'Monthly',
+                    baseRate: parseFloat(r.base_rate || 0)
+                });
+            });
+
+            const missing = staffList.filter(s => !existingInCycle.has(s.id));
+            if (missing.length === 0) return;
+
+            for (const s of missing) {
+                const prior = latestByStaff.get(s.id) || {};
+                const seedRow = {
+                    staff_id: s.id,
+                    cycle: cycleLabel,
+                    salary_type: prior.salaryType || 'Monthly',
+                    base_rate: Number.isFinite(prior.baseRate) && prior.baseRate > 0 ? prior.baseRate : 3000,
+                    hours_worked: 0,
+                    bonus: 0,
+                    deductions: 0,
+                    payment_status: 'Draft',
+                    hours_overridden: false
+                };
+                try {
+                    await supabaseAPI({
+                        table: 'salaries',
+                        operation: 'insert',
+                        data: seedRow
+                    });
+                } catch (err) {
+                    console.warn(`Failed to seed salary row for ${s.name} (${s.id}) in ${cycleLabel}:`, err);
+                }
+            }
+
+            invalidateSalariesCache();
+            await loadSalariesData(cycleLabel);
+        }
+
+        async function hydrateMissingSalaryProfiles() {
+            const knownStaffIds = new Set(staffList.map(s => s.id));
+            const missingStaffIds = [...new Set(salariesData.map(s => s.staffId).filter(id => id && !knownStaffIds.has(id)))];
+            if (missingStaffIds.length === 0) return;
+
+            try {
+                const data = await supabaseAPI({
+                    table: 'staff_profiles',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { in: { id: missingStaffIds } }
+                });
+
+                const hydrated = (data || []).map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    role: s.role,
+                    email: s.email || '',
+                    photo: s.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=475f87&color=fff&size=128`,
+                    staff_code: s.staff_code
+                }));
+
+                staffList = [
+                    ...staffList,
+                    ...hydrated.filter(s => !knownStaffIds.has(s.id))
+                ];
+            } catch (err) {
+                console.warn('Error hydrating salary staff profiles:', err);
+            }
+        }
+
+        async function syncSalaryToSupabase(staffId, updates, cycleLabel) {
+            try {
+                // Always sync the row for the active cycle; previous cycles are
+                // historical and must not be mutated by adjust/bulk operations.
+                const targetCycle = cycleLabel || currentCycleLabel();
+
+                const existing = await supabaseAPI({
+                    table: 'salaries',
+                    operation: 'select',
+                    columns: 'id',
+                    filters: { eq: { staff_id: staffId, cycle: targetCycle } }
+                });
+
+                const updatePayload = {
+                    salary_type: updates.salaryType || 'Monthly',
+                    base_rate: Math.max(0, parseFloat(updates.baseRate) || 0),
+                    hours_worked: Math.max(0, parseFloat(updates.hoursWorked) || 0),
+                    bonus: Math.max(0, parseFloat(updates.bonus) || 0),
+                    deductions: Math.max(0, parseFloat(updates.deductions) || 0),
+                    payment_status: updates.paymentStatus,
+                    updated_at: new Date().toISOString()
+                };
+                if (updates.hoursOverridden) updatePayload.hours_overridden = true;
+
+                let res;
+                if (existing && existing.length > 0) {
+                    res = await supabaseAPI({
+                        table: 'salaries',
+                        operation: 'update',
+                        data: updatePayload,
+                        filters: { eq: { id: existing[0].id } }
+                    });
+                } else {
+                    res = await supabaseAPI({
+                        table: 'salaries',
+                        operation: 'insert',
+                        data: {
+                            staff_id: staffId,
+                            cycle: targetCycle,
+                            salary_type: updates.salaryType || 'Monthly',
+                            base_rate: Math.max(0, parseFloat(updates.baseRate) || 0),
+                            hours_worked: Math.max(0, parseFloat(updates.hoursWorked) || 0),
+                            bonus: Math.max(0, parseFloat(updates.bonus) || 0),
+                            deductions: Math.max(0, parseFloat(updates.deductions) || 0),
+                            payment_status: updates.paymentStatus,
+                            hours_overridden: !!updates.hoursOverridden
+                        }
+                    });
+                }
+                invalidateSalariesCache();
+                return res;
+            } catch (err) {
+                console.warn('Error syncing salary:', err);
+                throw err;
+            }
+        }
+
+        async function loadPayrollHistory() {
+            try {
+                const data = await supabaseAPI({
+                    table: 'payroll_runs',
+                    operation: 'select',
+                    columns: '*'
+                });
+
+                historyList = (data || []).map(r => ({
+                    id: r.id,
+                    run_code: r.run_code,
+                    cycle: r.cycle,
+                    dateProcessed: r.date_processed,
+                    totalPaid: parseFloat(r.total_paid || 0),
+                    staffCount: r.staff_count || 0,
+                    details: []
+                }));
+
+                // Track which cycles have a VALID run (totalPaid > 0).
+                const counts = new Map();
+                historyList.forEach(r => {
+                    if (!r.cycle || r.totalPaid <= 0) return;
+                    counts.set(r.cycle, 1); // Only one valid run per cycle
+                });
+                paidCycleCounts = counts;
+
+                // Pre-load details for all past cycles so renderHistory can show staff lists
+                cycleDetailsMap = {};
+                for (const run of historyList) {
+                    if (!run.cycle || run.totalPaid <= 0) continue;
+                    cycleDetailsMap[run.cycle] = await loadRunDetailsByCycle(run.cycle);
+                }
+
+                // Generate upcoming future months (no DB data yet, shown as scheduled)
+                scheduledCycles = generateScheduledCycles(3);
+            } catch (err) {
+                console.warn('Error loading payroll history:', err);
+                historyList = [];
+            }
+        }
+
+        async function populateCycleOptions() {
+            const mainSelect = document.getElementById('main-cycle-select');
+            if (!mainSelect) return;
+
+            // Keep paidCycleCounts in sync — it's read by switchActiveCycle,
+            // canEditRows, isPaid checks, and the background auto-process interval.
+            try {
+                const rows = await supabaseAPI({
+                    table: 'payroll_runs',
+                    operation: 'select',
+                    columns: 'cycle'
+                });
+                const counts = new Map();
+                (rows || []).forEach(r => {
+                    if (!r.cycle) return;
+                    counts.set(r.cycle, (counts.get(r.cycle) || 0) + 1);
+                });
+                paidCycleCounts = counts;
+            } catch (err) {
+                console.warn('Error loading existing cycles:', err);
+            }
+
+            // Also fetch live stage data from the server to get accurate Draft /
+            // Adjustment / Locked tags for the dropdown (accounts for pay_day and
+            // adjustment_days settings rather than just "has a payroll_runs row").
+            let stages = {};
+            try {
+                const resp = await fetch('/api/payroll/stages');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.ok && data.stages) {
+                        stages = data.stages;
+                    }
+                }
+            } catch (err) {
+                console.warn('Error loading payroll stages:', err);
+            }
+
+            // Build a window: previous month, current month, next three months.
+            const monthNames = ['January','February','March','April','May','June',
+                                'July','August','September','October','November','December'];
+            const now = new Date();
+            const window = [];
+            for (let i = -1; i <= 3; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                window.push({
+                    label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
+                    date: d,
+                    isCurrent: i === 0
+                });
+            }
+
+            // Sort: current month first, then next month, then future, then past.
+            window.sort((a, b) => a.date - b.date);
+
+            const optionsHtml = window.map(m => {
+                const stage = stages[m.label];
+                const isFuture = m.date > new Date(now.getFullYear(), now.getMonth(), 1);
+                let tag = '';
+                if (stage === 'Paid')        tag = ' (Paid / Locked)';
+                else if (stage === 'Locked')  tag = ' (Locked)';
+                else if (stage === 'Adjustment') tag = ' (Adjustment)';
+                else if (stage === 'Draft')   tag = ' (Draft)';
+                else if (stage === 'Future' || isFuture) tag = ' (Scheduled)';
+                else if (m.isCurrent)         tag = ' (Draft)';
+                // Past-without-run intentionally has no tag — the user gets a
+                // confirm-on-open dialog the first time they select it.
+                return `<option value="${m.label}">${m.label}${tag}</option>`;
+            }).join('');
+
+            mainSelect.innerHTML = optionsHtml;
+
+            // Default to whichever cycle the dashboard is showing. Falls back
+            // to the calendar's current month when nothing is selected yet.
+            const currentOption = window.find(m => m.isCurrent);
+            const preferred = activeCycle || (currentOption ? currentOption.label : null);
+            if (preferred) {
+                mainSelect.value = preferred;
+            }
+
+            // Re-aggregate attendance hours whenever the chosen cycle changes.
+            // Also seed rows for the new cycle (if none exist) and reload the
+            // salaries table to that cycle.
+            if (mainSelect && !mainSelect.dataset.boundChange) {
+                mainSelect.dataset.boundChange = '1';
+                mainSelect.addEventListener('change', async () => {
+                    await switchActiveCycle(mainSelect.value);
+                });
+            }
+        }
+
+        // Switch the dashboard to a different payroll cycle: reseed rows if
+        // needed, re-aggregate attendance hours into that cycle's rows, and
+        // refresh the table. Also enforces the lifecycle: past months with no
+        // run get auto-locked into a single Paid snapshot on first visit.
+        async function switchActiveCycle(cycleLabel) {
+            if (!cycleLabel) return;
+
+            // Don't yank the salary data out from under an open modal — the
+            // user might be mid-edit. Skip and let them close the modal first.
+            const adjustOpen = !document.getElementById('payroll-modal')?.classList.contains('hidden');
+            const bulkOpen   = !document.getElementById('bulk-modal')?.classList.contains('hidden');
+            if (adjustOpen || bulkOpen) {
+                showToast('Modal open', 'Close the open modal before switching cycles.', 'info');
+                const mainSelect = document.getElementById('main-cycle-select');
+                if (mainSelect) mainSelect.value = activeCycle;
+                return;
+            }
+
+            activeCycle = cycleLabel;
+            activeCycleClass = cycleClass(cycleLabel);
+            lastRecomputedCycle = null;
+
+            try {
+                // For past cycles with no run yet, archive the current state as
+                // a single Paid run before we go any further. This auto-locks
+                // the cycle so it can never be edited or re-paid.
+                if (activeCycleClass === 'past'
+                    && (paidCycleCounts.get(cycleLabel) || 0) === 0) {
+                    await seedCycleRowsForActiveStaff(cycleLabel);
+                    await recomputeHoursFromAttendance(cycleLabel);
+                    await loadSalariesData(cycleLabel);
+                    const locked = await autoCreateCycleRun(cycleLabel);
+                    if (locked) {
+                        renderDashboard();
+                        renderHistory();
+                        await populateCycleOptions();
+                        showToast(
+                            'Cycle Locked',
+                            `${cycleLabel} was missed — recorded as Paid at the amounts shown.`,
+                            'info'
+                        );
+                        return;
+                    }
+                }
+
+                // Make sure this cycle has a row per active staff. This creates
+                // fresh Pending rows when none exist yet.
+                await seedCycleRowsForActiveStaff(cycleLabel);
+
+                // Recompute hours only for this cycle's rows (already scoped).
+                await recomputeHoursFromAttendance(cycleLabel);
+
+                await loadSalariesData(cycleLabel);
+                renderDashboard();
+                const paidTag = (paidCycleCounts.get(cycleLabel) || 0) > 0 ? ' (Locked)' : '';
+                showToast('Cycle Loaded', `Showing salaries for ${cycleLabel}${paidTag}.`);
+            } catch (err) {
+                console.warn('Cycle switch failed:', err);
+                showToast('Cycle Load Failed', String(err?.message || err), 'error');
+            }
+        }
+
+        // Load details for a specific run (most recent/valid one for the cycle)
+        async function loadRunDetailsByCycle(cycle) {
+            try {
+                // Get runs for this cycle, sorted by totalPaid (descending) then by date
+                const runsForCycle = historyList
+                    .filter(r => r.cycle === cycle && r.totalPaid > 0)
+                    .sort((a, b) => b.totalPaid - a.totalPaid);
+
+                if (runsForCycle.length === 0) {
+                    console.log('[loadRunDetailsByCycle] No runs with data for cycle:', cycle);
+                    return [];
+                }
+
+                // Use the run with highest totalPaid
+                const runToUse = runsForCycle[0];
+                console.log('[loadRunDetailsByCycle] Using run:', runToUse.run_code, 'Total:', runToUse.totalPaid);
+
+                // Get details for this specific run
+                const data = await supabaseAPI({
+                    table: 'payroll_run_details',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { eq: { payroll_run_id: runToUse.id } }
+                });
+                console.log('[loadRunDetailsByCycle] Found details:', data.length);
+
+                return (data || []).map(d => {
+                    const profile = staffList.find(s => s.id === d.staff_id) || {
+                        name: d.staff_name || 'Unknown',
+                        role: 'Staff',
+                        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(d.staff_name || 'U')}&background=475f87&color=fff&size=64`
+                    };
+                    return {
+                        staffId: d.staff_id,
+                        name: d.staff_name || profile.name,
+                        role: profile.role,
+                        photo: profile.photo,
+                        salaryType: d.salary_type || 'Monthly',
+                        baseRate: parseFloat(d.base_pay || 0),
+                        hoursWorked: parseFloat(d.hours_worked || 0),
+                        bonus: parseFloat(d.bonus || 0),
+                        deductions: parseFloat(d.deductions || 0),
+                        grossPay: parseFloat(d.gross_pay || 0)
+                    };
+                });
+            } catch (err) {
+                console.warn('Error loading run details by cycle:', err);
+                return [];
+            }
+        }
+
+        async function loadRunDetails(runId) {
+            console.log('[loadRunDetails] Called with runId:', runId, 'type:', typeof runId);
+            try {
+                // Build the exact query we're about to make
+                const queryConfig = {
+                    table: 'payroll_run_details',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { eq: { payroll_run_id: runId } }
+                };
+                console.log('[loadRunDetails] Query config:', JSON.stringify(queryConfig));
+                
+                const data = await supabaseAPI(queryConfig);
+                console.log('[loadRunDetails] Raw response:', data);
+
+                if (!data || data.length === 0) {
+                    // Try alternative query to debug
+                    const allData = await supabaseAPI({
+                        table: 'payroll_run_details',
+                        operation: 'select',
+                        columns: '*'
+                    });
+                    console.log('[loadRunDetails] All details payroll_run_id values:', allData.map(d => d.payroll_run_id));
+                }
+
+                return (data || []).map(d => {
+                    const profile = staffList.find(s => s.id === d.staff_id) || {
+                        name: d.staff_name || 'Unknown',
+                        role: 'Staff',
+                        photo: `https://ui-avatars.com/api/?name=${encodeURIComponent(d.staff_name || 'U')}&background=475f87&color=fff&size=64`
+                    };
+                    return {
+                        staffId: d.staff_id,
+                        name: d.staff_name || profile.name,
+                        role: profile.role,
+                        photo: profile.photo,
+                        salaryType: d.salary_type || 'Monthly',
+                        baseRate: parseFloat(d.base_pay || 0),
+                        hoursWorked: parseFloat(d.hours_worked || 0),
+                        bonus: parseFloat(d.bonus || 0),
+                        deductions: parseFloat(d.deductions || 0),
+                        grossPay: parseFloat(d.gross_pay || 0)
+                    };
+                });
+            } catch (err) {
+                console.warn('Error loading run details:', err);
+                return [];
+            }
+        }
+
+        async function syncPayrollRunToSupabase(cycle, totalPaid, staffCount, details) {
+            // One final payroll per cycle — no attempt suffix in the run code.
+            const runCode = 'RUN-' + cycle.replace(/\s+/g, '') + '-' + Date.now().toString().slice(-4);
+            try {
+                const result = await supabaseAPI({
+                    table: 'payroll_runs',
+                    operation: 'insert',
+                    data: {
+                        run_code: runCode,
+                        cycle: cycle,
+                        total_paid: totalPaid,
+                        staff_count: staffCount,
+                        attempt_number: 1,
+                        // processed_by intentionally omitted from the body — the server stamps it
+                        // from the verified espressgo_staff_session cookie.
+                        date_processed: new Date().toISOString().split('T')[0]
+                    }
+                });
+
+                if (result && result.length > 0) {
+                    const runId = result[0].id;
+                    const dateProcessed = result[0].date_processed;
+                    // Snapshot the staff_name once per detail row, tagged with the
+                    // cycle. Each cycle has exactly one run, so the attempt_number
+                    // on the detail rows is always 1 too.
+                    for (const detail of details) {
+                        await supabaseAPI({
+                            table: 'payroll_run_details',
+                            operation: 'insert',
+                            data: {
+                                payroll_run_id: runId,
+                                staff_id: detail.staffId,
+                                staff_name: detail.name,
+                                cycle: cycle,
+                                attempt_number: 1,
+                                salary_type: detail.salaryType,
+                                base_pay: detail.baseRate,
+                                hours_worked: detail.hoursWorked,
+                                bonus: detail.bonus,
+                                deductions: detail.deductions,
+                                gross_pay: detail.grossPay
+                            }
+                        });
+                    }
+                    invalidateSalariesCache();
+                    return { id: runId, run_code: runCode, dateProcessed };
+                }
+            } catch (err) {
+                console.warn('Error inserting payroll run:', err);
+            }
+        }
+
+        let backgroundAutoProcessInterval = null;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadCompanySettings();
+            await refreshPayrollDashboard({ includeHistory: true, seedCycle: true });
+            await populateCycleOptions();
+            startInitialPayrollRefresh();
+
+            // Start background auto-process checker (checks every minute)
+            if (backgroundAutoProcessInterval) clearInterval(backgroundAutoProcessInterval);
+            backgroundAutoProcessInterval = setInterval(async () => {
+                // Only check if no modals are open
+                const payrollModalOpen = !document.getElementById('payroll-modal')?.classList.contains('hidden');
+                const bulkModalOpen = !document.getElementById('bulk-modal')?.classList.contains('hidden');
+                const controlModalOpen = !document.getElementById('payroll-control-modal')?.classList.contains('hidden');
+
+                if (payrollModalOpen || bulkModalOpen || controlModalOpen) return;
+
+                try {
+                    await tryAutoProcessPayroll();
+                    await populateCycleOptions(); // refresh stage tags in dropdown
+                } catch (err) {
+                    console.warn('Background auto-process check failed:', err);
+                }
+            }, 60000); // Check every minute
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (backgroundAutoProcessInterval) {
+                clearInterval(backgroundAutoProcessInterval);
+            }
+        });
+
+        // Convert a past cycle's salaries into one Paid run + history snapshot,
+        // marking every row as Paid in Supabase. Triggered when the operator
+        // selects a past month that has no payroll_runs row yet. Hours come
+        // straight from the existing salaries rows (no recomputation against
+        // attendance logs) so the snapshot reflects what was on screen when the
+        // operator finally looked at the cycle.
+        async function autoCreateCycleRun(cycleLabel) {
+            const allRows = salariesData || [];
+            if (allRows.length === 0) {
+                // Nothing to archive — leave the cycle as-is (no toast).
+                return false;
+            }
+
+            const details = allRows.map(sal => {
+                const profile = staffList.find(s => s.id === sal.staffId) || {
+                    name: "Legacy Employee",
+                    role: "Staff Member",
+                    photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200"
+                };
+                const basePayCalculated = sal.salaryType === 'Monthly'
+                    ? sal.baseRate
+                    : (sal.baseRate * sal.hoursWorked);
+                const grossPay = basePayCalculated + sal.bonus - sal.deductions;
+                return {
+                    staffId: sal.staffId,
+                    name: profile.name,
+                    role: profile.role,
+                    photo: profile.photo,
+                    salaryType: sal.salaryType,
+                    baseRate: sal.baseRate,
+                    hoursWorked: sal.hoursWorked,
+                    bonus: sal.bonus,
+                    deductions: sal.deductions,
+                    grossPay: Math.max(0, grossPay)
+                };
+            });
+
+            const totalPaid = details.reduce((acc, d) => acc + (d.grossPay || 0), 0);
+
+            // Flip every row in this cycle to Paid so the salaries table mirrors
+            // the snapshot we are about to write to payroll_run_details.
+            for (const sal of allRows) {
+                try {
+                    await syncSalaryToSupabase(
+                        sal.staffId,
+                        { ...sal, paymentStatus: 'Paid' },
+                        cycleLabel
+                    );
+                } catch (err) {
+                    console.warn(`Auto-lock: failed to mark ${sal.staffId} as Paid:`, err);
+                }
+            }
+
+            const syncedRun = await syncPayrollRunToSupabase(
+                cycleLabel, totalPaid, details.length, details
+            );
+
+            salariesData = salariesData.map(s => ({ ...s, paymentStatus: 'Paid' }));
+
+            if (syncedRun) {
+                historyList.unshift({
+                    id: syncedRun.id,
+                    run_code: syncedRun.run_code,
+                    cycle: cycleLabel,
+                    dateProcessed: syncedRun.dateProcessed,
+                    totalPaid: totalPaid,
+                    staffCount: details.length
+                });
+            }
+            paidCycleCounts.set(cycleLabel, (paidCycleCounts.get(cycleLabel) || 0) + 1);
+
+            renderHistory();
+            return true;
+        }
+
+        async function refreshPayrollDashboard({ includeHistory = false, seedCycle = false } = {}) {
+            await loadStaffList();
+            await loadSalariesData(activeCycle);
+            await hydrateMissingSalaryProfiles();
+            // Keep the lifecycle classification in sync with whatever cycle is
+            // currently active (covers background refreshes that don't go
+            // through switchActiveCycle).
+            activeCycleClass = cycleClass(activeCycle);
+            if (seedCycle) {
+                // Make sure every active staff has a row in the active cycle before
+                // we render — so opening the page on a fresh month just works.
+                await seedCycleRowsForActiveStaff(activeCycle);
+            }
+            if (includeHistory) {
+                await loadPayrollHistory();
+                initHistory();
+                renderHistory();
+            }
+            // Aggregate attendance events → hours_worked for the active cycle only.
+            if (activeCycle && activeCycle !== lastRecomputedCycle) {
+                lastRecomputedCycle = activeCycle;
+                try {
+                    await recomputeHoursFromAttendance(activeCycle);
+                    await loadSalariesData(activeCycle);
+                } catch (err) {
+                    console.warn('Hour recompute failed:', err);
+                }
+            }
+            await initSalaries();
+        }
+
+        function currentCycleLabel() {
+            const monthNames = ['January','February','March','April','May','June',
+                                'July','August','September','October','November','December'];
+            const now = new Date();
+            return `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+        }
+
+        // Generate upcoming cycle labels (next N months)
+        function generateScheduledCycles(monthsAhead = 3) {
+            const monthNames = ['January','February','March','April','May','June',
+                                'July','August','September','October','November','December'];
+            const now = new Date();
+            const cycles = [];
+            for (let i = 1; i <= monthsAhead; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                cycles.push(`${monthNames[d.getMonth()]} ${d.getFullYear()}`);
+            }
+            return cycles;
+        }
+
+        function startInitialPayrollRefresh() {
+            let attempts = 0;
+            let autoProcessed = false;
+            const timer = setInterval(async () => {
+                attempts += 1;
+                const payrollModalOpen = !document.getElementById('payroll-modal')?.classList.contains('hidden');
+                const bulkModalOpen = !document.getElementById('bulk-modal')?.classList.contains('hidden');
+                if (payrollModalOpen || bulkModalOpen) {
+                    clearInterval(timer);
+                    return;
+                }
+
+                try {
+                    await refreshPayrollDashboard();
+
+                    // Auto-process payroll if lock time has passed and not already processed
+                    if (!autoProcessed) {
+                        autoProcessed = await tryAutoProcessPayroll();
+                    }
+                } catch (err) {
+                    console.warn('Payroll refresh retry failed:', err);
+                }
+
+                if (attempts >= 20) clearInterval(timer);
+            }, 1500);
+        }
+
+        // Check if payroll should be auto-processed based on lock time
+        async function tryAutoProcessPayroll() {
+            console.log('[Auto-Process] === Starting Auto-Process Check ===');
+            
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+
+            const monthNames = ['January','February','March','April','May','June',
+                               'July','August','September','October','November','December'];
+            
+            // Get payroll control settings
+            const payDay = companySettings.pay_day || 25;
+            const lockHour = companySettings.payroll_lock_hour !== undefined ? companySettings.payroll_lock_hour : 23;
+            const lockMin = companySettings.payroll_lock_min !== undefined ? companySettings.payroll_lock_min : 59;
+
+            console.log(`[Auto-Process] Settings: payDay=${payDay}, lockHour=${lockHour}, lockMin=${lockMin}`);
+            console.log(`[Auto-Process] Current date: ${now.toISOString()}`);
+
+            // Check BOTH current month and previous month
+            const cyclesToCheck = [
+                { month: currentMonth, year: currentYear, label: `${monthNames[currentMonth]} ${currentYear}` },
+                { month: currentMonth === 0 ? 11 : currentMonth - 1, year: currentMonth === 0 ? currentYear - 1 : currentYear, label: null }
+            ];
+            cyclesToCheck[1].label = `${monthNames[cyclesToCheck[1].month]} ${cyclesToCheck[1].year}`;
+
+            for (const cycle of cyclesToCheck) {
+                const cycleLabel = cycle.label;
+                console.log(`\n[Auto-Process] Checking cycle: ${cycleLabel}`);
+
+                // Calculate lock datetime for this cycle
+                const lockDate = new Date(cycle.year, cycle.month, payDay, lockHour, lockMin, 0);
+                console.log(`[Auto-Process] Lock date: ${lockDate.toISOString()}, Is past: ${now >= lockDate}`);
+
+                // Check if already processed
+                const autoProcessedKey = `payroll_auto_processed_${cycleLabel}`;
+                const alreadyAutoProcessed = localStorage.getItem(autoProcessedKey) === 'true';
+                const alreadyProcessed = (paidCycleCounts.get(cycleLabel) || 0) > 0 || historyList.some(r => r.cycle === cycleLabel && r.totalPaid > 0);
+
+                console.log(`[Auto-Process] Already processed? localStorage=${alreadyAutoProcessed}, memory=${alreadyProcessed}`);
+                console.log(`[Auto-Process] paidCycleCounts:`, Object.fromEntries(paidCycleCounts));
+
+                // Only consider "already processed" if:
+                // 1. localStorage says so, OR
+                // 2. There's a valid run (totalPaid > 0) in historyList
+                const hasValidRun = historyList.some(r => r.cycle === cycleLabel && r.totalPaid > 0);
+                
+                if (alreadyAutoProcessed || hasValidRun) {
+                    console.log(`[Auto-Process] ${cycleLabel} already processed, skipping`);
+                    continue;
+                }
+
+                // If lock time has passed, process this cycle
+                if (now >= lockDate) {
+                    console.log(`[Auto-Process] === PROCESSING ${cycleLabel} ===`);
+
+                    // Load data for this cycle
+                    try {
+                        await loadStaffList();
+                        await loadSalariesData(cycleLabel);
+                    } catch (err) {
+                        console.warn(`Failed to load data for ${cycleLabel}:`, err);
+                        continue;
+                    }
+
+                    console.log(`[Auto-Process] Loaded ${salariesData.length} salary rows for ${cycleLabel}`);
+                    console.log(`[Auto-Process] Salaries data sample:`, salariesData.slice(0, 2));
+
+                    const pendingRows = salariesData.filter(s => s.paymentStatus !== 'Paid');
+                    console.log(`[Auto-Process] Pending rows: ${pendingRows.length}`);
+
+                    if (pendingRows.length === 0) {
+                        localStorage.setItem(autoProcessedKey, 'true');
+                        console.log(`[Auto-Process] No pending rows for ${cycleLabel}, marking as processed`);
+                        continue;
+                    }
+
+                    // Process all rows
+                    const allRows = salariesData.map(s => {
+                        const basePayCalculated = s.salaryType === 'Monthly' ? s.baseRate : (s.baseRate * s.hoursWorked);
+                        const grossPay = Math.max(0, basePayCalculated + s.bonus - s.deductions);
+                        return { ...s, grossPay };
+                    });
+
+                const details = allRows.map(sal => {
+                    const profile = staffList.find(st => st.id === sal.staffId) || {
+                        name: "Legacy Employee",
+                        role: "Staff Member",
+                        photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200"
+                    };
+                    return {
+                        staffId: sal.staffId,
+                        name: profile.name,
+                        role: profile.role,
+                        photo: profile.photo,
+                        salaryType: sal.salaryType,
+                        baseRate: sal.baseRate,
+                        hoursWorked: sal.hoursWorked,
+                        bonus: sal.bonus,
+                        deductions: sal.deductions,
+                        grossPay: sal.grossPay
+                    };
+                });
+
+                const totalPaid = details.reduce((acc, d) => acc + (d.grossPay || 0), 0);
+                console.log(`[Auto-Process] Total to pay: ${totalPaid}, Staff count: ${details.length}`);
+
+                // Sync each salary to Paid
+                for (const sal of allRows) {
+                    try {
+                        await syncSalaryToSupabase(
+                            sal.staffId,
+                            { ...sal, paymentStatus: 'Paid' },
+                            cycleLabel
+                        );
+                    } catch (err) {
+                        console.warn(`Auto-lock: failed to mark ${sal.staffId} as Paid:`, err);
+                    }
+                }
+
+                // Sync payroll run
+                const syncedRun = await syncPayrollRunToSupabase(
+                    cycleLabel, totalPaid, details.length, details
+                );
+
+                // Update local data
+                salariesData = salariesData.map(s => ({ ...s, paymentStatus: 'Paid' }));
+
+                if (syncedRun) {
+                    historyList.unshift({
+                        id: syncedRun.id,
+                        run_code: syncedRun.run_code,
+                        cycle: cycleLabel,
+                        dateProcessed: syncedRun.dateProcessed,
+                        totalPaid: totalPaid,
+                        staffCount: details.length
+                    });
+                }
+                paidCycleCounts.set(cycleLabel, (paidCycleCounts.get(cycleLabel) || 0) + 1);
+
+                // Mark as auto-processed in localStorage so it won't run again
+                localStorage.setItem(autoProcessedKey, 'true');
+
+                // Re-render UI
+                await refreshPayrollDashboard({ includeHistory: true, seedCycle: true });
+
+                showToast("Payroll Auto-Processed!", `${details.length} staff(s) totaling $${totalPaid.toFixed(2)} have been paid out automatically.`);
+
+                    // Continue checking other cycles
+                    continue;
+                }
+            }
+
+            console.log('[Auto-Process] === Check Complete ===');
+            return true;
+        }
+
+        function buildDefaultSalary(staffId) {
+            return {
+                staffId,
+                salaryType: 'Monthly',
+                baseRate: 3000,
+                hoursWorked: 0,
+                bonus: 0,
+                deductions: 0,
+                paymentStatus: 'Draft'
+            };
+        }
+
+        // Initialize the dashboard for the currently active cycle. Cycle-level
+        // seeding is handled by `seedCycleRowsForActiveStaff` so this function
+        // only triggers a re-render.
+        async function initSalaries() {
+            renderDashboard();
+        }
+
+        // Render dashboard statistics, counts and list table
+        function renderDashboard() {
+
+            let totalPayroll = 0;
+            const matchedRun = historyList.find(r => r.cycle === activeCycle);
+            let paidCount = 0;
+            let pendingCount = 0;
+
+            // Lifecycle gates. The Process button only appears on the current
+            // month; the per-row Adjust buttons only render on months that are
+            // still editable (current or future). Past cycles are view-only.
+            const canEditRows = (paidCycleCounts.get(activeCycle) || 0) === 0;
+
+            const tableBody = document.getElementById('salaries-table-body');
+            tableBody.innerHTML = '';
+
+            const searchQuery = document.getElementById('salary-search').value.toLowerCase();
+
+            // Intertwine Staff Profile Database info with Financial Salary details
+            const compiledRoster = salariesData.map(sal => {
+                const profile = staffList.find(s => s.id === sal.staffId) || {
+                    name: "Legacy Employee",
+                    role: "Staff Member",
+                    photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200"
+                };
+                
+                // Gross Pay = Base rate if Monthly, or (Rate * hours) if Hourly, plus bonuses, minus deductions
+                const basePayCalculated = sal.salaryType === 'Monthly' ? sal.baseRate : (sal.baseRate * sal.hoursWorked);
+                const grossPay = basePayCalculated + sal.bonus - sal.deductions;
+
+                return {
+                    ...sal,
+                    name: profile.name,
+                    role: profile.role,
+                    email: profile.email || '',
+                    photo: profile.photo,
+                    grossPay: Math.max(0, grossPay) // Ensure gross pay is not negative
+                };
+            });
+
+            // Update global statistics counters
+            compiledRoster.forEach(emp => {
+                totalPayroll += emp.grossPay;
+                if (emp.paymentStatus === 'Paid') {
+                    paidCount++;
+                } else {
+                    pendingCount++;
+                }
+            });
+
+            const totalLines = compiledRoster.length;
+            const paidRatio = totalLines > 0 ? Math.round((paidCount / totalLines) * 100) : 0;
+
+            // Use actual total from salaries data, or from matched run if cycle is paid
+            const totalPayrollVal = matchedRun ? matchedRun.totalPaid : totalPayroll;
+            document.getElementById('kpi-total-payroll').textContent = `$${totalPayrollVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('kpi-staff-count').textContent = totalLines;
+            document.getElementById('kpi-paid-ratio').textContent = `${paidRatio}%`;
+            document.getElementById('kpi-pending-count').textContent = `${pendingCount} unpaid staffs`;
+            const sublabelEl = document.getElementById('kpi-total-sublabel');
+            if (sublabelEl) {
+                sublabelEl.textContent = matchedRun ? `${activeCycle} finalized` : `${activeCycle} projection`;
+            }
+            // Update Cycle Info KPI card
+            const cycleMonthEl = document.getElementById('kpi-cycle-month');
+            const adjustPeriodEl = document.getElementById('kpi-adjust-period');
+            if (cycleMonthEl) cycleMonthEl.textContent = activeCycle || '—';
+            if (adjustPeriodEl) {
+                const adjustmentDays = companySettings.payroll_adjustment_days || 7;
+                adjustPeriodEl.textContent = `Period: ${adjustmentDays} days`;
+            }
+            if (document.getElementById('kpi-payday')) {
+                const payDay = companySettings.pay_day || 25;
+                document.getElementById('kpi-payday').textContent = `Pay Day: ${payDay}`;
+            }
+            // Auto-process payroll if past pay day and not already paid
+            const isPaid = (paidCycleCounts.get(activeCycle) || 0) > 0;
+            const isPayPeriod = isOnOrAfterPayDay(activeCycle);
+            if (!isPaid && isPayPeriod) {
+                autoProcessPayrollIfReady();
+            }
+            // Filter Roster by Search Query and Status Tabs
+            const filteredRoster = compiledRoster.filter(emp => {
+                const matchesSearch = emp.name.toLowerCase().includes(searchQuery) || emp.role.toLowerCase().includes(searchQuery) || emp.staffId.toLowerCase().includes(searchQuery);
+                const matchesFilter = activeFilter === 'ALL' || emp.paymentStatus === activeFilter;
+                return matchesSearch && matchesFilter;
+            });
+
+            if (filteredRoster.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="py-12 text-center text-slate-400 font-semibold">
+                            <span class="material-symbols-outlined text-4xl font-headline-lg block mb-2">person_off</span>
+                            No staff matching filters.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            filteredRoster.forEach(emp => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+
+                const statusBadgeClass = emp.paymentStatus === 'Paid' 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-amber-50 text-amber-700 border border-amber-200 animate-pulse-subtle';
+
+                tr.innerHTML = `
+                    <td class="py-4 pl-6 flex items-center gap-3">
+                        <img class="w-8 h-8 rounded-full border border-slate-200 shrink-0" src="${emp.photo}" alt="${emp.name}">
+                        <div>
+                            <p class="font-extrabold text-slate-800 text-xs">${emp.name}</p>
+                            <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide">${emp.email || emp.staffId} • ${emp.role}</p>
+                        </div>
+                    </td>
+                    <td class="py-4">
+                        <span class="text-slate-700 font-bold">$${emp.baseRate.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        <span class="text-[9px] font-extrabold text-slate-400 uppercase ml-1 tracking-wide">${emp.salaryType}</span>
+                    </td>
+                    <td class="py-4 font-bold text-slate-600">${emp.hoursWorked} hrs</td>
+                    <td class="py-4 font-bold text-emerald-600">+$${emp.bonus.toFixed(2)}</td>
+                    <td class="py-4 font-bold ${emp.deductions > 0 ? 'text-red-500' : 'text-slate-400'}">${emp.deductions > 0 ? '-' : ''}$${emp.deductions.toFixed(2)}</td>
+                    <td class="py-4 font-extrabold text-slate-800 text-sm">$${Math.max(0, emp.grossPay).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="py-4">
+                        <span class="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${statusBadgeClass}">
+                            ${emp.paymentStatus === 'Paid' ? 'Paid Out' : 'Draft'}
+                        </span>
+                    </td>
+                    <td class="py-4 pr-6 text-right">
+                        <button onclick="openPayrollModal('${emp.staffId}')"
+                                   class="px-3 py-1.5 bg-slate-100 hover:bg-primary hover:text-white rounded-lg text-[9px] font-extrabold tracking-wider uppercase transition-all flex items-center gap-0.5 ml-auto border border-slate-200/60"
+                                   title="Adjust staff payroll details">
+                                <span class="material-symbols-outlined text-[10px]">edit</span> Adjust
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            updateProcessButtonVisibility();
+            updatePayrollSections();
+        }
+
+        // Toggle the page-header "Process Monthly Payroll" button based on the
+        // active cycle's lifecycle. Only the current month should ever see
+        // this button — past months are locked, future months stay editable
+        // but unpayable until the month rolls over.
+        function updateProcessButtonVisibility() {
+            const btn = document.querySelector('button[onclick="openPayrollControlModal()"]');
+
+            if (!btn) return;
+            btn.classList.remove('hidden');
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.title = "Open payroll controls to adjust settings or process payouts.";
+        }
+
+        // Search & Filter callbacks
+        function filterSalaries() {
+            renderDashboard();
+        }
+
+        function changeStatusFilter(status) {
+            activeFilter = status;
+            
+            // Toggle active styles on buttons
+            document.querySelectorAll('[id^="filter-btn-"]').forEach(btn => {
+                btn.className = "px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-all";
+            });
+
+            const activeBtn = document.getElementById(`filter-btn-${status.toLowerCase()}`);
+            if (activeBtn) {
+                activeBtn.className = "px-3 py-1.5 rounded-lg bg-primary text-white transition-all";
+            }
+
+            renderDashboard();
+        }
+
+        // Open Modal and pre-fill form
+        function openPayrollModal(staffId) {
+            // Defense in depth: even though the per-row Adjust button is hidden
+            // for past cycles, refuse to open the modal if the cycle is locked.
+
+
+            // Loaded from Supabase via loadStaffData()
+            const record = salariesData.find(s => s.staffId === staffId);
+            if (!record) return;
+
+            const profile = staffList.find(s => s.id === staffId) || { name: "Legacy Employee", role: "Staff", photo: "" };
+
+            document.getElementById('edit-staff-id').value = record.staffId;
+            document.getElementById('edit-staff-avatar').src = profile.photo;
+            document.getElementById('edit-staff-name').textContent = profile.name;
+            document.getElementById('edit-staff-role-id').textContent = `${record.staffId} • ${profile.role}`;
+
+            document.getElementById('edit-salary-type').value = record.salaryType;
+            document.getElementById('edit-base-rate').value = record.baseRate;
+            document.getElementById('edit-hours-worked').value = record.hoursWorked;
+            document.getElementById('edit-bonus').value = record.bonus;
+            document.getElementById('edit-deductions').value = record.deductions;
+            document.getElementById('edit-payment-status').value = record.paymentStatus;
+
+            // Future cycles allow edit of all fields including payment status,
+            // so no disables are needed there.
+            toggleHourlyFields();
+
+            const modal = document.getElementById('payroll-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // Add zoom scale micro-animation
+            setTimeout(() => {
+                modal.querySelector('.transform').classList.remove('scale-95');
+                modal.querySelector('.transform').classList.add('scale-100');
+            }, 10);
+        }
+
+        function toggleHourlyFields() {
+            const salaryType = document.getElementById('edit-salary-type').value;
+            const labelRate = document.getElementById('label-base-rate');
+            
+            if (salaryType === 'Hourly') {
+                labelRate.textContent = "Hourly Rate ($)";
+            } else {
+                labelRate.textContent = "Base Monthly Pay ($)";
+            }
+        }
+
+        function closePayrollModal() {
+            const modal = document.getElementById('payroll-modal');
+            modal.querySelector('.transform').classList.add('scale-95');
+            modal.querySelector('.transform').classList.remove('scale-100');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200);
+        }
+
+        // Save Payroll Adjustment back to database
+        async function savePayrollAdjustment(e) {
+            e.preventDefault();
+
+            const staffId = document.getElementById('edit-staff-id').value;
+            const salaryType = document.getElementById('edit-salary-type').value;
+            const baseRate = parseFloat(document.getElementById('edit-base-rate').value);
+            const hoursWorked = Math.max(0, parseFloat(document.getElementById('edit-hours-worked').value) || 0);
+            const bonus = Math.max(0, parseFloat(document.getElementById('edit-bonus').value) || 0);
+            const deductions = Math.max(0, parseFloat(document.getElementById('edit-deductions').value) || 0);
+            const paymentStatus = document.getElementById('edit-payment-status').value;
+
+            // Update in array
+            salariesData = salariesData.map(s => {
+                if (s.staffId === staffId) {
+                    return {
+                        ...s,
+                        salaryType,
+                        baseRate,
+                        hoursWorked,
+                        bonus,
+                        deductions,
+                        paymentStatus
+                    };
+                }
+                return s;
+            });
+
+            closePayrollModal();
+            renderDashboard();
+            showToast("Adjustment Saved!", "Staff payroll variables have been updated.");
+
+            // Keep the UI responsive while ensuring later bulk processing waits for this write.
+            // Manual hour edits mark hours_overridden=true so the attendance sync leaves them alone.
+            pendingPayrollSave = syncSalaryToSupabase(staffId, {
+                salaryType,
+                baseRate,
+                hoursWorked,
+                bonus,
+                deductions,
+                paymentStatus,
+                hoursOverridden: true
+            }, activeCycle)
+                .then(async (res) => {
+                    if (res && res.redirected_payroll_cycle) {
+                        showToast("Cycle Locked", `This cycle is paid. Adjustment was automatically added to next month (${res.redirected_payroll_cycle}).`, "warning");
+                    }
+                    await loadSalariesData(activeCycle);
+                })
+                .then(renderDashboard)
+                .catch(err => {
+                    console.warn('Payroll adjustment sync failed:', err);
+                    showToast("Error", err.message || "Failed to save adjustment.", "error");
+                });
+
+            await pendingPayrollSave;
+        }
+
+        // Bulk Process Monthly Payroll Dialog Trigger
+        async function openBulkProcessModal() {
+            const pendingRows = salariesData.filter(s => s.paymentStatus !== 'Paid');
+            const allPaid = pendingRows.length === 0;
+            const isPayPeriod = isOnOrAfterPayDay(activeCycle);
+
+            if (allPaid) {
+                showToast("Cycle Finalized", `${activeCycle} has already been paid and cannot be re-paid.`, "info");
+                return;
+            }
+
+            if (!isPayPeriod) {
+                showToast("Not Pay Day yet", `You can only process payroll for ${activeCycle} on or after the Pay Day (${companySettings.pay_day || 25}th).`, "info");
+                return;
+            }
+
+            const draftCount = pendingRows.length;
+            if (draftCount === 0) {
+                showToast(
+                    "Nothing to Process",
+                    `Every line for ${activeCycle} is already marked Paid.`,
+                    "info"
+                );
+                return;
+            }
+
+            await populateCycleOptions();
+
+            const display = document.getElementById('payroll-cycle-display');
+            if (display) {
+                display.textContent = activeCycle;
+            }
+
+            const cycleHint = document.getElementById('bulk-cycle-hint');
+            if (cycleHint) {
+                cycleHint.textContent = `Capturing ${draftCount} draft line(s) as the final payroll run for ${activeCycle}. After confirmation this cycle will be locked.`;
+            }
+            const confirmBtn = document.getElementById('bulk-confirm-btn');
+            if (confirmBtn) {
+                confirmBtn.textContent = 'Confirm Payout';
+            }
+
+            const modal = document.getElementById('bulk-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeBulkProcessModal() {
+            const modal = document.getElementById('bulk-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            const confirmBtn = document.querySelector('#bulk-modal button[onclick="confirmBulkProcessPayroll()"]');
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                confirmBtn.textContent = 'Confirm Payout';
+            }
+            // Reset the cycle hint to its default so the next open re-populates it.
+            const cycleHint = document.getElementById('bulk-cycle-hint');
+            if (cycleHint) {
+                cycleHint.textContent = 'Pending lines from the cycle currently shown in the table above will be marked Paid and a new run will be logged.';
+            }
+            isConfirmingPayroll = false;
+        }
+
+        async function autoProcessPayrollIfReady() {
+            if (isConfirmingPayroll) return;
+            const pendingRows = salariesData.filter(s => s.paymentStatus !== 'Paid');
+            if (pendingRows.length === 0) return; // Nothing to process
+
+            // Guard: don't auto-process future cycles
+            const cycleMonth = activeCycle || currentCycleLabel();
+            const now = new Date();
+            const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const cycleParts = cycleMonth.split(' ');
+            const cycleMonthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(cycleParts[0]);
+            const cycleDate = new Date(parseInt(cycleParts[1]), cycleMonthIdx, 1);
+            if (cycleDate > currentMonth) return; // Future cycle — skip silently
+
+            isConfirmingPayroll = true;
+
+            try {
+                await pendingPayrollSave;
+
+                const cycleMonth = activeCycle;
+
+                // Mark all pending as Paid
+                for (const row of pendingRows) {
+                    await syncSalaryToSupabase(row.staffId, { ...row, paymentStatus: 'Paid' }, cycleMonth);
+                }
+
+                // Log to history
+                await supabaseAPI({
+                    table: 'payroll_history',
+                    operation: 'insert',
+                    data: {
+                        cycle: cycleMonth,
+                        dateProcessed: new Date().toLocaleString('en-SG', { timeZone: 'Asia/Singapore' }),
+                        totalAmount: pendingRows.reduce((sum, r) => sum + (r.grossPay || 0), 0),
+                        lineCount: pendingRows.length,
+                        processedBy: 'System Auto'
+                    }
+                });
+
+                paidCycleCounts.set(cycleMonth, (paidCycleCounts.get(cycleMonth) || 0) + 1);
+                updateDashboard();
+                updateProcessButtonVisibility();
+                renderHistory();
+
+                showToast("Auto-Processed!", `All ${pendingRows.length} pending salary line(s) have been marked as Paid Out.`);
+            } catch (err) {
+                console.warn('Error auto-processing payroll:', err);
+                showToast("Auto-Process Error", "Failed to auto-process payroll. Please process manually.", "error");
+            } finally {
+                isConfirmingPayroll = false;
+            }
+        }
+
+        async function confirmBulkProcessPayroll() {
+            if (isConfirmingPayroll) return;
+            isConfirmingPayroll = true;
+
+            const cycleMonth = activeCycle;
+            const now = new Date();
+            const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const cycleParts = cycleMonth.split(' ');
+            const cycleMonthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(cycleParts[0]);
+            const cycleDate = new Date(parseInt(cycleParts[1]), cycleMonthIdx, 1);
+            if (cycleDate > currentMonth) {
+                isConfirmingPayroll = false;
+                closeBulkProcessModal();
+                showToast("Future Cycle", `Payroll for ${cycleMonth} cannot be processed — it hasn't started yet.`, "info");
+                return;
+            }
+
+            const pendingRows = salariesData.filter(s => s.paymentStatus !== 'Paid');
+            const allPaid = pendingRows.length === 0;
+            const isPayPeriod = isOnOrAfterPayDay(cycleMonth);
+
+            if (allPaid) {
+                isConfirmingPayroll = false;
+                closeBulkProcessModal();
+                showToast("Cycle Finalized", `${cycleMonth} has already been paid and cannot be re-paid.`, "info");
+                return;
+            }
+
+            if (!isPayPeriod) {
+                isConfirmingPayroll = false;
+                closeBulkProcessModal();
+                showToast("Not Ready", `Payroll can only be processed on or after Pay Day (${companySettings.pay_day || 25}th) at ${String(companySettings.payroll_lock_hour ?? 23).padStart(2, '0')}:${String(companySettings.payroll_lock_min ?? 59).padStart(2, '0')} hrs.`, "info");
+                return;
+            }
+
+            // Disable confirm button UI
+            const confirmBtn = document.querySelector('#bulk-modal button[onclick="confirmBulkProcessPayroll()"]');
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                confirmBtn.textContent = 'Processing...';
+            }
+
+            try {
+                await pendingPayrollSave;
+
+                const resp = await fetch('/api/payroll/finalize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cycle: cycleMonth })
+                });
+                const result = await resp.json();
+                if (resp.status >= 400) {
+                    throw new Error(result.error || `HTTP ${resp.status}`);
+                }
+
+                invalidateSalariesCache();
+                
+                await refreshPayrollDashboard({ includeHistory: true, seedCycle: false });
+                await loadSalariesData(cycleMonth);
+                renderDashboard();
+                renderHistory();
+                await populateCycleOptions();
+                updateProcessButtonVisibility();
+
+                showToast(
+                    "Disbursement Confirmed!",
+                    `Disbursed and archived final payroll for ${cycleMonth}. The cycle is now locked.`
+                );
+            } catch (err) {
+                console.warn('Error finalizing payroll cycle:', err);
+                showToast("Error", err.message || "Failed to finalize payroll.", "error");
+            } finally {
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    confirmBtn.textContent = 'Confirm Payout';
+                }
+                closeBulkProcessModal();
+                isConfirmingPayroll = false;
+            }
+        }
+
+        // Initialize payroll runs history
+        function initHistory() {
+            renderHistory();
+        }
+
+        // Render History List — one card per cycle, grouped by month
+        function renderHistory() {
+            const container = document.getElementById('payroll-history-container');
+            const counter = document.getElementById('history-runs-count');
+            if (counter) counter.textContent = `${historyList.length} Runs`;
+            if (!container) return;
+
+            const currentCycle = activeCycle || currentCycleLabel();
+            const isPayPeriod = isOnOrAfterPayDay(currentCycle);
+
+            // Compute grossPay for each salary row
+            const salariesWithGross = salariesData.map(s => {
+                const basePayCalculated = s.salaryType === 'Monthly' ? s.baseRate : (s.baseRate * s.hoursWorked);
+                const grossPay = Math.max(0, basePayCalculated + s.bonus - s.deductions);
+                return { ...s, grossPay };
+            });
+
+            // Group historyList by cycle, keep most recent run per cycle
+            const cycleMap = new Map();
+            historyList.forEach(r => {
+                if (!r.cycle) return;
+                // Treat zero-paid DB rows the same as scheduled cycles — they exist
+                // in the DB but have no payroll data yet (e.g. $0 runs or null).
+                if (!cycleMap.has(r.cycle)) {
+                    cycleMap.set(r.cycle, {
+                        ...r,
+                        isCurrent: r.cycle === currentCycle,
+                        isScheduled: r.totalPaid <= 0  // zero/null rows are "scheduled"
+                    });
+                }
+            });
+
+            // Add scheduled (future) cycles — only those not already in history
+            scheduledCycles.forEach(label => {
+                if (!cycleMap.has(label)) {
+                    cycleMap.set(label, { cycle: label, totalPaid: 0, staffCount: 0, isScheduled: true });
+                }
+            });
+
+            // Sort cycles — current cycle first, then past cycles descending, then future cycles ascending
+            const monthOrder = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            const sortedCycles = Array.from(cycleMap.values()).sort((a, b) => {
+                if (a.isCurrent) return -1;
+                if (b.isCurrent) return 1;
+                if (a.isScheduled && !b.isScheduled) return 1;
+                if (!a.isScheduled && b.isScheduled) return -1;
+                const [aMonth, aYear] = a.cycle.split(' ');
+                const [bMonth, bYear] = b.cycle.split(' ');
+                if (aYear !== bYear) return parseInt(aYear) - parseInt(bYear);
+                return monthOrder.indexOf(aMonth) - monthOrder.indexOf(bMonth);
+            });
+
+            // Current cycle's pending rows (draft/adjustment card)
+            const pendingRows = salariesWithGross.filter(s => s.paymentStatus !== 'Paid');
+            const totalPending = pendingRows.reduce((sum, s) => sum + (s.grossPay || 0), 0);
+            const draftSectionHtml = pendingRows.length > 0 ? `
+                <div id="draft-section" class="mb-4 p-4 rounded-xl ${isPayPeriod ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50 border border-slate-200'}">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider ${isPayPeriod ? 'text-amber-700' : 'text-slate-600'}">${currentCycle}</span>
+                            <span class="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider bg-blue-100 text-blue-700">Current</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${isPayPeriod ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}">
+                            ${isPayPeriod ? 'Adjustment' : 'Draft'}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px]">
+                        <div>
+                            <span class="font-semibold text-slate-500">Pending</span>
+                            <span class="font-bold text-slate-800 ml-1">${pendingRows.length} line(s)</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-semibold text-slate-500">Amount</span>
+                            <span class="font-bold text-slate-800 ml-1">$${totalPending.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>` : '<div id="draft-section"></div>';
+
+            // Build one paid card per cycle
+            const currentCyclePaidRows = salariesWithGross.filter(s => s.paymentStatus === 'Paid');
+            const currentCyclePaidTotal = currentCyclePaidRows.reduce((sum, s) => sum + (s.grossPay || 0), 0);
+
+            let paidSectionHtml = sortedCycles.map(cycle => {
+                // Scheduled (future) cycle card — no payroll data yet
+                if (cycle.isScheduled) {
+                    return `
+                    <div id="paid-section-${cycle.cycle.replace(/\s+/g, '-')}" class="mb-4 p-4 rounded-xl bg-slate-50 border border-slate-200 border-dashed opacity-70">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-slate-400 text-lg">schedule</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">${cycle.cycle}</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-slate-200 text-slate-600">Scheduled</span>
+                        </div>
+                        <div class="text-center py-3">
+                            <p class="text-[9px] text-slate-400">Payroll not yet due for this month</p>
+                        </div>
+                    </div>`;
+                }
+
+                // Past/paid cycle card
+                const paidRows = cycle.cycle === currentCycle
+                    ? currentCyclePaidRows
+                    : []; // past cycles show only summary, not row details
+                const cyclePaidTotal = cycle.cycle === currentCycle ? currentCyclePaidTotal : cycle.totalPaid;
+                const cycleStaffCount = cycle.cycle === currentCycle ? paidRows.length : cycle.staffCount;
+                const run = historyList.find(r => r.id === cycle.id);
+                const avgPerStaff = cycleStaffCount > 0 ? (cyclePaidTotal / cycleStaffCount) : 0;
+
+                return `
+                <div id="paid-section-${cycle.cycle.replace(/\s+/g, '-')}" class="mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-emerald-600 text-lg">check_circle</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">${cycle.cycle}</span>
+                            ${cycle.isCurrent ? '<span class="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider bg-blue-100 text-blue-700">Current</span>' : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${!cycle.isCurrent ? `<span class="text-[8px] text-slate-400">${new Date(cycle.dateProcessed).toLocaleDateString()}</span>` : ''}
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800">Paid Out</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] mb-3">
+                        <div>
+                            <span class="font-semibold text-slate-500">Staff</span>
+                            <span class="font-bold text-slate-800 ml-1">${cycleStaffCount}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-semibold text-slate-500">Total</span>
+                            <span class="font-bold text-emerald-700 ml-1">$${cyclePaidTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    </div>
+                    ${(cycle.cycle === currentCycle ? paidRows : (cycleDetailsMap[cycle.cycle] || [])).length > 0 ? `
+                    <div class="bg-emerald-50 rounded-lg p-2 space-y-1.5 border border-emerald-200/50">
+                        ${(cycle.cycle === currentCycle ? paidRows : (cycleDetailsMap[cycle.cycle] || [])).map(d => {
+                            const name = cycle.cycle === currentCycle
+                                ? (staffList.find(st => st.id === d.staffId)?.name || d.staffId || 'Staff')
+                                : (d.name || d.staffId || 'Staff');
+                            const grossPay = d.grossPay || 0;
+                            return `
+                            <div class="flex items-center justify-between text-[9px] py-0.5" data-staff-id="${d.staffId || d.staff_id || ''}">
+                                <span class="font-semibold text-emerald-700 truncate max-w-[100px]">${name}</span>
+                                <span class="font-bold text-emerald-600">$${grossPay.toFixed(2)}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>` : `
+                    <div class="bg-white rounded-lg p-2 border border-emerald-200/50 text-center">
+                        <p class="text-[9px] text-slate-400">Avg: $${avgPerStaff.toFixed(2)} / staff &middot; ${cycle.staffCount} staff</p>
+                    </div>`}
+                    ${run ? `
+                    <button onclick="openHistoryDetailModal('${run.id}')"
+                            class="w-full mt-2 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-[9px] font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 transition-colors">
+                        View Full Breakdown <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+                    </button>` : ''}
+                </div>`;
+            }).join('');
+
+            container.innerHTML = draftSectionHtml + paidSectionHtml;
+        }
+
+        // Update the draft/paid sections without full re-render
+        function updatePayrollSections() {
+            // With multiple cycle cards, always re-render to keep all sections in sync
+            renderHistory();
+        }
+
+        // Add section header for past cycles
+        // Open breakdown details modal
+        async function openHistoryDetailModal(runId) {
+            const run = historyList.find(r => r.id === runId);
+            if (!run) {
+                console.warn('[History Modal] Run not found in historyList for id:', runId);
+                console.log('historyList IDs:', historyList.map(r => r.id));
+                return;
+            }
+
+            console.log('[History Modal] Opening for cycle:', run.cycle);
+
+            document.getElementById('history-modal-title').textContent = `Payroll Run: ${run.cycle}`;
+            document.getElementById('history-modal-subtitle').textContent = `Cycle Run ID: ${run.run_code || run.id} • Processed: ${run.dateProcessed || '—'}`;
+            document.getElementById('history-modal-total').textContent = `$${run.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            const tableBody = document.getElementById('history-modal-table-body');
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400">Loading...</td></tr>';
+
+            // Load all details for this cycle
+            const details = await loadRunDetailsByCycle(run.cycle);
+            console.log('[History Modal] Loaded details for cycle:', details);
+
+            tableBody.innerHTML = '';
+
+            if (!details || details.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400">No details found for this payroll run.</td></tr>';
+                const modal = document.getElementById('history-detail-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => modal.querySelector('.transform').classList.remove('scale-95'), 10);
+                return;
+            }
+
+            details.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-outline-variant/20 hover:bg-slate-50/50 transition-colors";
+
+                const bonusDeductStr = (item.bonus > 0 ? `+$${item.bonus.toFixed(0)}` : '') +
+                                       (item.deductions > 0 ? ` -$${item.deductions.toFixed(0)}` : '');
+
+                tr.innerHTML = `
+                    <td class="py-3 pl-3 flex items-center gap-2">
+                        <img class="w-6 h-6 rounded-full border border-slate-200" src="${item.photo}" alt="${item.name}">
+                        <div>
+                            <p class="font-bold text-slate-800 text-xs">${item.name}</p>
+                            <p class="text-[9px] font-semibold text-slate-400 leading-tight">${item.role}</p>
+                        </div>
+                    </td>
+                    <td class="py-3 font-semibold text-slate-600">
+                        $${item.baseRate.toLocaleString('en-US')} <span class="text-[8px] font-extrabold text-slate-400 uppercase">${(item.salaryType || '').substring(0, 3)}</span>
+                    </td>
+                    <td class="py-3 font-semibold text-slate-600">${item.hoursWorked}h</td>
+                    <td class="py-3 font-semibold text-slate-500">${bonusDeductStr || '—'}</td>
+                    <td class="py-3 pr-3 text-right font-extrabold text-slate-800">$${item.grossPay.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            const modal = document.getElementById('history-detail-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            setTimeout(() => {
+                modal.querySelector('.transform').classList.remove('scale-95');
+                modal.querySelector('.transform').classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeHistoryDetailModal() {
+            const modal = document.getElementById('history-detail-modal');
+            modal.querySelector('.transform').classList.add('scale-95');
+            modal.querySelector('.transform').classList.remove('scale-100');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200);
+        }
+
+// ── Removed: Attempt-N / Reverse Payroll Run flows ─────────────────────────
+// The payroll console now enforces a single final payroll run per cycle:
+// past months are locked on view, current month can be processed exactly
+// once, and future months stay editable but cannot be paid until they roll
+// into the current calendar month. The attempt-counting and reverse/undo
+// branches have been stripped out accordingly.
+
+        // Premium dynamic Toast Notification drawer
+        function showToast(title, desc, type = "success") {
+            const toast = document.getElementById('toast-success');
+            const titleEl = document.getElementById('toast-title');
+            const descEl = document.getElementById('toast-desc');
+
+            titleEl.textContent = title;
+            descEl.textContent = desc;
+
+            if (type === 'info') {
+                toast.className = "fixed bottom-6 right-6 z-50 bg-slate-800 border border-slate-700 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3 max-w-sm transform transition-all duration-300";
+                toast.querySelector('.material-symbols-outlined').className = "material-symbols-outlined bg-slate-700/60 p-1.5 rounded-xl text-slate-100 text-[20px]";
+                toast.querySelector('.material-symbols-outlined').textContent = "info";
+            } else if (type === 'warning') {
+                toast.className = "fixed bottom-6 right-6 z-50 bg-amber-800 border border-amber-700 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3 max-w-sm transform transition-all duration-300";
+                toast.querySelector('.material-symbols-outlined').className = "material-symbols-outlined bg-amber-700/60 p-1.5 rounded-xl text-amber-100 text-[20px]";
+                toast.querySelector('.material-symbols-outlined').textContent = "warning";
+            } else if (type === 'error') {
+                toast.className = "fixed bottom-6 right-6 z-50 bg-red-800 border border-red-700 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3 max-w-sm transform transition-all duration-300";
+                toast.querySelector('.material-symbols-outlined').className = "material-symbols-outlined bg-red-700/60 p-1.5 rounded-xl text-red-100 text-[20px]";
+                toast.querySelector('.material-symbols-outlined').textContent = "error";
+            } else {
+                toast.className = "fixed bottom-6 right-6 z-50 bg-emerald-800 border border-emerald-700 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3 max-w-sm transform transition-all duration-300";
+                toast.querySelector('.material-symbols-outlined').className = "material-symbols-outlined bg-emerald-700/60 p-1.5 rounded-xl text-emerald-100 text-[20px]";
+                toast.querySelector('.material-symbols-outlined').textContent = "check_circle";
+            }
+
+            toast.classList.remove('hidden', 'translate-y-12');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-12', 'hidden');
+            }, 3500);
+        }
+
+        // Payroll settings modal triggers
+        function openSettingsModal() {
+            document.getElementById('settings-pay-day').value = companySettings.pay_day || 25;
+            document.getElementById('settings-adjustment-days').value = companySettings.payroll_adjustment_days !== undefined ? companySettings.payroll_adjustment_days : 7;
+            document.getElementById('settings-lock-hour').value = companySettings.payroll_lock_hour !== undefined ? companySettings.payroll_lock_hour : 23;
+            document.getElementById('settings-lock-min').value = companySettings.payroll_lock_min !== undefined ? companySettings.payroll_lock_min : 59;
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function savePayrollSettings(e) {
+            e.preventDefault();
+            const payDay = parseInt(document.getElementById('settings-pay-day').value, 10);
+            const adjustmentDays = parseInt(document.getElementById('settings-adjustment-days').value, 10);
+            const hour = parseInt(document.getElementById('settings-lock-hour').value, 10);
+            const min = parseInt(document.getElementById('settings-lock-min').value, 10);
+
+            try {
+                await supabaseAPI({
+                    table: 'company_settings',
+                    operation: 'upsert',
+                    data: {
+                        id: 1,
+                        pay_day: payDay,
+                        payroll_adjustment_days: adjustmentDays,
+                        payroll_lock_hour: hour,
+                        payroll_lock_min: min,
+                        updated_at: new Date().toISOString()
+                    },
+                    onConflict: 'id'
+                });
+                
+                companySettings = { pay_day: payDay, payroll_adjustment_days: adjustmentDays, payroll_lock_hour: hour, payroll_lock_min: min };
+                closeSettingsModal();
+                updateProcessButtonVisibility();
+                showToast("Settings Saved!", "Global payroll configuration has been updated.");
+            } catch (err) {
+                console.warn('Failed to save company settings:', err);
+                showToast("Error", "Could not save company settings.", "error");
+            }
+        }
+
+        // Unified Payroll Controls Modal
+        function openPayrollControlModal() {
+            document.getElementById('ctrl-pay-day').value = companySettings.pay_day || 25;
+            document.getElementById('ctrl-adjustment-days').value = companySettings.payroll_adjustment_days !== undefined ? companySettings.payroll_adjustment_days : 7;
+            document.getElementById('ctrl-lock-hour').value = companySettings.payroll_lock_hour !== undefined ? companySettings.payroll_lock_hour : 23;
+            document.getElementById('ctrl-lock-min').value = companySettings.payroll_lock_min !== undefined ? companySettings.payroll_lock_min : 59;
+
+            updatePayrollControlProcessInfo();
+
+            const modal = document.getElementById('payroll-control-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closePayrollControlModal() {
+            const modal = document.getElementById('payroll-control-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function updatePayrollControlProcessInfo() {
+            const cycleLabel = activeCycle || currentCycleLabel();
+            const isPaid = (paidCycleCounts.get(cycleLabel) || 0) > 0;
+            const isPayPeriod = isOnOrAfterPayDay(cycleLabel);
+            const pendingRows = salariesData.filter(s => s.paymentStatus !== 'Paid');
+            const totalAmount = pendingRows.reduce((sum, s) => sum + (s.grossPay || 0), 0);
+
+            // Only consider "Paid Out" if: was paid AND no pending rows remain
+            const allPaid = isPaid && pendingRows.length === 0;
+            const hasPending = pendingRows.length > 0;
+
+            document.getElementById('process-cycle-label').textContent = cycleLabel;
+
+            const statusEl = document.getElementById('process-cycle-status');
+            if (allPaid) {
+                statusEl.textContent = 'PAID OUT';
+                statusEl.className = 'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200';
+            } else if (hasPending && isPayPeriod) {
+                statusEl.textContent = 'ADJUSTMENT';
+                statusEl.className = 'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200';
+            } else {
+                statusEl.textContent = 'DRAFT';
+                statusEl.className = 'px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200';
+            }
+
+            document.getElementById('process-pending-count').textContent = pendingRows.length + ' line(s)';
+            document.getElementById('process-total-amount').textContent = '$' + totalAmount.toFixed(2);
+
+            const processBtn = document.getElementById('ctrl-process-btn');
+            const hint = document.getElementById('process-hint');
+
+            if (allPaid) {
+                processBtn.disabled = true;
+                processBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                hint.textContent = 'This cycle has already been paid out and cannot be re-processed.';
+            } else if (!isPayPeriod) {
+                processBtn.disabled = true;
+                processBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                hint.textContent = `Available on or after Pay Day (${companySettings.pay_day || 25}th) at ${String(companySettings.payroll_lock_hour ?? 23).padStart(2, '0')}:${String(companySettings.payroll_lock_min ?? 59).padStart(2, '0')} hrs.`;
+            } else {
+                processBtn.disabled = false;
+                processBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                hint.textContent = 'Pending lines will be marked Paid Out and archived in the history ledger.';
+            }
+        }
+
+        async function savePayrollSettingsFromControl(e) {
+            e.preventDefault();
+            const payDay = parseInt(document.getElementById('ctrl-pay-day').value, 10);
+            const adjustmentDays = parseInt(document.getElementById('ctrl-adjustment-days').value, 10);
+            const hour = parseInt(document.getElementById('ctrl-lock-hour').value, 10);
+            const min = parseInt(document.getElementById('ctrl-lock-min').value, 10);
+
+            try {
+                await supabaseAPI({
+                    table: 'company_settings',
+                    operation: 'upsert',
+                    data: {
+                        id: 1,
+                        pay_day: payDay,
+                        payroll_adjustment_days: adjustmentDays,
+                        payroll_lock_hour: hour,
+                        payroll_lock_min: min,
+                        updated_at: new Date().toISOString()
+                    },
+                    onConflict: 'id'
+                });
+                
+                companySettings = { pay_day: payDay, payroll_adjustment_days: adjustmentDays, payroll_lock_hour: hour, payroll_lock_min: min };
+                updatePayrollControlProcessInfo();
+                updateProcessButtonVisibility();
+                showToast("Settings Saved!", "Payroll schedule configuration has been updated.");
+            } catch (err) {
+                console.warn('Failed to save company settings:', err);
+                showToast("Error", "Could not save company settings.", "error");
+            }
+        }
+
+        async function confirmProcessPayrollFromControl() {
+            if (isConfirmingPayroll) return;
+            const cycleLabel = activeCycle || currentCycleLabel();
+            const now = new Date();
+            const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const cycleParts = cycleLabel.split(' ');
+            const cycleMonthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(cycleParts[0]);
+            const cycleDate = new Date(parseInt(cycleParts[1]), cycleMonthIdx, 1);
+            if (cycleDate > currentMonth) {
+                showToast("Future Cycle", `Payroll for ${cycleLabel} cannot be processed — it hasn't started yet.`, "info");
+                return;
+            }
+
+            const pendingRows = salariesData.filter(s => s.paymentStatus !== 'Paid');
+            const allPaid = pendingRows.length === 0;
+            const isPayPeriod = isOnOrAfterPayDay(cycleLabel);
+
+            if (allPaid) {
+                showToast("Already Paid", `${cycleLabel} has already been paid out.`, "info");
+                return;
+            }
+
+            if (!isPayPeriod) {
+                showToast("Not Ready", `Payroll can only be processed on or after Pay Day (${companySettings.pay_day || 25}th) at ${String(companySettings.payroll_lock_hour ?? 23).padStart(2, '0')}:${String(companySettings.payroll_lock_min ?? 59).padStart(2, '0')} hrs.`, "info");
+                return;
+            }
+
+            isConfirmingPayroll = true;
+            const processBtn = document.getElementById('ctrl-process-btn');
+            processBtn.disabled = true;
+            processBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            processBtn.textContent = 'Processing...';
+
+            try {
+                await pendingPayrollSave;
+
+                const pendingRows = salariesData.filter(s => s.paymentStatus !== 'Paid');
+                
+                for (const row of pendingRows) {
+                    await syncSalaryToSupabase(row.staffId, { ...row, paymentStatus: 'Paid' }, cycleLabel);
+                }
+
+                const totalPaid = pendingRows.reduce((sum, s) => sum + (s.grossPay || 0), 0);
+                const details = pendingRows.map(s => ({
+                    staffId: s.staffId,
+                    staffName: s.staffName,
+                    salaryType: s.salaryType,
+                    basePay: s.baseRate,
+                    hoursWorked: s.hoursWorked,
+                    bonus: s.bonus || 0,
+                    deductions: s.deductions || 0,
+                    grossPay: s.grossPay || 0,
+                    netPay: s.grossPay || 0
+                }));
+
+                await syncPayrollRunToSupabase(cycleLabel, totalPaid, pendingRows.length, details);
+
+                paidCycleCounts.set(cycleLabel, (paidCycleCounts.get(cycleLabel) || 0) + 1);
+
+                closePayrollControlModal();
+                
+                await refreshPayrollDashboard({ includeHistory: true });
+                showToast("Payroll Processed!", `${cycleLabel} has been paid out. ${pendingRows.length} staff members processed.`);
+
+            } catch (err) {
+                console.warn('Error processing payroll:', err);
+                showToast("Error", "Failed to process payroll. Please try again.", "error");
+            } finally {
+                isConfirmingPayroll = false;
+                processBtn.disabled = false;
+                processBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                processBtn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span> Confirm Payroll Payout';
+            }
+        }
+
+        // Debug function - call from console: debugAutoProcess()
+        window.debugAutoProcess = async function() {
+            console.log('=== Manual Auto-Process Debug ===');
+            console.log('Current companySettings:', companySettings);
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            let targetMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+            let targetYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            const cycleLabel = `${monthNames[targetMonth]} ${targetYear}`;
+            const payDay = companySettings.pay_day || 25;
+            const lockHour = companySettings.payroll_lock_hour !== undefined ? companySettings.payroll_lock_hour : 23;
+            const lockMin = companySettings.payroll_lock_min !== undefined ? companySettings.payroll_lock_min : 59;
+            const lockDate = new Date(targetYear, targetMonth, payDay, lockHour, lockMin, 0);
+            console.log(`Target cycle: ${cycleLabel}`);
+            console.log(`Lock datetime: ${lockDate.toISOString()}`);
+            console.log(`Current datetime: ${now.toISOString()}`);
+            console.log(`Is past lock time: ${now >= lockDate}`);
+            console.log(`localStorage check: ${localStorage.getItem('payroll_auto_processed_' + cycleLabel)}`);
+            console.log(`paidCycleCounts: ${paidCycleCounts.get(cycleLabel)}`);
+            console.log(`historyList includes: ${historyList.some(r => r.cycle === cycleLabel)}`);
+            console.log('History list:', historyList);
+            console.log('=========================');
+        };
+
+        // Debug function - check all July 2026 runs and their details
+        window.debugJuly2026 = async function() {
+            console.log('=== Debug: July 2026 Runs ===');
+            
+            // Filter historyList for July 2026
+            const julyRuns = historyList.filter(r => r.cycle === 'July 2026');
+            console.log('July 2026 runs in historyList:', julyRuns.length);
+            julyRuns.forEach(r => {
+                console.log(`  ID: ${r.id}, Total: ${r.totalPaid}, Code: ${r.run_code}`);
+            });
+            
+            // Get details for each July run
+            const allDetails = await supabaseAPI({
+                table: 'payroll_run_details',
+                operation: 'select',
+                columns: '*'
+            });
+            
+            const julyDetails = allDetails.filter(d => {
+                const run = julyRuns.find(r => r.id === d.payroll_run_id);
+                return run && run.cycle === 'July 2026';
+            });
+            
+            console.log('July 2026 details count:', julyDetails.length);
+            
+            // Group details by payroll_run_id
+            const byRunId = {};
+            julyDetails.forEach(d => {
+                if (!byRunId[d.payroll_run_id]) byRunId[d.payroll_run_id] = [];
+                byRunId[d.payroll_run_id].push(d);
+            });
+            
+            console.log('Details by run ID:');
+            Object.entries(byRunId).forEach(([runId, details]) => {
+                console.log(`  ${runId}: ${details.length} details, staff: ${details.map(d => d.staff_name).join(', ')}`);
+            });
+            
+            console.log('============================');
+        };
+
+        // Force trigger auto-process - call from console: forceAutoProcess()
+        window.forceAutoProcess = async function() {
+            console.log('Force triggering auto-process...');
+            const now = new Date();
+            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            let targetMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+            let targetYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+            const cycleLabel = monthNames[targetMonth] + ' ' + targetYear;
+            localStorage.removeItem('payroll_auto_processed_' + cycleLabel);
+            paidCycleCounts.delete(cycleLabel);
+            historyList = historyList.filter(r => r.cycle !== cycleLabel);
+            console.log('Cleared previous state for ' + cycleLabel);
+            await tryAutoProcessPayroll();
+        };
+    </script>
+</body>
+</html>
