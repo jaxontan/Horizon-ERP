@@ -1,0 +1,28 @@
+{
+  "name": "horizon-erp",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/jaxontan/Horizon-ERP#readme",
+  "bugs": {
+    "url": "https://github.com/jaxontan/Horizon-ERP/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaxontan/Horizon-ERP.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@fontsource/material-symbols-outlined": "^5.3.0",
+    "@supabase/supabase-js": "^2.110.7",
+    "busboy": "^1.6.0",
+    "chart.js": "^4.5.1",
+    "dotenv": "^17.4.2",
+    "nodemailer": "^9.0.3"
+  }
+}
