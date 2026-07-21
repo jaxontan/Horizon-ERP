@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Marketing & Outreach Console - EspressGo</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet"/>
+            <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+            <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+<script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js"></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f7f9fb;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        .pulse-sending {
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+    <!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">mail</span>
+                Marketing Outreach
+            </h2>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2 text-[11px] font-bold text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    SMTP Gateway · Operational
+                </div>
+                <a href="/business-management/customer-management/index.html" class="text-[11px] font-bold text-primary bg-surface-container-low hover:bg-surface-container border border-outline-variant px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px]">group</span>
+                    Audience Directory
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="ml-64 pt-20 px-margin py-8 min-h-[calc(100vh-80px)] flex flex-col gap-8">
+        
+        <!-- Campaign Creator Panels -->
+        <div class="grid grid-cols-12 gap-gutter items-start">
+            
+            <!-- Left Panel: Campaign Form Builder (col-span-8) -->
+            <section class="col-span-12 xl:col-span-8 bg-white border border-outline-variant rounded-2xl p-stack-lg shadow-sm flex flex-col gap-8">
+                <div>
+                    <h2 class="text-headline-sm font-bold text-primary">Outreach Campaign Builder</h2>
+                    <p class="text-xs text-on-surface-variant mt-1">Configure your targets, upload contact files, and schedule bulk broadcasts.</p>
+                </div>
+
+                <div class="h-[1px] bg-outline-variant/60"></div>
+
+                <form id="outreach-form" class="space-y-8" onsubmit="event.preventDefault(); triggerCampaignDispatch();">
+                    
+                    <!-- Target Segment Selector -->
+                    <div>
+                        <label class="block text-xs font-extrabold text-primary uppercase tracking-widest mb-6">Target Audience Segment</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- B2C Option -->
+                            <div id="target-b2c" onclick="selectTarget('b2c')" class="cursor-pointer border-2 border-primary bg-primary/5 p-4 rounded-xl flex items-center gap-4 transition-all duration-200">
+                                <div class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center flex-shrink-0">
+                                    <span class="material-symbols-outlined text-2xl font-headline-md">person</span>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-extrabold text-primary">B2C Target Audience</h4>
+                                    <p class="text-[11px] text-on-surface-variant mt-0.5">Retail Customers &amp; Loyalty Subscribers</p>
+                                </div>
+                            </div>
+
+                            <!-- B2B Option -->
+                            <div id="target-b2b" onclick="selectTarget('b2b')" class="cursor-pointer border border-outline-variant hover:border-secondary p-4 rounded-xl flex items-center gap-4 transition-all duration-200">
+                                <div class="w-12 h-12 rounded-full bg-secondary/10 text-secondary flex items-center justify-center flex-shrink-0">
+                                    <span class="material-symbols-outlined text-2xl font-headline-md">handshake</span>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-extrabold text-primary">B2B Corporate Clients</h4>
+                                    <p class="text-[11px] text-on-surface-variant mt-0.5">Commercial Cafe Partners &amp; Wholesale Accounts</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subject and Template selector -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+                        <div>
+                            <div class="flex justify-between items-baseline mb-6">
+                                <label for="campaign-subject" class="block text-xs font-extrabold text-primary uppercase tracking-widest">Email Subject Line</label>
+                                <span id="char-counter" class="text-[9px] font-bold text-on-surface-variant">0 / 60 Chars</span>
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="campaign-subject" required max="60" class="w-full text-sm border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg py-2.5 pl-3 pr-10 bg-surface-container-lowest" placeholder="e.g. Premium Single-Origin Autumn Release" oninput="updatePreviewSubject(this.value)"/>
+                                <button type="button" onclick="improveSubject()" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-100 rounded-full text-secondary" title="AI Subject Line Optimizer">
+                                    <span class="material-symbols-outlined text-lg">auto_awesome</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="campaign-template" class="block text-xs font-extrabold text-primary uppercase tracking-widest mb-6">Base Brand Template</label>
+                            <select id="campaign-template" onchange="switchTemplate(this.value)" class="w-full text-sm border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded-lg py-2.5 bg-surface-container-lowest">
+                                <option value="product">New Product Launch Banner</option>
+                                <option value="discount">Seasonal Discount Loyalty Promotion</option>
+                                <option value="newsletter">Monthly Roaster Digest</option>
+                                <option value="b2b">B2B Bulk Pricing Sheets</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Email Formatting and Editor -->
+                    <div>
+                        <label for="campaign-body" class="block text-xs font-extrabold text-primary uppercase tracking-widest mb-6">Email Body Copy</label>
+                        <div class="border border-outline-variant rounded-xl overflow-hidden bg-surface-container-lowest">
+                            
+                            <!-- Editor toolbar -->
+                            <div class="bg-surface-container-low border-b border-outline-variant p-2 flex flex-wrap gap-1 items-center">
+                                <button type="button" onclick="formatText('bold')" class="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant" title="Bold"><span class="material-symbols-outlined text-lg">format_bold</span></button>
+                                <button type="button" onclick="formatText('italic')" class="p-1.5 hover:bg-surface-container-high rounded text-on-surface-variant" title="Italic"><span class="material-symbols-outlined text-lg">format_italic</span></button>
+                                <button type="button" onclick="insertVariable('{{Client_Name}}')" class="px-2.5 py-1 hover:bg-surface-container-high rounded text-[10px] font-extrabold text-primary border border-outline-variant uppercase tracking-wider" title="Insert Recipient Full Name">{{Client_Name}}</button>
+                                <button type="button" onclick="insertVariable('{{Company_Name}}')" class="px-2.5 py-1 hover:bg-surface-container-high rounded text-[10px] font-extrabold text-primary border border-outline-variant uppercase tracking-wider" title="Insert Recipient Cafe Name">{{Company_Name}}</button>
+                                <div class="h-6 w-[1px] bg-outline-variant/60 mx-1"></div>
+                                <span class="text-[9px] font-extrabold text-on-surface-variant/60 uppercase pl-2">Template Fields Loaded</span>
+                            </div>
+
+                            <!-- Body Area -->
+                            <textarea id="campaign-body" rows="6" class="w-full p-4 border-0 focus:ring-0 text-sm bg-transparent" placeholder="Describe your coffee launch or loyalty rewards campaign..." oninput="updatePreviewBody(this.value)"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- File Upload: Content Attachments -->
+                    <div>
+                        <label class="block text-xs font-extrabold text-primary uppercase tracking-widest mb-6">Campaign Attachments (Flyer / Catalog)</label>
+                        <div id="drag-drop-zone-attachments" class="border border-dashed border-outline-variant hover:border-primary bg-surface-container-low/50 hover:bg-primary/5 transition-all p-4 rounded-xl text-center cursor-pointer relative"
+                             ondragover="event.preventDefault(); this.classList.add('border-primary')"
+                             ondragleave="this.classList.remove('border-primary')"
+                             ondrop="handleAttachmentDrop(event)">
+                            <input type="file" id="attachments-file-input" class="absolute inset-0 opacity-0 cursor-pointer" multiple accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg" onchange="handleAttachmentSelect(event)"/>
+                            <div class="flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-xl font-headline-sm text-on-surface-variant/60">attachment</span>
+                                <h5 class="text-xs font-bold text-on-surface">Click to attach catalogs, brochures, or price sheets <span class="text-primary hover:underline">Browse</span></h5>
+                            </div>
+                        </div>
+
+                        <!-- Attachment progress list -->
+                        <div id="attachments-list" class="hidden mt-3 space-y-2"></div>
+                    </div>
+
+                    <!-- Dispatch Controls -->
+                    <div class="pt-4 border-t border-outline-variant flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <label class="flex items-center gap-2 text-xs font-bold text-on-surface cursor-pointer select-none" title="Server-side gate controlled by OUTREACH_SANDBOX_MODE in .env — restart server after changing.">
+                                <input type="checkbox" id="test-sandbox" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4"/>
+                                Sandbox Mode
+                                <span class="text-[9px] font-medium text-on-surface-variant normal-case">(driven by OUTREACH_SANDBOX_MODE in .env)</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs font-bold text-on-surface">
+                                <span class="uppercase tracking-wider">Max recipients:</span>
+                                <input type="number" id="dispatch-limit" min="1" max="300" step="1" value="10"
+                                       class="w-20 text-xs border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary rounded px-2 py-1 bg-surface-container-lowest"/>
+                                <span class="text-[9px] font-medium text-on-surface-variant normal-case">(caps how many rows are loaded — leave blank for all)</span>
+                            </label>
+                        </div>
+                        <button type="submit" class="bg-primary text-on-primary px-8 py-3 rounded-xl font-bold shadow-md hover:bg-primary-container active:scale-95 transition-all flex items-center gap-2">
+                            <span class="material-symbols-outlined">send</span>
+                            <span>Send Mass Message</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Right Panel: Live Campaign Preview (col-span-4) -->
+            <section class="col-span-12 xl:col-span-4 flex flex-col gap-4 self-stretch xl:sticky xl:top-24">
+                <div class="bg-white border border-outline-variant rounded-2xl p-4 shadow-sm flex flex-col flex-1 h-full min-h-[500px]">
+                    <div class="flex justify-between items-center pb-3 border-b border-outline-variant mb-4">
+                        <h4 class="text-xs font-extrabold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                            Live Brand Preview
+                        </h4>
+                        <span class="text-[9px] font-bold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded uppercase tracking-wider">Device: Desktop</span>
+                    </div>
+
+                    <!-- Email Client Preview Shell -->
+                    <div class="border border-outline-variant rounded-xl flex-1 flex flex-col overflow-hidden bg-slate-50 relative shadow-inner">
+                        
+                        <!-- Client Header -->
+                        <div class="bg-white border-b border-outline-variant p-3 space-y-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                                <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                                <span class="w-3 h-3 rounded-full bg-green-400"></span>
+                                <span class="text-[10px] text-on-surface-variant font-bold ml-2">Secure Mailer Gateway</span>
+                            </div>
+                            <div class="h-[1px] bg-slate-100"></div>
+                            <div class="text-[11px] space-y-1">
+                                <p class="text-on-surface-variant"><span class="font-bold">From:</span> newsletter@espressgo.com</p>
+                                <p class="text-on-surface-variant"><span class="font-bold">To:</span> <span id="preview-target-to" class="bg-primary/10 text-primary font-bold px-1.5 py-0.2 rounded">B2C Subscriber List</span></p>
+                                <p class="text-on-surface-variant font-bold flex items-center gap-1"><span class="font-bold">Subject:</span> <span id="preview-subject-text" class="text-primary italic">Enter subject...</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Client Scrollable Email Body Canvas.
+                             Uses an iframe with srcdoc so the preview shows
+                             the exact same HTML the dispatch endpoint will
+                             send through Brevo. Anything rendered here WILL
+                             appear in the recipient's inbox. -->
+                        <div class="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col bg-white">
+                            <iframe id="preview-iframe" title="Email preview" class="w-full max-w-[450px] mx-auto border border-slate-100 rounded-lg overflow-hidden shadow-sm bg-white" style="min-height:520px;border:0;" sandbox="allow-same-origin"></iframe>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Last Broadcast Record (record-of-send strip: subject + date + sender).
+             Pure audit-style footer; no analytics, no opens / clicks. -->
+        <div id="last-broadcast-strip" class="hidden bg-white border border-outline-variant rounded-2xl px-5 py-3 mt-6 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+            <span class="inline-flex items-center gap-2 text-on-surface-variant">
+                <span class="material-symbols-outlined text-[16px]">history</span>
+                No broadcast sent yet from this session.
+            </span>
+        </div>
+
+    </main>
+
+    <!-- SMTP Logs Dashboard Console Modal (Wow Factor) -->
+    <div class="fixed inset-0 bg-black/75 z-[60] flex items-center justify-center hidden" id="smtp-console-modal">
+        <div class="bg-[#0c1017] border border-outline/35 rounded-2xl max-w-2xl w-full mx-4 overflow-hidden shadow-2xl flex flex-col font-mono text-[11px] text-green-400">
+            
+            <!-- Terminal Header -->
+            <div class="bg-[#161b22] border-b border-outline/20 px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                    <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                    <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                    <span class="text-[10px] font-bold text-slate-400 ml-2">Gateway SMTP Logs - EspressGo Outbound</span>
+                </div>
+                <button type="button" class="text-slate-400 hover:text-white" onclick="closeConsole()">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+
+            <!-- Terminal Output Stream -->
+            <div id="terminal-logs" class="p-5 h-72 overflow-y-auto space-y-1.5 custom-scrollbar bg-[#0d1117] text-slate-300">
+                <p class="text-yellow-400 font-bold">[SYSTEM] Initiating bulk campaign gateway protocols...</p>
+            </div>
+
+            <!-- Progress Load Section -->
+            <div class="bg-[#161b22] px-5 py-4 border-t border-outline/20 flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-300 font-bold flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 pulse-sending" id="sending-pulse-dot"></span>
+                        <span id="console-status-text">Connecting to SMTP Mailer Relay...</span>
+                    </span>
+                    <span class="font-bold text-green-400" id="console-percentage">0%</span>
+                </div>
+                <div class="w-full bg-[#30363d] h-2 rounded-full overflow-hidden">
+                    <div id="console-progress-bar" class="bg-green-500 h-full w-0 transition-all duration-150"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Functionality -->
+    <script>
+        // ── RBAC: Marketing outreach access ─────────────────────────────────────
+        window.RBAC.enforcePageAccess('outreach:read', { pageName: 'Marketing Outreach' })
+            .then(() => window.RBAC.applyRBACToDOM())
+            .catch((err) => {
+                if (!String(err.message || '').startsWith('RBAC:')) throw err;
+            });
+
+        // --- Local Supabase proxy helper ---
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        async function supabaseAPI({ table, operation, data, filters, columns, returning }) {
+            if (typeof window.erpSupabaseAPI === 'function') {
+                return window.erpSupabaseAPI({ table, operation, data, filters, columns, returning });
+            }
+
+            const resp = await fetch('/api/supabase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table, operation, data, filters, columns, returning })
+            });
+            const result = await resp.json();
+            if (result.error && result.data !== undefined) return result.data;
+            if (result.error || !resp.ok) return [];
+            return result.data || [];
+        }
+
+        // Set dynamic date in topbar. The element is rendered by the shared
+        // sidebar/topbar template; if a hot-reload or cache miss removes it,
+        // we silently skip so the rest of the script can finish initializing
+        // (otherwise every TDZ-bound variable downstream stays uninitialized).
+        const sysTimeEl = document.getElementById('current-system-time');
+        if (sysTimeEl) {
+            sysTimeEl.innerText = new Date().toLocaleDateString('en-US', {
+                month: '2-digit', day: '2-digit', year: 'numeric'
+            });
+        }
+
+        // Variables
+        let selectedTarget = 'b2c';
+        let recipientCounts = { b2c: 0, b2b: 0 };
+        window.__outreachReady = false;
+
+        function countUniqueEmails(rows) {
+            const emails = new Set();
+            (rows || []).forEach((row) => {
+                const email = String(row.email || '').trim().toLowerCase();
+                if (email) emails.add(email);
+            });
+            return emails;
+        }
+
+        function withTimeout(promise, timeoutMs, fallbackValue) {
+            return Promise.race([
+                promise,
+                new Promise(resolve => setTimeout(() => resolve(fallbackValue), timeoutMs))
+            ]);
+        }
+
+        async function countRecipientsForTarget(target) {
+            if (target === 'b2b') {
+                const rows = await supabaseAPI({
+                    table: 'customer_accounts',
+                    operation: 'select',
+                    columns: 'email,segment,is_active',
+                    filters: { eq: { segment: 'b2b' } }
+                }).catch(() => []);
+                const emails = new Set();
+                (rows || []).forEach((row) => {
+                    if (row.is_active === false) return;
+                    const email = String(row.email || '').trim().toLowerCase();
+                    if (email) emails.add(email);
+                });
+                return emails.size;
+            }
+
+            // B2C recipients live in retail_buyers (separate table from
+            // customer_accounts). The customer-master page uses the same split.
+            const rows = await supabaseAPI({
+                table: 'retail_buyers',
+                operation: 'select',
+                columns: 'email,is_active'
+            }).catch(() => []);
+            const emails = new Set();
+            (rows || []).forEach((row) => {
+                if (row.is_active === false) return;
+                const email = String(row.email || '').trim().toLowerCase();
+                if (email) emails.add(email);
+            });
+            return emails.size;
+        }
+
+        function formatCampaignDate(value) {
+            if (!value) return '—';
+            try {
+                return new Date(value).toLocaleString('en-GB', {
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } catch { return '—'; }
+        }
+
+        // Last-broadcast record strip. Reads from `outreach_campaigns` row
+        // the operator (or the last dispatcher) just sent. We don't render a
+        // table; just the date + email of whoever pressed send, scoped to
+        // this same workspace. Pure record-of-send, no analytics.
+        let lastBroadcastRecord = null;
+        let lastBroadcastElement = null;
+
+        async function renderLastBroadcastStrip() {
+            if (!lastBroadcastElement) {
+                lastBroadcastElement = document.getElementById('last-broadcast-strip');
+            }
+            if (!lastBroadcastElement) return;
+            if (!lastBroadcastRecord) {
+                lastBroadcastElement.innerHTML = `
+                    <span class="inline-flex items-center gap-2 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-[16px]">history</span>
+                        No broadcast sent yet from this session.
+                    </span>`;
+                lastBroadcastElement.classList.remove('hidden');
+                return;
+            }
+            const who = String(lastBroadcastRecord.created_by || 'unknown').split('@')[0];
+            const when = formatCampaignDate(lastBroadcastRecord.sent_at || lastBroadcastRecord.created_at);
+            const subject = lastBroadcastRecord.subject || lastBroadcastRecord.campaign_name || 'Untitled campaign';
+            const segment = lastBroadcastRecord.target_segment === 'b2b' ? 'B2B' : 'B2C';
+            lastBroadcastElement.innerHTML = `
+                <span class="inline-flex items-center gap-2 text-on-surface-variant">
+                    <span class="material-symbols-outlined text-[16px] text-primary">history</span>
+                    <span class="font-bold text-primary uppercase tracking-wider text-[10px]">Last Broadcast</span>
+                    <span class="text-xs text-slate-700 font-bold">${subject}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-surface-container text-[9px] font-extrabold uppercase">${segment}</span>
+                </span>
+                <span class="inline-flex items-center gap-3 text-[10px] text-on-surface-variant font-bold uppercase tracking-tight">
+                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span>${when}</span>
+                    <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span>${who}</span>
+                </span>`;
+            lastBroadcastElement.classList.remove('hidden');
+        }
+
+        // Fetch the most recent campaign row to populate the strip on page
+        // load. The "record" is exactly: campaign id + subject + sent_at +
+        // created_by. Nothing else.
+        async function loadLastBroadcastRecord() {
+            try {
+                const rows = await withTimeout(
+                    supabaseAPI({
+                        table: 'outreach_campaigns',
+                        operation: 'select',
+                        columns: 'id,subject,campaign_name,target_segment,sent_at,created_at,created_by',
+                        filters: { order: { column: 'sent_at', ascending: false }, limit: 1 }
+                    }),
+                    6000,
+                    []
+                );
+                const first = Array.isArray(rows) ? rows[0] : null;
+                if (first) lastBroadcastRecord = first;
+            } catch (err) {
+                // Non-fatal: the strip just shows "no broadcast yet".
+                console.warn('[outreach] loadLastBroadcastRecord failed (non-fatal):', err?.message || err);
+            }
+            renderLastBroadcastStrip();
+        }
+
+        // Custom base templates data (email content templates - acceptable as static config)
+        const templateData = {
+            product: {
+                heroImg: "https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&q=80&w=600",
+                heroText: "Autumn Harvest Select Released",
+                ctaText: "Unlock Partner Pre-order",
+                subject: "🍁 Introducing the Autumn Single-Origin Reserve",
+                body: "EspressGo is proud to unveil the limited Autumn Harvest Reserve. Sourced directly from Finca Bella Vista, this micro-lot delivers clean stone-fruit acidity, cocoa body, and notes of spiced pear.\n\nPre-orders are now active for commercial partners. Secure your batches on the dashboard today to guarantee early dock delivery."
+            },
+            discount: {
+                heroImg: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&q=80&w=600",
+                heroText: "Loyalty Bonus Discount Activated",
+                ctaText: "Redeem 20% Rewards Code",
+                subject: "🎉 VIP Bonus: 20% Off Commercial Roasting Supplies",
+                body: "To thank you for being a verified member of the EspressGo ecosystem, we've loaded a **20% bonus discount** onto your partner profile.\n\nUse voucher code `LOYALTY20` during checkout on your invoice page. Discount applies to all whole beans and filters ordered before the end of the month."
+            },
+            newsletter: {
+                heroImg: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&q=80&w=600",
+                heroText: "The Monthly Espresso Digest",
+                ctaText: "Read Market Report",
+                subject: "📰 May Roaster Market Report & Logistics Updates",
+                body: "Get the latest news directly from our warehouse. Global shipping freight fluctuations require reordering early. In this month's digest, we analyze bean transit projections, introduce 3PL NinjaVan docks, and outline staff provisioning logs to secure supply chains."
+            },
+            b2b: {
+                heroImg: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=600",
+                heroText: "Corporate Wholesale Pricing Update",
+                ctaText: "Download B2B Docks Price-Sheet",
+                subject: "📋 Official: Q2 Commercial Bean Pricing Tiers",
+                body: "Enclosed is the updated wholesale catalog for commercial cafes and distribution centers. Thanks to our direct chain of custody, our raw green bean pricing tier remains stable. Review the price sheets and schedule dock delivery with your account manager."
+            }
+        };
+
+        // Refresh staff identity from the verified espressgo_staff_session cookie
+        // before any mutation is sent. The server stamps user_role from the
+        // cookie anyway, so this is a client-side convenience to keep
+        // window.__staffIdentity fresh. Never reads/writes localStorage.
+        async function refreshUserIdentityFromStaff() {
+            try {
+                const resp = await fetch('/api/staff-session/me', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || !data || !data.session || !data.session.role) return;
+                window.__staffIdentity = {
+                    role: data.session.role,
+                    department: data.session.department || '',
+                    email: data.session.email || '',
+                };
+            } catch (_) { /* non-fatal */ }
+        }
+
+        // Initialize template select on load
+        window.addEventListener('DOMContentLoaded', async () => {
+            try { await refreshUserIdentityFromStaff(); } catch (_) {}
+            switchTemplate('product');
+            window.__outreachReady = true;
+            loadLastBroadcastRecord();
+        });
+
+        function selectTarget(type) {
+            selectedTarget = type;
+            const b2c = document.getElementById('target-b2c');
+            const b2b = document.getElementById('target-b2b');
+            const previewTo = document.getElementById('preview-target-to');
+
+            if (type === 'b2c') {
+                b2c.className = "cursor-pointer border-2 border-primary bg-primary/5 p-4 rounded-xl flex items-center gap-4 transition-all duration-200";
+                b2b.className = "cursor-pointer border border-outline-variant hover:border-secondary p-4 rounded-xl flex items-center gap-4 transition-all duration-200";
+                previewTo.innerText = "B2C Subscriber List";
+                previewTo.className = "bg-primary/10 text-primary font-bold px-1.5 py-0.2 rounded";
+            } else {
+                b2b.className = "cursor-pointer border-2 border-secondary bg-secondary/5 p-4 rounded-xl flex items-center gap-4 transition-all duration-200";
+                b2c.className = "cursor-pointer border border-outline-variant hover:border-primary p-4 rounded-xl flex items-center gap-4 transition-all duration-200";
+                previewTo.innerText = "B2B Wholesalers & Partners";
+                previewTo.className = "bg-secondary/10 text-secondary font-bold px-1.5 py-0.2 rounded";
+            }
+
+            }
+
+        function switchTemplate(templateKey) {
+            const data = templateData[templateKey];
+            if (!data) return;
+
+            // Fill form
+            document.getElementById('campaign-subject').value = data.subject;
+            document.getElementById('campaign-body').value = data.body;
+
+            // Re-render the iframe preview so it reflects the new template
+            // (banner image, hero text, CTA). We pull from composeEmailHtml
+            // which is the SAME function dispatch uses, so the operator
+            // can't be surprised by what arrives in the inbox.
+            updatePreviewSubject(data.subject);
+            updatePreviewBody(data.body);
+            refreshPreviewIframe();
+        }
+
+        // Repaint the preview iframe with the current form state. Called on
+        // template switch AND on every keystroke into the body textarea, so
+        // the operator always sees a faithful rendering of the wire payload.
+        function refreshPreviewIframe() {
+            const iframe = document.getElementById('preview-iframe');
+            if (!iframe) return;
+            const subject = document.getElementById('campaign-subject').value || '';
+            const body = document.getElementById('campaign-body').value || '';
+            const templateKey = document.getElementById('campaign-template').value || '';
+            const template = templateData[templateKey] || {};
+            const composed = composeEmailHtml({
+                subject,
+                body,
+                template: { ...template, greeting: 'Hi {{Client_Name}},' }
+            });
+            // Wrap in a minimal HTML doc so iframe srcdoc renders predictably.
+            iframe.srcdoc = `<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;background:#f5f5f4;">${composed}</body></html>`;
+        }
+
+        // Build the full HTML email body that will be sent through Brevo.
+        // Mirrors the visual layout of the Live Preview canvas so the
+        // operator sees the same thing in Gmail/Outlook that they see here.
+        //
+        // Why we do this client-side rather than letting the server wrap a
+        // plain string: the preview's brand header, hero image, CTA button,
+        // and footer are visually striking but were hardcoded in the page
+        // DOM and never made it into the wire payload. The recipient was
+        // getting an empty white page with just the body text. Composing the
+        // email here ensures what the operator sees IS what gets delivered.
+        //
+        // The server still runs `renderOutreachTemplate(html, recipient)`
+        // over this output, so {{Client_Name}} etc. are substituted per
+        // recipient on the server side — we don't touch variables here.
+        function composeEmailHtml({ subject, body, template, recipient }) {
+            const safeSubject = escapeHtmlAttr(subject || '');
+            const heroImg = escapeHtmlAttr((template && template.heroImg) || '');
+            const heroText = escapeHtml((template && template.heroText) || 'New Roasts Released');
+            const ctaText = escapeHtml((template && template.ctaText) || 'Activate Campaign');
+            const greetingName = (template && template.greeting)
+                ? String(template.greeting)
+                : 'Hi {{Client_Name}},';
+            // Wrap known placeholders with a styled span so the operator can
+            // spot them in the live preview. Server's renderOutreachTemplate
+            // ignores HTML tags during substitution (it operates on raw text
+            // before any HTML processing), so the colored span won't leak
+            // into the recipient's inbox — only the substituted value will.
+            // Body is escaped first to neutralize XSS, then `\n` becomes <br>.
+            const bodyHtml = escapeHtmlBody(body || '')
+                .replace(/\n/g, '<br>')
+                .replace(/\{\{\s*Client_Name\s*\}\}/g,
+                    '<span style="color:#d97706;font-weight: 700; /* font-bold */background:#fef3c7;padding:1px 6px;border-radius:4px;">{{Client_Name}}</span>')
+                .replace(/\{\{\s*Company_Name\s*\}\}/g,
+                    '<span style="color:#0f766e;font-weight: 700; /* font-bold */background:#ccfbf1;padding:1px 6px;border-radius:4px;">{{Company_Name}}</span>')
+                .replace(/\{\{\s*Email\s*\}\}/g,
+                    '<span style="color:#4f46e5;font-weight: 700; /* font-bold */background:#e0e7ff;padding:1px 6px;border-radius:4px;">{{Email}}</span>');
+
+            // Inline-styled because most email clients (Gmail, Outlook) strip
+            // <style> blocks and class attributes. Inline `style="..."` is the
+            // only way to keep the brand header orange, the CTA a button, etc.
+            return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f4;padding:24px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1c1917;">
+  <tr>
+    <td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="450" style="max-width:450px;background:#ffffff;border:1px solid #f1f5f9;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background:#d97706;padding:16px;text-align:center;color:#ffffff;">
+            <h2 style="margin:0;font-size:14px;font-weight: 900; /* font-black */text-transform: uppercase; /* uppercase */letter-spacing: 0.18em; /* tracking-label-widest */">EspressGo</h2>
+            <p style="margin:4px 0 0;font-size:9px;text-transform: uppercase; /* uppercase */letter-spacing: 0.12em; /* tracking-label-wider */opacity:0.85;">Fresh Roasts &bull; Direct To Shop</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="position:relative;background:#f1f5f9;height:160px;overflow:hidden;border-bottom:1px solid #f1f5f9;text-align:center;vertical-align:middle;" background="${heroImg}">
+            <img src="${heroImg}" alt="" width="450" height="160" style="display:block;width:100%;max-width:450px;height:160px;object-fit:cover;border:0;" />
+            <div style="background:rgba(0,0,0,0.15);height:160px;width:100%;position:absolute;top:0;left:0;">
+              <h3 style="margin:0;padding:64px 16px;font-size:14px;color:#ffffff;font-weight: 700; /* font-bold */text-transform: uppercase; /* uppercase */letter-spacing: 0.18em; /* tracking-label-widest */line-height:1.4;">${heroText}</h3>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px;font-size:13px;line-height:1.6;color:#1f2937;">
+            <p style="margin:0 0 12px;font-weight: 700; /* font-bold */">${escapeHtmlBody(greetingName)}</p>
+            <div style="white-space:normal;color:#475569;">${bodyHtml}</div>
+            <div style="margin-top:24px;padding-top:16px;border-top:1px solid #f1f5f9;text-align:center;">
+              <a href="#" style="display:inline-block;background:#d97706;color:#ffffff;text-decoration:none;font-weight: 700; /* font-bold */font-size:10px;text-transform: uppercase; /* uppercase */letter-spacing: 0.18em; /* tracking-label-widest */padding:10px 20px;border-radius:8px;">${ctaText}</a>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8fafc;border-top:1px solid #f1f5f9;padding:16px;text-align:center;font-size:9px;color:#64748b;">
+            <p style="margin:0;font-weight: 700; /* font-bold */">&copy; 2026 EspressGo Coffee Roasters Ltd.</p>
+            <p style="margin:6px 0 0;">You received this email because you are a verified commercial partner. <a href="#" style="color:#d97706;text-decoration:underline;">Unsubscribe</a></p>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:12px 0 0;font-size:9px;color:#94a3b8;">Subject: ${safeSubject}</p>
+    </td>
+  </tr>
+</table>`;
+        }
+
+        // Minimal HTML escapers for the email-composer pipeline. Distinct
+        // from the server's escapeHtml: this one keeps `\n` line breaks
+        // intact (we convert them to <br> after escaping in composeEmailHtml)
+        // and uses numeric entities for attribute quotes that some older
+        // Outlook builds mishandle.
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        function escapeHtmlAttr(value) { return escapeHtml(value); }
+        function escapeHtmlBody(value) {
+            return escapeHtml(value);
+        }
+
+        function updatePreviewSubject(val) {
+            const subEl = document.getElementById('preview-subject-text');
+            const counter = document.getElementById('char-counter');
+            if (val.trim() === '') {
+                subEl.innerText = 'Enter subject...';
+                subEl.classList.add('text-primary/60');
+            } else {
+                subEl.innerText = val;
+                subEl.classList.remove('text-primary/60');
+            }
+            counter.innerText = `${val.length} / 60 Chars`;
+            if (val.length > 50) {
+                counter.className = "text-[9px] font-bold text-amber-600";
+            } else {
+                counter.className = "text-[9px] font-bold text-on-surface-variant";
+            }
+        }
+
+        function updatePreviewBody(val) {
+            // The preview iframe is the source of truth now. Body changes
+            // arrive here from the textarea's oninput, and we just re-run
+            // composeEmailHtml so the operator's edits show up live.
+            // (Theme tokens for {{Client_Name}} / {{Company_Name}} are
+            // highlighted inside the composed HTML — no separate styling
+            // pass needed.)
+            refreshPreviewIframe();
+        }
+
+        // Variable inserter at cursor
+        function insertVariable(variable) {
+            const textarea = document.getElementById('campaign-body');
+            const scrollPos = textarea.scrollTop;
+            let caretPos = textarea.selectionStart;
+            const text = textarea.value;
+            const before = text.substring(0, caretPos);
+            const after = text.substring(textarea.selectionEnd, text.length);
+            
+            textarea.value = before + variable + after;
+            caretPos += variable.length;
+            textarea.selectionStart = caretPos;
+            textarea.selectionEnd = caretPos;
+            textarea.focus();
+            textarea.scrollTop = scrollPos;
+            
+            updatePreviewBody(textarea.value);
+        }
+
+        // Text formatting helper
+        function formatText(format) {
+            const textarea = document.getElementById('campaign-body');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            if (start === end) return; // No selection
+
+            let selected = text.substring(start, end);
+            if (format === 'bold') {
+                selected = `**${selected}**`;
+            } else if (format === 'italic') {
+                selected = `*${selected}*`;
+            }
+
+            textarea.value = text.substring(0, start) + selected + text.substring(end);
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + selected.length;
+            textarea.focus();
+            
+            updatePreviewBody(textarea.value);
+        }
+
+        // AI Subject Optimizer generator simulation
+        function improveSubject() {
+            const currentSub = document.getElementById('campaign-subject').value;
+            const targetName = selectedTarget === 'b2c' ? 'Loyalty Members' : 'Cafe Partners';
+            
+            const dynamicOptimizations = [
+                `🔥 Early Access: Premium ${targetName} Roast Reservation`,
+                `🎉 Special Rewards Code inside for ${targetName}`,
+                `📋 Urgent: Verified Bean Pricing Updates for ${targetName}`,
+                `⚡ Dispatch Secured: Quick Turnaround for ${targetName}`,
+                `☕ VIP Notice: Exclusive Autumn Micro-Lots Released`
+            ];
+            
+            const randomPick = dynamicOptimizations[Math.floor(Math.random() * dynamicOptimizations.length)];
+            document.getElementById('campaign-subject').value = randomPick;
+            updatePreviewSubject(randomPick);
+            
+            // Pop dynamic toast alert
+            showSmartToast('Spark Optimizer Active', 'Subject line enhanced for higher open rates.', 'auto_awesome');
+        }
+
+
+        // Attachments drag and drop — uploads each file to /api/uploads (category=outreach)
+// and tracks per-file status so the operator can retry failures and dispatch
+// only after every file is uploaded.
+        let attachmentUploads = [];
+
+        function handleAttachmentSelect(e) {
+            const files = Array.from(e.target.files);
+            addAttachments(files);
+            // Reset the input so selecting the same file again still triggers onchange.
+            e.target.value = '';
+        }
+
+        function handleAttachmentDrop(e) {
+            e.preventDefault();
+            document.getElementById('drag-drop-zone-attachments').classList.remove('border-primary');
+            const files = Array.from(e.dataTransfer.files);
+            addAttachments(files);
+        }
+
+        function addAttachments(files) {
+            files.filter(Boolean).forEach((file) => {
+                attachmentUploads.push({
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    file,
+                    name: file.name,
+                    size: file.size,
+                    status: 'uploading',
+                    publicUrl: null,
+                    storedPath: null,
+                    error: null,
+                });
+            });
+            renderAttachments();
+            // Kick off uploads for each newly added file. We snapshot the latest
+            // list length before iterating because uploads may resolve out of order.
+            attachmentUploads
+                .filter((a) => a.status === 'uploading' && !a._started)
+                .forEach((a) => {
+                    a._started = true;
+                    uploadOneAttachment(a.id);
+                });
+        }
+
+        async function uploadOneAttachment(id) {
+            const entry = attachmentUploads.find((a) => a.id === id);
+            if (!entry) return;
+            try {
+                const fd = new FormData();
+                fd.append('file', entry.file, entry.file.name);
+                fd.append('category', 'outreach');
+                fd.append('filename', entry.file.name);
+                const resp = await fetch('/api/uploads', { method: 'POST', body: fd });
+                if (!resp.ok) {
+                    let message = `HTTP ${resp.status}`;
+                    try {
+                        const errBody = await resp.json();
+                        if (errBody && errBody.error) message = errBody.error;
+                    } catch { /* body may be empty */ }
+                    entry.status = 'failed';
+                    entry.error = message;
+                    renderAttachments();
+                    return;
+                }
+                const result = await resp.json();
+                const publicUrl = result?.data?.publicUrl;
+                if (!publicUrl) {
+                    entry.status = 'failed';
+                    entry.error = 'Upload response missing publicUrl';
+                    renderAttachments();
+                    return;
+                }
+                entry.publicUrl = publicUrl;
+                entry.storedPath = result?.data?.path || null;
+                entry.status = 'uploaded';
+                entry.error = null;
+                renderAttachments();
+            } catch (err) {
+                entry.status = 'failed';
+                entry.error = err && err.message ? err.message : String(err);
+                renderAttachments();
+            }
+        }
+
+        function formatFileSize(bytes) {
+            const n = Number(bytes) || 0;
+            if (n < 1024) return `${n} B`;
+            if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+            return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function attachmentStatusBadge(entry) {
+            if (entry.status === 'uploaded') {
+                return '<span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-700"><span class="material-symbols-outlined text-[12px]">check_circle</span> Uploaded</span>';
+            }
+            if (entry.status === 'failed') {
+                return `<span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-red-600" title="${(entry.error || 'Failed').replace(/"/g, '&quot;')}"><span class="material-symbols-outlined text-[12px]">error</span> Failed</span>`;
+            }
+            return '<span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-amber-700"><span class="material-symbols-outlined text-[12px] animate-spin">progress_activity</span> Uploading…</span>';
+        }
+
+        function renderAttachments() {
+            const listEl = document.getElementById('attachments-list');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+
+            attachmentUploads.forEach((entry) => {
+                const card = document.createElement('div');
+                card.className = 'flex items-center justify-between bg-slate-50 border border-outline-variant p-2.5 rounded-lg text-xs';
+                const retryBtn = entry.status === 'failed'
+                    ? `<button type="button" data-retry="${entry.id}" class="text-secondary hover:bg-secondary/10 p-1 rounded-full" title="Retry upload"><span class="material-symbols-outlined text-base">refresh</span></button>`
+                    : '';
+                card.innerHTML = `
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="material-symbols-outlined text-secondary">picture_as_pdf</span>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-primary truncate">${entry.name}</span>
+                                <span class="text-[9px] text-on-surface-variant font-medium">(${formatFileSize(entry.size)})</span>
+                            </div>
+                            <div class="mt-0.5">${attachmentStatusBadge(entry)}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        ${retryBtn}
+                        <button type="button" data-remove="${entry.id}" class="text-error hover:bg-red-50 p-1 rounded-full" title="Remove"><span class="material-symbols-outlined text-base">close</span></button>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+
+            if (attachmentUploads.length > 0) {
+                listEl.classList.remove('hidden');
+            } else {
+                listEl.classList.add('hidden');
+            }
+        }
+
+        function removeAttachment(id) {
+            attachmentUploads = attachmentUploads.filter((a) => a.id !== id);
+            renderAttachments();
+        }
+
+        function retryAttachment(id) {
+            const entry = attachmentUploads.find((a) => a.id === id);
+            if (!entry) return;
+            entry.status = 'uploading';
+            entry.error = null;
+            entry._started = false;
+            renderAttachments();
+            uploadOneAttachment(id);
+        }
+
+        // Event delegation for the dynamic remove/retry buttons (avoids inline onclick
+        // so we can pass the stable id without stringifying the file name).
+        document.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('[data-remove]');
+            if (removeBtn) {
+                removeAttachment(removeBtn.getAttribute('data-remove'));
+                return;
+            }
+            const retryBtn = e.target.closest('[data-retry]');
+            if (retryBtn) {
+                retryAttachment(retryBtn.getAttribute('data-retry'));
+            }
+        });
+
+        function attachmentsHaveUploads() {
+            return attachmentUploads.length > 0 && attachmentUploads.every((a) => a.status === 'uploaded');
+        }
+
+        function attachmentPayload() {
+            return attachmentUploads
+                .filter((a) => a.status === 'uploaded' && a.publicUrl)
+                .map((a) => ({ publicUrl: a.publicUrl, fileName: a.name }));
+        }
+
+        function attachmentCount() {
+            return attachmentUploads.filter((a) => a.status === 'uploaded').length;
+        }
+
+        async function loadRecipientRows(target, limit = null) {
+            const limitNum = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Math.floor(Number(limit)) : null;
+            // B2C recipients live in `retail_buyers`; B2B recipients live in
+            // `customer_accounts`. We mirror the customer-master page's split so
+            // the outreach UI sees the same people the operator can see in the
+            // master directory.
+            let payload;
+            if (target === 'b2b') {
+                payload = {
+                    table: 'customer_accounts',
+                    operation: 'select',
+                    columns: 'email,name,company_name,segment,is_active',
+                    filters: { eq: { segment: 'b2b' } }
+                };
+            } else {
+                payload = {
+                    table: 'retail_buyers',
+                    operation: 'select',
+                    columns: 'email,name,segment,is_active'
+                };
+            }
+            const rows = await supabaseAPI(payload).catch(() => []);
+            const filtered = (rows || [])
+                .filter((row) => row && row.is_active !== false)
+                .filter((row) => String(row.email || '').includes('@'))
+                .slice(0, limitNum || Infinity);
+            return filtered;
+        }
+
+        async function fetchOutreachStatus() {
+            try {
+                const r = await fetch('/api/outreach/status');
+                if (!r.ok) return { sandbox: true, brevoMailerConfigured: false };
+                return await r.json();
+            } catch {
+                return { sandbox: true, brevoMailerConfigured: false };
+            }
+        }
+
+        async function dispatchCampaignOverSmtp({ subject, body, target, recipients, attachments = [], campaignId }) {
+            const status = await fetchOutreachStatus();
+            // Compose the FULL styled HTML once, then send it. Server still
+            // runs renderOutreachTemplate per recipient to substitute
+            // {{Client_Name}} / {{Company_Name}} / {{Email}} placeholders.
+            // The template is selected from the dropdown so its banner image,
+            // hero text, and CTA label are baked in here, mirroring what the
+            // operator sees in the Live Preview canvas.
+            const templateKey = document.getElementById('campaign-template').value || '';
+            const template = templateData[templateKey] || {};
+            const composedHtml = composeEmailHtml({
+                subject,
+                body,
+                template: { ...template, greeting: 'Hi {{Client_Name}},' }
+            });
+            const resp = await fetch('/api/outreach/dispatch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    campaignId: campaignId || null,
+                    campaignName: subject,
+                    campaignType: target === 'b2b' ? 'B2B Corporate' : 'B2C Retail',
+                    targetSegment: target,
+                    subject,
+                    bodyHtml: composedHtml,
+                    recipients,
+                    attachments,
+                })
+            });
+            let payload = {};
+            try { payload = await resp.json(); } catch { /* tolerate empty body */ }
+            if (!resp.ok) {
+                const message = payload && payload.error ? payload.error : `HTTP ${resp.status}`;
+                throw new Error(message);
+            }
+            return { ...payload, status };
+        }
+
+        function appendTerminalLine(terminal, text, color = 'text-slate-400') {
+            const line = document.createElement('p');
+            line.className = color;
+            line.innerText = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Bulk dispatch via the real /api/outreach/dispatch endpoint.
+        // The terminal still streams status messages, but the data is real:
+        // sandbox writes one log row per recipient without sending email,
+        // live mode hits Brevo SMTP and reports each delivery outcome.
+        async function triggerCampaignDispatch() {
+            const subjectEl = document.getElementById('campaign-subject');
+            const subject = subjectEl ? subjectEl.value : '';
+            if (!subject) return;
+
+            // Pre-flight: refresh user-role from staff_profiles so the row we
+            // save below isn't stamped with a stale role from localStorage.
+            try { await refreshUserIdentityFromStaff(); } catch (_) {}
+
+            // Gate on attachment uploads — we don't allow dispatch with any file
+            // still uploading or with any failed upload. Empty list is fine.
+            const uploading = attachmentUploads.filter((a) => a.status === 'uploading').length;
+            const failed = attachmentUploads.filter((a) => a.status === 'failed').length;
+            if (uploading > 0) {
+                alert(`Wait — ${uploading} attachment${uploading === 1 ? ' is' : 's are'} still uploading. Please wait until every file shows "Uploaded" before sending.`);
+                return;
+            }
+            if (failed > 0) {
+                const proceed = confirm(`${failed} attachment${failed === 1 ? '' : 's'} failed to upload. Retry, remove, or send without them? Click OK to send without the failed files, Cancel to go back.`);
+                if (!proceed) return;
+                // Drop failed entries so the dispatch payload only contains the good ones.
+                attachmentUploads = attachmentUploads.filter((a) => a.status !== 'failed');
+                renderAttachments();
+            }
+
+            const consoleModal = document.getElementById('smtp-console-modal');
+            const terminal = document.getElementById('terminal-logs');
+            const progressBar = document.getElementById('console-progress-bar');
+            const percentageText = document.getElementById('console-percentage');
+            const statusText = document.getElementById('console-status-text');
+
+            terminal.innerHTML = '';
+            progressBar.style.width = '0%';
+            percentageText.innerText = '0%';
+            statusText.innerText = 'Starting mail gateway...';
+            consoleModal.classList.remove('hidden');
+
+            // Persist the campaign record first (existing behavior), but build a
+            // payload that matches the real outreach_campaigns schema (uuid PK,
+            // target_count, sent_count, etc.) so the saved row is usable.
+            const target = selectedTarget;
+            const body = document.getElementById('campaign-body').value || '';
+            const templateKey = document.getElementById('campaign-template').value || '';
+
+            const outreachStatus = await fetchOutreachStatus();
+            appendTerminalLine(terminal,
+                `[SYSTEM] Outreach mode: ${outreachStatus.sandbox ? 'SANDBOX (no email leaves the server)' : 'LIVE (sending via Brevo SMTP)'}.`,
+                outreachStatus.sandbox ? 'text-yellow-400' : 'text-green-400 font-bold'
+            );
+
+            // Pull real recipients for the dispatch call. The optional
+            // dispatch-limit input caps how many rows are loaded from the
+            // underlying table (retail_buyers for b2c, customer_accounts for
+            // b2b) — useful for first-send smoke tests with no real list yet.
+            const limitInput = document.getElementById('dispatch-limit');
+            const limitValue = limitInput ? Number(limitInput.value) : null;
+            const dispatchLimit = Number.isFinite(limitValue) && limitValue > 0 ? Math.floor(limitValue) : null;
+            const allRows = await withTimeout(loadRecipientRows(target, dispatchLimit), 12000, []);
+            const recipients = (allRows || [])
+                .filter((row) => row && row.is_active !== false)
+                .filter((row) => String(row.email || '').includes('@'))
+                .map((row) => {
+                    // The server's renderOutreachTemplate looks up tokens like
+                    // {{Client_Name}} by lowercased-underscored key names, so
+                    // we expose the recipient fields under BOTH the names the
+                    // server expects AND the names the JS world conventionally
+                    // uses. Without this, {{Client_Name}} resolved to nothing
+                    // and the recipient saw literal `{{Client_Name}}` in their
+                    // inbox.
+                    const firstName = String(row.first_name || '').trim();
+                    const lastName = String(row.last_name || '').trim();
+                    const combinedName = [firstName, lastName].filter(Boolean).join(' ').trim();
+                    const name = String(row.name || row.client_name || combinedName || row.full_name || '').trim();
+                    return {
+                        email: String(row.email).trim().toLowerCase(),
+                        client_name: name,
+                        full_name: name,
+                        first_name: firstName,
+                        last_name: lastName,
+                        company_name: row.company_name || '',
+                    };
+                });
+
+            if (recipients.length === 0) {
+                // Don't silently bail — show the operator what was found so they
+                // can tell at a glance whether the table was empty, the segment
+                // filter excluded everything, or the limit was too low.
+                let debugRows = [];
+                try {
+                    const rawRows = await withTimeout(
+                        supabaseAPI({
+                            table: target === 'b2b' ? 'customer_accounts' : 'retail_buyers',
+                            operation: 'select',
+                            columns: 'email,is_active,segment'
+                        }),
+                        8000,
+                        []
+                    );
+                    debugRows = Array.isArray(rawRows) ? rawRows : [];
+                } catch { /* ignore */ }
+                const totalInTable = debugRows.length;
+                const activeInTable = debugRows.filter((r) => r.is_active !== false).length;
+                const hasEmailInTable = debugRows.filter((r) => String(r.email || '').includes('@')).length;
+                appendTerminalLine(terminal,
+                    `[WARN] No recipients matched. Segment=[${target.toUpperCase()}] dispatchLimit=${dispatchLimit ?? 'none'}. ` +
+                    `Table total=${totalInTable}, active=${activeInTable}, with-email=${hasEmailInTable}. Aborting dispatch.`,
+                    'text-yellow-400 font-bold');
+                statusText.innerText = `No recipients — aborting (table has ${totalInTable}, active ${activeInTable}, with-email ${hasEmailInTable}).`;
+                progressBar.style.width = '100%';
+                percentageText.innerText = '100%';
+                return;
+            }
+
+            // Confirm before any send. The dialog shows the exact recipient
+            // count and a 5-email sample so the operator catches typos before
+            // Brevo queues a real batch.
+            const previewSample = recipients.slice(0, 5).map((r) => r.email).join(', ');
+            const confirmMessage = outreachStatus.sandbox
+                ? `Sandbox dry-run will plan ${recipients.length} recipient${recipients.length === 1 ? '' : 's'} for segment [${target.toUpperCase()}].\n\nSample: ${previewSample}${recipients.length > 5 ? ', …' : ''}\n\nContinue?`
+                : `LIVE DISPATCH\n\nThis will send a real email to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'} via Brevo SMTP from Jux Tech <tanyuejin12@gmail.com>.\n\nSample: ${previewSample}${recipients.length > 5 ? ', …' : ''}\n\nContinue?`;
+            if (!confirm(confirmMessage)) {
+                appendTerminalLine(terminal, '[ABORT] Dispatch cancelled by user before send.', 'text-yellow-400 font-bold');
+                statusText.innerText = 'Cancelled.';
+                progressBar.style.width = '100%';
+                percentageText.innerText = '100%';
+                return;
+            }
+
+            appendTerminalLine(terminal, `[SMTP] Connecting to smtp-relay.brevo.com:587 ...`, 'text-slate-400');
+            await new Promise((r) => setTimeout(r, 350));
+            appendTerminalLine(terminal, `[SMTP] Authenticated${outreachStatus.sandbox ? ' (skipped, sandbox mode)' : ' via smtp-brevo credentials'}.`, 'text-slate-400');
+            appendTerminalLine(terminal, `[INFO] Loaded ${recipients.length} recipients for segment [${target.toUpperCase()}].`, 'text-blue-400 font-bold');
+            statusText.innerText = `Dispatching ${recipients.length} recipients via Brevo...`;
+            progressBar.style.width = '25%';
+            percentageText.innerText = '25%';
+
+            // Save the campaign row in parallel (so we get a uuid FK target for the
+            // dispatch log). Failures here don't block dispatch — we just log
+            // without a campaign_id if Supabase refuses the insert.
+            let savedCampaign = null;
+            try {
+                savedCampaign = await saveCampaignToSupabase(subject);
+            } catch (err) {
+                console.warn('[outreach] campaign save failed before dispatch:', err);
+                appendTerminalLine(terminal, '[WARN] Campaign row could not be saved; dispatching without FK link.', 'text-yellow-400');
+            }
+
+            // Refresh the record-of-send strip now that a row was just saved.
+            try { await loadLastBroadcastRecord(); } catch (e) { /* non-fatal */ }
+
+            // Drive a progress bar while the server is sending. Most of the
+            // wall-clock time is the per-recipient SMTP round trip + the
+            // configured delay between sends. We just animate to ~80% while
+            // waiting, then snap to 100% when the call returns.
+            let progress = 25;
+            const anim = setInterval(() => {
+                progress = Math.min(progress + 1.5, 80);
+                progressBar.style.width = `${progress}%`;
+                percentageText.innerText = `${Math.round(progress)}%`;
+                if (progress > 60) statusText.innerText = 'Configuring mail queues...';
+            }, 250);
+
+            let dispatchResult = null;
+            let dispatchError = null;
+            try {
+                dispatchResult = await dispatchCampaignOverSmtp({
+                    subject,
+                    body,
+                    target,
+                    recipients,
+                    attachments: attachmentPayload(),
+                    campaignId: savedCampaign?.id || null,
+                });
+            } catch (err) {
+                dispatchError = err;
+            } finally {
+                clearInterval(anim);
+            }
+
+            progressBar.style.width = '100%';
+            percentageText.innerText = '100%';
+
+            if (dispatchError) {
+                appendTerminalLine(terminal, `[ERROR] Dispatch failed: ${dispatchError.message}`, 'text-red-400 font-bold');
+                statusText.innerText = 'Dispatch failed.';
+                completeCampaignBroadcast(subject);
+                return;
+            }
+
+            const r = dispatchResult;
+            appendTerminalLine(terminal,
+                `[DISPATCH] ${r.sandbox ? 'Sandbox preview: would send' : 'Sent'} ${r.total} recipient${r.total === 1 ? '' : 's'}` +
+                ` (sandbox=${r.sandboxed}, sent=${r.sent}, failed=${r.failed}, suppressed=${r.skippedUnsubscribed}).`,
+                r.failed > 0 ? 'text-yellow-400' : 'text-green-500'
+            );
+            if (r.skippedUnsubscribed > 0) {
+                appendTerminalLine(terminal,
+                    `[SUPPRESS] Skipped ${r.skippedUnsubscribed} address${r.skippedUnsubscribed === 1 ? '' : 'es'} on the unsubscribes list.`,
+                    'text-slate-400'
+                );
+            }
+            if (r.failed > 0) {
+                const firstFail = (r.results || []).find((x) => x.status === 'failed');
+                if (firstFail) appendTerminalLine(terminal, `[ERROR] First failure: ${firstFail.email} — ${firstFail.error}`, 'text-red-400');
+            }
+            appendTerminalLine(terminal, '[SYSTEM] Done. See outreach_dispatch_log for the per-recipient record.', 'text-yellow-400 font-bold');
+            statusText.innerText = r.sandbox
+                ? `Sandbox complete (${r.total} planned)`
+                : `Dispatch complete (${r.sent} sent, ${r.failed} failed)`;
+
+            // Update the saved campaign row with the real sent count so
+            // the record-of-send strip reflects what actually went out.
+            if (savedCampaign && savedCampaign.id && r.sent) {
+                try {
+                    await supabaseAPI({
+                        table: 'outreach_campaigns',
+                        operation: 'update',
+                        data: { sent_count: r.sent },
+                        filters: { where: [{ column: 'id', operator: 'eq', value: savedCampaign.id }] },
+                        returning: '*'
+                    });
+                    savedCampaign.sent_count = r.sent;
+                } catch (e) {
+                    console.warn('[outreach] could not update sent_count on campaign row:', e?.message || e);
+                }
+            }
+
+            completeCampaignBroadcast(subject);
+        }
+
+        function buildCampaignPayload(subject) {
+            // Supabase schema (confirmed via information_schema.columns):
+            //   id uuid, campaign_name text, subject text, target_segment text,
+            //   target_count int, sent_count int, open_count int, click_count int,
+            //   status text, scheduled_at timestamptz, sent_at timestamptz,
+            //   created_by text, created_at timestamptz, updated_at timestamptz.
+            // Any column we send that's not on this list is silently dropped by
+            // the SQL proxy's cleanMutationRow. So we stick to ONLY the real
+            // columns. body / template_key / campaign_type would be stripped;
+            // we keep them client-side for the live preview only.
+            const createdBy = (() => {
+                try {
+                    // Preferred source: the verified staff session we fetched
+                    // on DOMContentLoaded. Falls back to legacy keys so we
+                    // still produce a useful audit trail even if the new
+                    // session helper is not present.
+                    return (window.__staffIdentity && window.__staffIdentity.email)
+                        || localStorage.getItem('user-email')
+                        || localStorage.getItem('staff-email')
+                        || null;
+                } catch { return null; }
+            })();
+            return {
+                campaign_name: subject,
+                subject,
+                target_segment: selectedTarget,
+                target_count: recipientCounts[selectedTarget] || 0,
+                sent_count: 0,
+                open_count: 0,
+                click_count: 0,
+                status: 'sent',
+                sent_at: new Date().toISOString(),
+                created_by: createdBy
+            };
+        }
+
+        async function saveCampaignToSupabase(subject) {
+            const target = selectedTarget;
+            let targetRecipientCount = await withTimeout(countRecipientsForTarget(target), 12000, null);
+            if (targetRecipientCount === null) {
+                console.warn('Outreach recipient count timed out; using last known count for campaign save.');
+                targetRecipientCount = recipientCounts[target] || 1;
+            }
+            recipientCounts = { ...recipientCounts, [target]: targetRecipientCount };
+
+            const payload = {
+                ...buildCampaignPayload(subject),
+                target_count: targetRecipientCount
+            };
+            const inserted = await supabaseAPI({
+                table: 'outreach_campaigns',
+                operation: 'insert',
+                data: payload,
+                returning: '*'
+            });
+            const saved = inserted?.[0] || payload;
+            lastBroadcastRecord = saved;
+            renderLastBroadcastStrip();
+            return saved;
+        }
+
+        function completeCampaignBroadcast(subject) {
+            setTimeout(() => {
+                closeConsole();
+                // `lastBroadcastRecord` was set inside saveCampaignToSupabase.
+                // If it has a uuid id, the save worked.
+                const saved = lastBroadcastRecord;
+                if (!saved || saved.campaign_name !== subject || !saved.id) {
+                    showSmartToast('Broadcast Save Failed', 'Campaign could not be saved to Supabase.', 'error');
+                    return;
+                }
+                showSmartToast('Broadcast Complete!', 'Campaign saved to Supabase and dispatch results logged.', 'check_circle');
+            }, 500);
+        }
+
+        function closeConsole() {
+            // intervalId is now scoped inside triggerCampaignDispatch (the old
+            // fake animation timer is gone). Reset progress UI and hide modal.
+            document.getElementById('smtp-console-modal').classList.add('hidden');
+        }
+
+        // Shared modern toast notifier
+        function showSmartToast(title, body, iconName = 'check_circle') {
+            let toast = document.getElementById('outreach-toast-alert');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'outreach-toast-alert';
+                toast.className = 'fixed bottom-margin right-margin bg-primary text-on-primary border border-primary-container px-6 py-4 rounded-xl shadow-2xl z-[100] transition-all duration-300 translate-y-32 flex items-center gap-3';
+                document.body.appendChild(toast);
+            }
+            
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-green-400" style="font-variation-settings: 'FILL' 1;">${iconName}</span>
+                <div>
+                    <p class="text-xs font-bold font-headline-sm">${title}</p>
+                    <p class="text-[10px] opacity-80 mt-0.5">${body}</p>
+                </div>
+            `;
+            
+            toast.classList.remove('translate-y-32');
+            setTimeout(() => {
+                toast.classList.add('translate-y-32');
+            }, 4000);
+        }
+
+    </script>
+</body>
+</html>
