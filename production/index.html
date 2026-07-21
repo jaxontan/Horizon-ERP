@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Production Pipeline | EspressGo</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="/public/js/rbac.js"></script>
+    <script src="/components/sidebar.js?v=20260705a"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet"/>
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .kanban-col { min-height: 400px; }
+        .batch-card { transition: all 0.2s ease; }
+        .batch-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .stage-badge { font-size: 10px; font-weight: 800; /* font-extrabold */ text-transform: uppercase; /* uppercase */ letter-spacing: 0.08em; /* tracking-label-wide */ }
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(30px); } }
+        .animate-slide-left { animation: slideInLeft 0.35s ease forwards; }
+        .animate-slide-right { animation: slideInRight 0.35s ease forwards; }
+        .animate-slide-out { animation: slideOutRight 0.3s ease forwards; }
+        @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        .animate-slide-down { animation: slideDown 0.4s ease forwards; }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+<body class="font-body-md bg-[#f7f9fb] text-[#191c1e] text-sm min-h-screen">
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <main class="ml-64 min-h-screen flex flex-col">
+        <!-- TopAppBar -->
+        <header class="sticky top-0 z-40 bg-white border-b border-[#c5c6cf] flex justify-between items-center w-full px-8 h-16">
+            <h2 class="font-headline-sm text-xl font-extrabold text-[#031635] flex items-center gap-2">
+                <span class="material-symbols-outlined text-[24px]">layers</span>
+                Production Pipeline
+            </h2>
+            <div class="flex items-center gap-4">
+                <a href="/warehouse/inventory.html"
+                   class="px-4 py-2 bg-white border border-[#c5c6cf] hover:bg-[#f2f4f6] text-[#031635] font-bold rounded-xl text-xs transition-all flex items-center gap-2 shadow-sm">
+                    <span class="material-symbols-outlined text-[16px]">inventory_2</span>
+                    Inventory
+                </a>
+                <a href="/factory-booking/index.html"
+                   class="px-4 py-2 bg-white border border-[#c5c6cf] hover:bg-[#f2f4f6] text-[#191c1e] font-bold rounded-xl text-xs transition-all flex items-center gap-2 shadow-sm">
+                    <span class="material-symbols-outlined text-[16px]">factory</span>
+                    Factory Booking
+                </a>
+            </div>
+        </header>
+
+        <!-- Page Body -->
+        <div class="flex-1 p-8 space-y-6">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="font-headline-md text-2xl font-extrabold text-[#031635] flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[28px]">layers</span>
+                        Production Pipeline
+                    </h2>
+                    <p class="text-xs text-[#44474e] font-medium mt-1">Track production batches from raw material pickup to finished goods confirmation.</p>
+                </div>
+                <div class="flex gap-3">
+                    <div class="bg-white border border-[#c5c6cf] rounded-xl px-4 py-3 text-center shadow-sm">
+                        <p class="text-[9px] uppercase font-bold text-[#44474e] tracking-wider">In Production</p>
+                        <p class="text-xl font-headline-sm font-extrabold text-blue-700 mt-0.5" id="stat-in-production">0</p>
+                    </div>
+                    <div class="bg-white border border-[#c5c6cf] rounded-xl px-4 py-3 text-center shadow-sm">
+                        <p class="text-[9px] uppercase font-bold text-[#44474e] tracking-wider">Confirmed</p>
+                        <p class="text-xl font-headline-sm font-extrabold text-amber-700 mt-0.5" id="stat-confirmed">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban Pipeline -->
+            <div class="flex gap-6 items-start pb-4 w-full">
+                <!-- Stage 1: In Production -->
+                <div class="flex-1 min-w-[20rem]">
+                    <div class="flex items-center justify-between mb-3 px-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+                            <h3 class="text-xs font-extrabold text-blue-700 uppercase tracking-widest">In Production</h3>
+                        </div>
+                        <span class="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full" id="count-in-production">0</span>
+                    </div>
+                    <div id="kanban-in-production" class="kanban-col bg-blue-50/60 border border-blue-100 rounded-2xl p-3 space-y-3">
+                        <p class="text-center text-[11px] text-blue-400 font-bold py-8" id="empty-in-production">No batches in production</p>
+                    </div>
+                </div>
+
+                <!-- Stage 2: Confirmed -->
+                <div class="flex-1 min-w-[20rem]">
+                    <div class="flex items-center justify-between mb-3 px-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                            <h3 class="text-xs font-extrabold text-amber-700 uppercase tracking-widest">Confirmed</h3>
+                        </div>
+                        <span class="text-[10px] font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full" id="count-confirmed">0</span>
+                    </div>
+                    <div id="kanban-confirmed" class="kanban-col bg-amber-50/60 border border-amber-100 rounded-2xl p-3 space-y-3">
+                        <p class="text-center text-[11px] text-amber-400 font-bold py-8" id="empty-confirmed">No confirmed batches</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Confirm Production Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="bg-white border border-[#c5c6cf] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="px-6 py-4 border-b border-[#c5c6cf] bg-emerald-600 text-white">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[22px]">check_circle</span>
+                    </div>
+                    <div>
+                        <h3 class="font-headline-sm font-extrabold text-sm">Confirm Production</h3>
+                        <p class="text-[10px] text-white/70">Verify output quantity and confirm production</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-[#f2f4f6] rounded-xl p-4 space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-[10px] font-bold text-[#44474e] uppercase tracking-wider">Batch Code</span>
+                        <span class="text-xs font-extrabold text-[#031635]" id="confirm-batch-code">—</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-[10px] font-bold text-[#44474e] uppercase tracking-wider">Product</span>
+                        <span class="text-xs font-extrabold text-[#031635]" id="confirm-product">—</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-[10px] font-bold text-[#44474e] uppercase tracking-wider">Produced By</span>
+                        <span class="text-xs font-extrabold text-[#031635]" id="confirm-staff">—</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">Actual Output Qty</label>
+                    <input type="number" id="confirm-qty" min="1"
+                        class="w-full rounded-xl border-[#c5c6cf] text-sm font-extrabold text-[#031635] py-2.5 px-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-center" />
+                    <p class="text-[9px] text-[#44474e] mt-1 font-semibold">Adjust if actual output differs from planned quantity.</p>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                        Notes
+                        <span class="material-symbols-outlined text-[12px] text-[#75777f]" title="Read-only — notes were captured when production started">lock</span>
+                    </label>
+                    <textarea id="confirm-notes" rows="2" readonly tabindex="-1" aria-readonly="true"
+                        class="w-full rounded-xl border-[#c5c6cf] bg-slate-100 text-xs py-2.5 px-3 text-[#44474e] cursor-not-allowed resize-none focus:outline-none"
+                        placeholder="No notes recorded when production was started."></textarea>
+                    <p class="text-[9px] text-[#75777f] mt-1 font-semibold">Notes are captured when production starts and are not editable here.</p>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-[#c5c6cf] bg-[#f2f4f6] flex justify-between gap-3">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 border border-[#75777f] text-[#191c1e] hover:bg-[#e6e8ea] font-bold rounded-xl transition-colors text-xs">
+                    Cancel
+                </button>
+                <button onclick="confirmBatch()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-colors text-xs flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                    Confirm Production
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Raw Material FIFO Picker Modal -->
+    <div id="rm-picker-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="bg-white border border-[#c5c6cf] rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col">
+            <div class="px-6 py-4 border-b border-[#c5c6cf] bg-blue-700 text-white flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[22px]">inventory_2</span>
+                        </div>
+                        <div>
+                            <h3 class="font-headline-sm font-extrabold text-sm">Pick Raw Materials</h3>
+                            <p class="text-[10px] text-white/70">FIFO allocation — oldest batches first</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full" id="rm-picker-batch">—</span>
+                        <button onclick="closeRMPicker()" class="w-8 h-8 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 space-y-4" id="rm-picker-body">
+                <!-- Filled dynamically -->
+            </div>
+            <div class="px-6 py-4 border-t border-[#c5c6cf] bg-[#f2f4f6] flex justify-between gap-3">
+                <button onclick="closeRMPicker()" class="px-4 py-2 border border-[#75777f] text-[#191c1e] hover:bg-[#e6e8ea] font-bold rounded-xl transition-colors text-xs">
+                    Cancel
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="skipRMPicker()" class="px-4 py-2 border border-amber-300 text-amber-700 hover:bg-amber-50 font-bold rounded-xl transition-colors text-xs">
+                        Skip &amp; Confirm
+                    </button>
+                    <button onclick="saveRMPicker()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-colors text-xs flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                        Confirm &amp; Move to Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Detail Modal -->
+    <div id="batch-detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="bg-white border border-[#c5c6cf] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-[#c5c6cf] bg-[#031635] text-white flex items-center justify-between flex-shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[22px]">inventory</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-headline-sm font-extrabold text-sm truncate" id="bd-product">—</h3>
+                        <p class="text-[10px] text-white/70 font-mono" id="bd-batch-code">—</p>
+                    </div>
+                </div>
+                <button onclick="closeBatchDetail()" class="w-8 h-8 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-[#f2f4f6] rounded-xl px-4 py-3">
+                        <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Status</p>
+                        <p class="text-xs font-extrabold text-[#031635] mt-0.5" id="bd-status">—</p>
+                    </div>
+                    <div class="bg-[#f2f4f6] rounded-xl px-4 py-3">
+                        <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Output Qty</p>
+                        <p class="text-xs font-extrabold text-[#031635] mt-0.5" id="bd-qty">—</p>
+                    </div>
+                    <div class="bg-[#f2f4f6] rounded-xl px-4 py-3">
+                        <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Started</p>
+                        <p class="text-xs font-extrabold text-[#031635] mt-0.5" id="bd-started">—</p>
+                    </div>
+                    <div class="bg-[#f2f4f6] rounded-xl px-4 py-3">
+                        <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Confirmed</p>
+                        <p class="text-xs font-extrabold text-[#031635] mt-0.5" id="bd-confirmed">—</p>
+                    </div>
+                </div>
+                <div class="bg-[#f2f4f6] rounded-xl px-4 py-3">
+                    <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Produced By</p>
+                    <p class="text-xs font-extrabold text-[#031635] mt-0.5" id="bd-produced-by">—</p>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5 mb-1.5">
+                        <span class="material-symbols-outlined text-[14px] text-amber-600">sticky_note_2</span>
+                        <p class="text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider">Notes</p>
+                    </div>
+                    <div id="bd-notes" class="rounded-xl border border-[#c5c6cf] bg-white px-4 py-3 text-xs text-[#191c1e] whitespace-pre-wrap break-words min-h-[3rem]">—</div>
+                </div>
+                <div id="bd-factory-section" class="hidden">
+                    <div class="flex items-center gap-1.5 mb-1.5">
+                        <span class="material-symbols-outlined text-[14px] text-purple-600">factory</span>
+                        <p class="text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider">Factory Booking</p>
+                    </div>
+                    <div id="bd-factory" class="rounded-xl border border-[#c5c6cf] bg-white px-4 py-3 text-xs text-[#191c1e]">—</div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-[#c5c6cf] bg-[#f2f4f6] flex justify-end gap-3 flex-shrink-0">
+                <button onclick="closeBatchDetail()" class="px-5 py-2 border border-[#75777f] text-[#191c1e] hover:bg-white font-bold rounded-xl transition-colors text-xs">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-8 right-8 z-[100] hidden transform translate-y-4 opacity-0 transition-all duration-300">
+        <div class="bg-slate-900 text-white rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
+            <span class="material-symbols-outlined text-emerald-400 text-xl font-headline-sm" id="toast-icon">check_circle</span>
+            <div>
+                <p class="text-xs font-bold" id="toast-title">Success</p>
+                <p class="text-[11px] text-slate-300 mt-0.5" id="toast-msg"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── RBAC: Production pipeline access ───────────────────────────────────
+        window.RBAC.enforcePageAccess('production:read', { pageName: 'the Production Pipeline' })
+            .then(() => window.RBAC.applyRBACToDOM())
+            .catch((err) => {
+                if (!String(err.message || '').startsWith('RBAC:')) throw err;
+            });
+
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        async function supabaseAPI({ table, operation, data, filters, columns, returning }) {
+            if (typeof window.erpSupabaseAPI === 'function') {
+                return window.erpSupabaseAPI({ table, operation, data, filters, columns, returning });
+            }
+
+            const resp = await fetch('/api/supabase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table, operation, data, filters, columns, returning })
+            });
+            const result = await resp.json();
+            if (result.error && result.data !== undefined) return result.data;
+            if (result.error) return [];
+            return result.data || [];
+        }
+
+        const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const supabaseClient = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+
+        let allBatches = [];
+        let confirmTargetBatch = null;
+        let factoryBookingsMap = {}; // booking_code -> booking record
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function loadBatches(options = {}) {
+            const attempts = Number(options.attempts || 3);
+            let lastError = null;
+
+            for (let attempt = 1; attempt <= attempts; attempt++) {
+                try {
+                    // Fetch batches and factory bookings in parallel
+                    // Use noCache: true to always get fresh data from DB
+                    const [batchData, fbData] = await Promise.all([
+                        supabaseAPI({
+                            table: 'production_batches',
+                            operation: 'select',
+                            filters: { order: { column: 'created_at', ascending: false } },
+                            noCache: true
+                        }),
+                        supabaseAPI({
+                            table: 'factory_bookings',
+                            operation: 'select',
+                            // Include `id` so we can key the lookup map by the same UUID
+                            // stored on production_batches.factory_booking_id. booking_code
+                            // is also included for any future code-based fallbacks.
+                            columns: 'id, booking_code, booking_date, start_time, end_time, space_name, duration_hours, booking_fee, coordinator_id, status',
+                            noCache: true
+                        })
+                    ]);
+
+                    // Build factory booking lookup map keyed by:
+                    //   1. The booking's UUID `id` (canonical — this is what
+                    //      production_batches.factory_booking_id actually stores).
+                    //   2. The booking_code as a fallback for older pipelines.
+                    // The lookup `factoryBookingsMap[batch.factory_booking_id]` below
+                    // works on either key, so legacy code-stored bindings still resolve.
+                    factoryBookingsMap = {};
+                    (fbData || []).forEach(fb => {
+                        if (fb.id)          factoryBookingsMap[fb.id]          = fb;
+                        if (fb.booking_code) factoryBookingsMap[fb.booking_code] = fb;
+                    });
+
+                    // Merge factory booking data into each batch
+                    allBatches = (batchData || []).map(batch => {
+                        // Normalize status to canonical snake_case keys for kanban rendering
+                        if (batch.status === 'In Progress') batch.status = 'in_production';
+                        const fb = batch.factory_booking_id ? factoryBookingsMap[batch.factory_booking_id] : null;
+                        return fb ? { ...batch, _factoryBooking: fb } : batch;
+                    });
+
+                    renderKanban();
+                    updateStats();
+                    return;
+                } catch (err) {
+                    lastError = err;
+                    if (attempt < attempts) {
+                        await delay(500 * attempt);
+                        continue;
+                    }
+                }
+            }
+
+            console.warn('Error loading batches:', lastError);
+            allBatches = [];
+            renderKanban();
+            updateStats();
+        }
+
+        function renderPipelineState() {
+            renderKanban();
+            updateStats();
+        }
+
+        function patchLocalBatch(batchId, updates) {
+            const idx = allBatches.findIndex(b => b.id === batchId);
+            if (idx === -1) return null;
+            allBatches[idx] = { ...allBatches[idx], ...updates };
+            renderPipelineState();
+            return allBatches[idx];
+        }
+
+        function refreshBatchesInBackground() {
+            loadBatches().catch(err => console.warn('Production refresh failed:', err));
+        }
+
+        function updateStats() {
+            const stages = ['in_production', 'confirmed'];
+            const counts = { 'in_production': 0, 'confirmed': 0 };
+            allBatches.forEach(b => { if (counts.hasOwnProperty(b.status)) counts[b.status]++; });
+
+            document.getElementById('stat-in-production').textContent = counts.in_production;
+            document.getElementById('stat-confirmed').textContent = counts.confirmed;
+        }
+
+        function stageKey(status) {
+            return 'kanban-' + status.replace(/_/g, '-');
+        }
+
+        function stageLabel(status) {
+            const map = {
+                'In Progress': 'In Production',
+                'in_production': 'In Production',
+                'confirmed': 'Confirmed',
+                'completed': 'Completed',
+                'cancelled': 'Cancelled'
+            };
+            return map[status] || status;
+        }
+
+        function stageColor(status) {
+            const map = {
+                'in_production': 'bg-blue-50 border-blue-100 text-blue-700',
+                'confirmed': 'bg-amber-50 border-amber-100 text-amber-700',
+                'completed': 'bg-slate-100 border-slate-200 text-slate-600',
+                'cancelled': 'bg-red-50 border-red-100 text-red-700'
+            };
+            return map[status] || 'bg-gray-50 border-gray-100 text-gray-700';
+        }
+
+        function stageCountId(status) {
+            return 'count-' + status.replace(/_/g, '-');
+        }
+
+        function emptyId(status) {
+            return 'empty-' + status.replace(/_/g, '-');
+        }
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function batchCardHTML(batch) {
+            const date = batch.created_at ? new Date(batch.created_at).toLocaleDateString('en-SG', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+            const fb = batch._factoryBooking;
+            const fbHTML = fb ? `
+                <div class="border-t border-[#c5c6cf]/50 pt-2.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="material-symbols-outlined text-[10px] text-purple-600">factory</span>
+                        <span class="text-[8px] font-extrabold uppercase text-purple-700 tracking-wide">Factory</span>
+                        <span class="text-[9px] font-mono text-purple-700">${fb.booking_code}</span>
+                        <span class="text-[8px] text-[#44474e]">· ${fb.start_time ? fb.start_time.substring(0,5) : '--'}:00-${fb.end_time ? fb.end_time.substring(0,5) : '--'}:00</span>
+                    </div>
+                    <div class="flex gap-2 mt-0.5">
+                        <span class="text-[8px] text-[#44474e]">${fb.space_name || '--'}</span>
+                        <span class="text-[8px] text-[#44474e]">· ${fb.coordinator_id || '--'}</span>
+                    </div>
+                </div>` : '';
+            const notesValue = (batch.notes || '').toString().trim();
+            const notesHTML = notesValue ? `
+                    <div class="border-t border-[#c5c6cf]/50 pt-2.5">
+                        <div class="flex items-center gap-1 mb-1">
+                            <span class="material-symbols-outlined text-[11px] text-amber-600">sticky_note_2</span>
+                            <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Notes</p>
+                        </div>
+                        <p class="text-[10px] text-[#44474e] leading-snug whitespace-pre-wrap break-words">${escapeHtml(notesValue)}</p>
+                    </div>` : '';
+            return `
+                <div class="batch-card bg-white border border-[#c5c6cf] rounded-xl p-4 shadow-sm cursor-pointer animate-slide-left"
+                     onclick="openBatchDetail('${batch.id}')">
+                    <div class="flex items-start justify-between gap-2 mb-3">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-extrabold text-[#031635] truncate">${batch.product_name}</p>
+                            <p class="text-[9px] font-mono text-[#44474e] mt-0.5">${batch.batch_code}</p>
+                        </div>
+                        <span class="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${stageColor(batch.status)}">
+                            ${stageLabel(batch.status)}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-3">
+                        <div>
+                            <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Qty</p>
+                            <p class="text-sm font-extrabold text-[#031635]">${batch.qty_produced} <span class="text-[9px] font-semibold text-[#44474e]">${batch.unit}</span></p>
+                        </div>
+                        <div>
+                            <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Date</p>
+                            <p class="text-[11px] font-semibold text-[#191c1e]">${date}</p>
+                        </div>
+                    </div>
+                    ${batch.produced_by ? `
+                    <div class="border-t border-[#c5c6cf]/50 pt-2.5">
+                        <p class="text-[8px] uppercase font-extrabold text-[#44474e] tracking-wider">Produced By</p>
+                        <p class="text-[10px] font-bold text-[#44474e]">${batch.produced_by}</p>
+                    </div>` : ''}
+                    ${notesHTML}
+                    ${fbHTML}
+                    <div class="flex gap-2 mt-3">
+                        ${renderBatchActions(batch)}
+                    </div>
+                </div>`;
+        }
+
+        function renderBatchActions(batch) {
+            if (batch.status === 'in_production') {
+                return `
+                    <button onclick="event.stopPropagation(); openConfirmModal('${batch.id}')"
+                        class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        Confirm
+                    </button>`;
+            }
+            if (batch.status === 'confirmed') {
+                return `<span class="text-[9px] font-bold text-emerald-700 flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">check_circle</span>Completed</span>`;
+            }
+            return '';
+        }
+
+        function renderKanban() {
+            const stages = ['in_production', 'confirmed'];
+            const statusEmpty = { 'in_production': 'No batches in production', 'confirmed': 'No confirmed batches' };
+
+            stages.forEach(status => {
+                const colId = stageKey(status);
+                const countEl = document.getElementById(stageCountId(status));
+                const batches = allBatches.filter(b => b.status === status);
+                if (countEl) countEl.textContent = batches.length;
+
+                if (batches.length === 0) {
+                    const emptyEl = document.getElementById(emptyId(status));
+                    if (emptyEl) emptyEl.classList.remove('hidden');
+                    document.getElementById(colId).querySelectorAll('.batch-card').forEach(c => c.remove());
+                    return;
+                }
+
+                const emptyEl = document.getElementById(emptyId(status));
+                if (emptyEl) emptyEl.classList.add('hidden');
+                document.getElementById(colId).querySelectorAll('.batch-card').forEach(c => c.remove());
+                let html = '';
+                batches.forEach(b => { html += batchCardHTML(b); });
+                document.getElementById(colId).insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        function openBatchDetail(batchId) {
+            const batch = allBatches.find(b => b.id === batchId);
+            if (!batch) return;
+
+            const fmtDate = (s) => s ? new Date(s).toLocaleString('en-SG', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+            const notes = (batch.notes || '').toString().trim();
+
+            document.getElementById('bd-product').textContent = batch.product_name || '—';
+            document.getElementById('bd-batch-code').textContent = batch.batch_code || '—';
+            const bdStatus = document.getElementById('bd-status');
+            bdStatus.textContent = stageLabel(batch.status);
+            bdStatus.className = 'text-xs font-extrabold mt-0.5 inline-block px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider border ' + stageColor(batch.status);
+            document.getElementById('bd-qty').textContent = (batch.qty_produced != null ? batch.qty_produced : '—') + ' ' + (batch.unit || '');
+            document.getElementById('bd-started').textContent = fmtDate(batch.started_at || batch.created_at);
+            document.getElementById('bd-confirmed').textContent = fmtDate(batch.confirmed_at);
+            document.getElementById('bd-produced-by').textContent = batch.produced_by || '—';
+
+            const notesEl = document.getElementById('bd-notes');
+            if (notes) {
+                notesEl.textContent = notes;
+                notesEl.classList.remove('italic', 'text-[#75777f]');
+                notesEl.classList.add('text-[#191c1e]');
+            } else {
+                notesEl.textContent = 'No notes recorded for this batch.';
+                notesEl.classList.add('italic', 'text-[#75777f]');
+                notesEl.classList.remove('text-[#191c1e]');
+            }
+
+            const factorySection = document.getElementById('bd-factory-section');
+            const factoryEl = document.getElementById('bd-factory');
+            const fb = batch._factoryBooking;
+            if (fb) {
+                factorySection.classList.remove('hidden');
+                factoryEl.innerHTML = `
+                    <div class="space-y-1">
+                        <p class="font-mono text-[10px] text-[#44474e]">${fb.booking_code}</p>
+                        <p class="text-xs">${fb.space_name || '—'} · ${fb.booking_date || '—'}</p>
+                        <p class="text-[10px] text-[#44474e]">${fb.start_time ? fb.start_time.substring(0,5) : '--'}:00 → ${fb.end_time ? fb.end_time.substring(0,5) : '--'}:00 (${fb.duration_hours || 0}h)</p>
+                        <p class="text-[10px] text-[#44474e]">Coordinator: ${fb.coordinator_id || '—'}</p>
+                    </div>`;
+            } else {
+                factorySection.classList.add('hidden');
+            }
+
+            const modal = document.getElementById('batch-detail-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.transform').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeBatchDetail() {
+            const modal = document.getElementById('batch-detail-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('.transform').classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // --- Stage Transitions ---
+        let rmPickerTarget = null; // { batchId, batch, pickItems, picklistRow }
+
+        async function openRMPicker(batchId) {
+            const batch = allBatches.find(b => b.id === batchId);
+            if (!batch) return;
+
+            // Load the dispatch picklist for this production batch
+            const { data: picklistRow } = await supabaseClient
+                .from('dispatch_picklists')
+                .select('*')
+                .eq('batch_code', batch.batch_code)
+                .maybeSingle();
+
+            if (!picklistRow) {
+                showToast('No picklist found', `No raw material picklist for ${batch.batch_code}`, 'error');
+                return;
+            }
+
+            let pickItems;
+            try {
+                pickItems = typeof picklistRow.items === 'string'
+                    ? JSON.parse(picklistRow.items)
+                    : (picklistRow.items || []);
+            } catch {
+                pickItems = [];
+            }
+
+            rmPickerTarget = { batchId, batch, pickItems, picklistRow };
+
+            // Render the RM picker UI
+            const body = document.getElementById('rm-picker-body');
+            document.getElementById('rm-picker-batch').textContent = batch.batch_code;
+
+            let html = '';
+            pickItems.forEach((item, idx) => {
+                const batches = item.consumedBatches || [];
+                const totalAllocated = batches.reduce((s, b) => s + (parseFloat(b.qtyAllocated) || 0), 0);
+                const shortfall = (parseFloat(item.qtyNeeded) || 0) - totalAllocated;
+                const isShort = shortfall > 0.001;
+
+                html += `
+                <div class="border border-[#c5c6cf] rounded-xl overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-3 bg-[#f2f4f6]">
+                        <div>
+                            <p class="text-xs font-extrabold text-[#031635]">${item.name}</p>
+                            <p class="text-[10px] text-[#44474e]">Need: ${(parseFloat(item.qtyNeeded) || 0).toFixed(2)}</p>
+                        </div>
+                        <div class="text-right">
+                            ${isShort
+                                ? `<span class="text-[9px] font-extrabold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Short ${shortfall.toFixed(2)}</span>`
+                                : `<span class="text-[9px] font-extrabold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Fully Allocated</span>`
+                            }
+                            <p class="text-[9px] text-[#44474e] mt-0.5">${batches.length} batch${batches.length !== 1 ? 'es' : ''}</p>
+                        </div>
+                    </div>
+                    <div class="divide-y divide-[#e6e8ea]">`;
+
+                if (batches.length === 0) {
+                    html += `<p class="text-center text-[11px] text-red-400 font-bold py-4">No batches allocated — submit production from recipes page first.</p>`;
+                } else {
+                    batches.forEach((b, bi) => {
+                        const expiry = b.arrivalDate
+                            ? new Date(b.arrivalDate).toLocaleDateString('en-SG', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : '—';
+                        html += `
+                        <div class="flex items-center gap-3 px-4 py-2.5 bg-white">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[14px] text-amber-500">schedule</span>
+                                    <span class="text-[10px] font-extrabold text-[#44474e]">${b.batchCode}</span>
+                                </div>
+                                <p class="text-[9px] text-[#75777f] mt-0.5">Arrived ${expiry}</p>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" step="0.001" min="0"
+                                    data-idx="${idx}" data-bi="${bi}"
+                                    value="${(parseFloat(b.qtyAllocated) || 0).toFixed(3)}"
+                                    class="w-20 rounded-lg border border-[#c5c6cf] text-xs font-extrabold text-[#031635] py-1.5 px-2 text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                <span class="text-[10px] text-[#44474e] font-semibold">kg</span>
+                            </div>
+                            <button onclick="removeRMBatch(${idx}, ${bi})"
+                                class="w-7 h-7 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 flex items-center justify-center transition-colors flex-shrink-0">
+                                <span class="material-symbols-outlined text-[14px]">delete</span>
+                            </button>
+                        </div>`;
+                    });
+                }
+
+                html += `</div></div>`;
+            });
+
+            body.innerHTML = html || '<p class="text-center text-[11px] text-[#44474e] py-8">No raw materials on this picklist.</p>';
+
+            // Show modal
+            const modal = document.getElementById('rm-picker-modal');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.bg-white').classList.remove('scale-95');
+            });
+        }
+
+        function removeRMBatch(itemIdx, batchIdx) {
+            if (!rmPickerTarget) return;
+            const item = rmPickerTarget.pickItems[itemIdx];
+            if (!item) return;
+            item.consumedBatches.splice(batchIdx, 1);
+            openRMPicker(rmPickerTarget.batchId); // re-render
+        }
+
+        async function saveRMPicker() {
+            if (!rmPickerTarget) return;
+            const { batchId, batch, pickItems, picklistRow } = rmPickerTarget;
+
+            // Read edited qty values from inputs
+            document.querySelectorAll('#rm-picker-body input[type=number]').forEach(inp => {
+                const idx = parseInt(inp.dataset.idx);
+                const bi = parseInt(inp.dataset.bi);
+                const val = parseFloat(inp.value) || 0;
+                if (pickItems[idx] && pickItems[idx].consumedBatches[bi]) {
+                    pickItems[idx].consumedBatches[bi].qtyAllocated = val;
+                }
+            });
+
+            // Persist back to dispatch_picklists
+            try {
+                await supabaseClient.from('dispatch_picklists').update({
+                    items: pickItems,
+                    status: 'picked'
+                }).eq('id', picklistRow.id);
+            } catch (e) {
+                showToast('Save Error', 'Could not save picklist: ' + e.message, 'error');
+                return;
+            }
+
+            closeRMPicker();
+            showToast('RM Picklist Saved', `${batch.batch_code} raw materials confirmed. Ready for confirmation…`, 'success');
+            await refreshBatchesInBackground();
+        }
+
+        async function skipRMPicker() {
+            if (!rmPickerTarget) return;
+            const { batchId, batch } = rmPickerTarget;
+            closeRMPicker();
+            showToast('Picklist Skipped', 'Batch remains in In Production.', 'info');
+            await refreshBatchesInBackground();
+        }
+
+        function closeRMPicker() {
+            rmPickerTarget = null;
+            const modal = document.getElementById('rm-picker-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        async function openRMPickerAction(batchId) {
+            const batch = allBatches.find(b => b.id === batchId);
+            if (!batch) return;
+
+            // Open the RM picker to do FIFO allocation first
+            await openRMPicker(batchId);
+        }
+
+        async function openConfirmModal(batchId) {
+            confirmTargetBatch = allBatches.find(b => b.id === batchId);
+            if (!confirmTargetBatch) return;
+
+            document.getElementById('confirm-batch-code').textContent = confirmTargetBatch.batch_code;
+            document.getElementById('confirm-product').textContent = confirmTargetBatch.product_name;
+            document.getElementById('confirm-staff').textContent = confirmTargetBatch.produced_by || '—';
+            document.getElementById('confirm-qty').value = confirmTargetBatch.qty_produced;
+            document.getElementById('confirm-notes').value = confirmTargetBatch.notes || '';
+
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); modal.querySelector('.transform').classList.remove('scale-95'); }, 10);
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('.transform').classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); confirmTargetBatch = null; }, 300);
+        }
+
+        async function confirmBatch() {
+            if (!confirmTargetBatch) return;
+            const confirmedBatch = { ...confirmTargetBatch };
+            const actualQty = parseInt(document.getElementById('confirm-qty').value) || confirmTargetBatch.qty_produced;
+            // Notes are locked (read-only in the modal) — keep whatever was captured at production start.
+
+            confirmTargetBatch.qty_produced = actualQty;
+            // Do NOT overwrite notes — they were captured at production start and must remain immutable here.
+
+            try {
+                // Phase 4.4 — Idempotency guard: skip if already confirmed
+                // Also fetch consumed_rm_batches to determine if stock was already deducted
+                const { data: existingBatch } = await supabaseClient
+                    .from('production_batches')
+                    .select('confirmed_at, consumed_rm_batches')
+                    .eq('id', confirmTargetBatch.id)
+                    .maybeSingle();
+                if (existingBatch?.confirmed_at) {
+                    showToast('Already Confirmed', `Batch ${confirmTargetBatch.batch_code} was already confirmed.`, 'error');
+                    closeConfirmModal();
+                    return;
+                }
+
+                // Phase 5.1 — Read dispatch_picklists to get consumed RM batches for traceability
+                // If consumed_rm_batches is already set on the batch (stock deducted at submit time),
+                // skip re-deduction to avoid double-counting.
+                let consumedBatches = [];
+                const existingConsumed = existingBatch?.consumed_rm_batches;
+                const isAlreadyDeducted = Array.isArray(existingConsumed) && existingConsumed.length > 0;
+                if (isAlreadyDeducted) {
+                    // For existing consumed batches (from warehouse/recipes.html production submit),
+                    // ensure unitCost is populated by looking it up from inventory_batches if missing.
+                    consumedBatches = await Promise.all((existingConsumed || []).map(async (c) => {
+                        if (c.unitCost != null && c.unitCost > 0) return c;
+                        // Fallback: look up cost_per_unit from inventory_batches
+                        const { data: batchRow } = await supabaseClient
+                            .from('inventory_batches')
+                            .select('cost_per_unit')
+                            .eq('batch_code', c.batchCode)
+                            .maybeSingle();
+                        return {
+                            ...c,
+                            unitCost: batchRow?.cost_per_unit || c.unitCost || 0
+                        };
+                    }));
+                } else {
+                    // Legacy path: deduct stock for batches created before this fix
+                    const { data: picklistRows } = await supabaseClient
+                        .from('dispatch_picklists')
+                        .select('*')
+                        .eq('batch_code', confirmTargetBatch.batch_code)
+                        .maybeSingle();
+                    if (picklistRows?.items) {
+                        const pickItems = typeof picklistRows.items === 'string'
+                            ? JSON.parse(picklistRows.items)
+                            : picklistRows.items;
+                        for (const item of pickItems) {
+                            for (const consumed of item.consumedBatches || []) {
+                                consumedBatches.push({
+                                    batchCode: consumed.batchCode,
+                                    itemCode: consumed.itemCode,
+                                    itemName: consumed.itemName,
+                                    qtyConsumed: consumed.qtyAllocated || consumed.qtyConsumed || 0,
+                                    unitCost: consumed.unitCost || 0,
+                                    inventoryId: consumed.inventoryId || null
+                                });
+
+                                // Deduct from inventory_batches.current_qty (FIFO)
+                                if (consumed.batchId) {
+                                    const { data: batchRow } = await supabaseClient
+                                        .from('inventory_batches')
+                                        .select('id, current_qty, inventory_id')
+                                        .eq('id', consumed.batchId)
+                                        .maybeSingle();
+                                    if (batchRow) {
+                                        await supabaseClient
+                                            .from('inventory_batches')
+                                            .update({ current_qty: Math.max(0, (parseFloat(batchRow.current_qty) || 0) - (consumed.qtyAllocated || 0)) })
+                                            .eq('id', batchRow.id);
+                                        if (!consumed.inventoryId && batchRow.inventory_id) {
+                                            consumed.inventoryId = batchRow.inventory_id;
+                                        }
+                                    }
+                                }
+
+                                // Deduct from inventory.current_stock (raw material total)
+                                let invRow = null;
+                                if (consumed.inventoryId) {
+                                    const { data } = await supabaseClient
+                                        .from('inventory')
+                                        .select('id, current_stock')
+                                        .eq('id', consumed.inventoryId)
+                                        .maybeSingle();
+                                    invRow = data;
+                                }
+                                if (!invRow) {
+                                    const { data } = await supabaseClient
+                                        .from('inventory')
+                                        .select('id, current_stock')
+                                        .eq('name', consumed.itemName)
+                                        .eq('category', 'raw_material')
+                                        .maybeSingle();
+                                    invRow = data;
+                                }
+                                if (invRow) {
+                                    await supabaseClient
+                                        .from('inventory')
+                                        .update({ current_stock: Math.max(0, (parseFloat(invRow.current_stock) || 0) - (consumed.qtyAllocated || 0)) })
+                                        .eq('id', invRow.id);
+                                } else {
+                                    console.warn('[confirmBatch] raw material not found in inventory:', consumed.itemName);
+                                }
+
+                                // Insert into production_rm_consumption for full genealogy
+                                await supabaseClient.from('production_rm_consumption').insert({
+                                    production_batch_code: confirmTargetBatch.batch_code,
+                                    rm_batch_code: consumed.batchCode,
+                                    rm_item_code: consumed.itemCode,
+                                    rm_item_name: consumed.itemName,
+                                    qty_consumed: consumed.qtyAllocated || consumed.qtyConsumed || 0,
+                                    unit_cost_at_time: consumed.unitCost || null
+                                }).catch(e => console.warn('Could not insert rm consumption:', e));
+                            }
+                        }
+                    }
+                }
+
+                // Calculate total RM cost at point of consumption = Σ(qty_consumed × unit_cost_at_time)
+                const totalRmCost = (consumedBatches || []).reduce((sum, b) => {
+                    return sum + (parseFloat(b.qtyConsumed) || 0) * (parseFloat(b.unitCost) || 0);
+                }, 0);
+
+                await supabaseAPI({
+                    table: 'production_batches',
+                    operation: 'update',
+                    data: {
+                        status: 'confirmed',
+                        qty_produced: actualQty,
+                        // Notes are intentionally omitted — they were captured at production start
+                        // and must remain immutable in the confirm step.
+                        fg_lot_number: confirmTargetBatch.batch_code,
+                        consumed_rm_batches: consumedBatches,
+                        total_rm_cost: Math.round(totalRmCost * 10000) / 10000,
+                        confirmed_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    },
+                    filters: { eq: { id: confirmTargetBatch.id } }
+                });
+
+                // Also update finished goods stock in inventory.
+                try {
+                    // Try match by name first, then fall back to product_code from the batch record
+                    let invRows = await supabaseAPI({
+                        table: 'inventory',
+                        operation: 'select',
+                        columns: 'id, current_stock, maximum_stock',
+                        filters: {
+                            eq: {
+                                name: confirmTargetBatch.product_name,
+                                category: 'finished_good'
+                            }
+                        }
+                    });
+                    let invData = invRows?.[0];
+
+                    // Fallback: match by product_code if name lookup failed
+                    if (!invData?.id && confirmTargetBatch.product_code) {
+                        invRows = await supabaseAPI({
+                            table: 'inventory',
+                            operation: 'select',
+                            columns: 'id, current_stock, maximum_stock',
+                            filters: {
+                                eq: {
+                                    item_code: confirmTargetBatch.product_code,
+                                    category: 'finished_good'
+                                }
+                            }
+                        });
+                        invData = invRows?.[0];
+                    }
+
+                    if (invData?.id) {
+                        await supabaseAPI({
+                            table: 'inventory',
+                            operation: 'update',
+                            data: { current_stock: (Number(invData.current_stock) || 0) + actualQty },
+                            filters: { eq: { id: invData.id } }
+                        });
+                    } else {
+                        console.warn('[confirmBatch] finished good not found in inventory:', confirmTargetBatch.product_name, '/', confirmTargetBatch.product_code);
+                    }
+
+                    // Auto-update finished good unit_cost from recipe's estimated_cost
+                    if (confirmTargetBatch.recipe_code) {
+                        try {
+                            const recipeRows = await supabaseAPI({
+                                table: 'production_recipes',
+                                operation: 'select',
+                                columns: 'estimated_cost',
+                                filters: { eq: { recipe_code: confirmTargetBatch.recipe_code } }
+                            });
+                            const recipe = recipeRows?.[0];
+                            if (recipe && typeof recipe.estimated_cost === 'number' && recipe.estimated_cost > 0) {
+                                await supabaseAPI({
+                                    table: 'inventory',
+                                    operation: 'update',
+                                    data: { unit_cost: recipe.estimated_cost },
+                                    filters: { eq: { name: confirmTargetBatch.product_name, category: 'finished_good' } }
+                                });
+                            }
+                        } catch (e) {
+                            console.warn('Could not auto-update FG unit_cost:', e);
+                        }
+                    }
+                } catch (e) { console.warn('Could not update inventory stock:', e); }
+            } catch (err) {
+                showToast('Error', 'Failed to confirm batch: ' + err.message, 'error');
+                return;
+            }
+
+            closeConfirmModal();
+            patchLocalBatch(confirmTargetBatch.id, {
+                status: 'confirmed',
+                qty_produced: actualQty,
+                // notes are unchanged — captured at production start, immutable in confirm
+                confirmed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+            refreshBatchesInBackground();
+            showToast('Production Confirmed', `${confirmedBatch.batch_code} — ${actualQty} ${confirmedBatch.unit} confirmed and inventory updated.`);
+            confirmTargetBatch = null;
+        }
+
+        // sendToWarehouse — kept as no-op stub; confirmed is now the final state
+        async function sendToWarehouse(batchId) {
+            showToast('Already Confirmed', 'This batch is already confirmed and inventory updated.', 'info');
+        }
+
+        async function cancelBatch(batchId) {
+            const batch = allBatches.find(b => b.id === batchId);
+            if (!batch) return;
+            if (!confirm(`Cancel production batch ${batch.batch_code}? This will reverse raw material stock deductions.`)) return;
+            try {
+                // Phase 4.5 — Restore RM stock from production_batches.consumed_rm_batches (not dispatch_picklists — that gets deleted)
+                // consumed_rm_batches was saved on the batch when confirmBatch() ran
+                let consumedItems = batch.consumed_rm_batches;
+                if (!consumedItems && batch.id) {
+                    // Fallback: fetch fresh from DB in case local state is stale
+                    const { data: freshBatch } = await supabaseClient
+                        .from('production_batches')
+                        .select('consumed_rm_batches')
+                        .eq('id', batch.id)
+                        .maybeSingle();
+                    consumedItems = freshBatch?.consumed_rm_batches;
+                }
+                consumedItems = consumedItems || [];
+
+                for (const consumed of consumedItems) {
+                    // Restore qty to the inventory_batches record
+                    if (consumed.batchCode) {
+                        const { data: batchRow } = await supabaseClient
+                            .from('inventory_batches')
+                            .select('id, current_qty')
+                            .eq('batch_code', consumed.batchCode)
+                            .maybeSingle();
+                        if (batchRow) {
+                            await supabaseClient.from('inventory_batches').update({
+                                current_qty: (parseFloat(batchRow.current_qty) || 0) + (parseFloat(consumed.qtyConsumed) || 0)
+                            }).eq('id', batchRow.id);
+                        }
+                    }
+
+                    // Restore inventory.current_stock — prefer inventory_id, fall back to name+category
+                    let invRow = null;
+                    if (consumed.inventoryId) {
+                        const { data } = await supabaseClient
+                            .from('inventory')
+                            .select('id, current_stock')
+                            .eq('id', consumed.inventoryId)
+                            .maybeSingle();
+                        invRow = data;
+                    }
+                    if (!invRow && consumed.itemName) {
+                        const { data } = await supabaseClient
+                            .from('inventory')
+                            .select('id, current_stock')
+                            .eq('name', consumed.itemName)
+                            .eq('category', 'raw_material')
+                            .maybeSingle();
+                        invRow = data;
+                    }
+                    if (invRow) {
+                        await supabaseClient.from('inventory').update({
+                            current_stock: (parseFloat(invRow.current_stock) || 0) + (parseFloat(consumed.qtyConsumed) || 0)
+                        }).eq('id', invRow.id);
+                    } else {
+                        console.warn('[cancelBatch] raw material not found in inventory:', consumed.itemName);
+                    }
+                }
+
+                // Delete transient dispatch records
+                await supabaseClient.from('dispatch_picklists').delete().eq('batch_code', batch.batch_code);
+                // Delete any RM consumption records for this batch
+                await supabaseClient.from('production_rm_consumption').delete().eq('production_batch_code', batch.batch_code);
+
+                await supabaseAPI({
+                    table: 'production_batches',
+                    operation: 'update',
+                    data: {
+                        status: 'cancelled',
+                        updated_at: new Date().toISOString()
+                    },
+                    filters: { eq: { id: batchId } }
+                });
+            } catch (err) {
+                showToast('Error', 'Failed to cancel batch.', 'error');
+                return;
+            }
+            patchLocalBatch(batchId, {
+                status: 'cancelled',
+                updated_at: new Date().toISOString()
+            });
+            refreshBatchesInBackground();
+            showToast('Batch Cancelled', `Production batch ${batch.batch_code} cancelled. RM stock restored.`);
+        }
+
+        async function updateBatchStatus(batchId, newStatus) {
+            try {
+                await supabaseAPI({
+                    table: 'production_batches',
+                    operation: 'update',
+                    data: {
+                        status: newStatus,
+                        updated_at: new Date().toISOString()
+                    },
+                    filters: { eq: { id: batchId } }
+                });
+            } catch (err) {
+                showToast('Error', 'Failed to update batch status.', 'error');
+                return;
+            }
+            patchLocalBatch(batchId, {
+                status: newStatus,
+                updated_at: new Date().toISOString()
+            });
+            refreshBatchesInBackground();
+        }
+
+        function showToast(title, msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-msg').textContent = msg;
+            const icon = document.getElementById('toast-icon');
+            icon.textContent = type === 'success' ? 'check_circle' : 'error';
+            icon.className = `material-symbols-outlined text-xl ${type === 'success' ? 'text-emerald-400' : 'text-red-400'}`;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
+            setTimeout(() => { toast.classList.add('translate-y-4', 'opacity-0'); setTimeout(() => toast.classList.add('hidden'), 300); }, 3000);
+        }
+
+        // Poll removed — no warehouse stage
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadBatches();
+        });
+
+        // Close confirm modal on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeConfirmModal();
+            }
+        });
+    </script>
+</body>
+</html>
