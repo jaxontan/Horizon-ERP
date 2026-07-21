@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cost of Operations - Finance Ops</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
+        <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+        <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <script src="/public/js/chart.umd.js"></script>
+<script src="/public/js/erp-supabase.js"></script>
+<script src="/public/js/rbac.js?v=20250701"></script>
+<script src="/components/sidebar.js"></script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f7f9fb;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+<!-- TopAppBar Shell -->
+<header class="flex justify-between items-center w-full px-margin h-16 ml-64 max-w-[calc(100%-16rem)] bg-surface dark:bg-background border-b border-outline-variant dark:border-outline sticky top-0 z-30">
+<div class="flex items-center gap-stack-md">
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed mobile-show">Financial Dashboard</h1>
+</div></div><div class="flex items-center gap-stack-md">
+</div></header>
+    <!-- Tabs Navigation -->
+    <div class="bg-surface border-b border-outline-variant sticky top-16 z-30 ml-64 px-margin w-[calc(100%-16rem)]">
+        <nav class="flex gap-6 pt-4">
+            <a href="opertation.html" id="tab-costs" class="pb-3 border-b-2 border-primary text-primary font-bold transition-colors">Cost of Operations</a>
+            <a href="account.html" id="tab-health" class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-colors">Account Portfolio</a>
+        </nav>
+    </div>
+
+<div class='flex-1 overflow-y-auto pb-10'>
+    <!-- Tab Contents -->
+    <div id="content-costs" class="tab-content block ml-64 mt-8">
+        <div class=" p-margin w-full min-h-[calc(100vh-64px)]">
+<!-- Header Section -->
+<div class="mb-stack-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+        <h2 class="font-headline-lg text-headline-lg text-primary mb-unit">Cost of Operations</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant">Real-time cost tracking and operational expenditure analysis across core divisions.</p>
+    </div>
+</div>
+
+<!-- Financial Costing Period Selector -->
+<div class="bg-white border border-outline-variant p-stack-lg rounded-xl mb-stack-lg shadow-sm">
+    <div class="flex flex-col xl:flex-row xl:items-center justify-end gap-4">
+
+        <!-- Period Controls -->
+        <div class="flex flex-col w-full gap-2">
+            <div class="flex w-full items-center gap-3">
+                <!-- Year Selector -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <span class="material-symbols-outlined text-on-surface-variant" style="font-size:18px;">calendar_today</span>
+                    <select id="year-select" onchange="onYearChange(this.value)" class="px-3 py-1.5 text-xs font-bold rounded-md border border-outline-variant bg-white text-on-surface focus:outline-none focus:border-primary cursor-pointer">
+                        <!-- years populated dynamically -->
+                    </select>
+                </div>
+
+                <!-- Quick Clicks Month Tabs (Jan - Dec + Whole Year) -->
+                <div class="flex w-full rounded-lg overflow-hidden border border-outline-variant bg-surface-container-low p-1 gap-1">
+                    <button onclick="setPeriod('jan')" id="btn-period-jan" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="January">Jan</button>
+                    <button onclick="setPeriod('feb')" id="btn-period-feb" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="February">Feb</button>
+                    <button onclick="setPeriod('mar')" id="btn-period-mar" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="March">Mar</button>
+                    <button onclick="setPeriod('apr')" id="btn-period-apr" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="April">Apr</button>
+                    <button onclick="setPeriod('may')" id="btn-period-may" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all bg-primary text-on-primary shadow-sm" title="May">May</button>
+                    <button onclick="setPeriod('jun')" id="btn-period-jun" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="June">Jun</button>
+                    <button onclick="setPeriod('jul')" id="btn-period-jul" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="July">Jul</button>
+                    <button onclick="setPeriod('aug')" id="btn-period-aug" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="August">Aug</button>
+                    <button onclick="setPeriod('sep')" id="btn-period-sep" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="September">Sep</button>
+                    <button onclick="setPeriod('oct')" id="btn-period-oct" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="October">Oct</button>
+                    <button onclick="setPeriod('nov')" id="btn-period-nov" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="November">Nov</button>
+                    <button onclick="setPeriod('dec')" id="btn-period-dec" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white" title="December">Dec</button>
+                    <button onclick="setPeriod('year')" id="btn-period-year" class="flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white border-l border-outline-variant/60 ml-1 pl-3" title="Whole Year (Jan - Dec)">Whole Year</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend / Full names -->
+    <div class="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold text-on-surface-variant/60 border-t border-outline-variant/40 pt-2">
+        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-primary/40"></span> Monthly tabs show the selected calendar month for the selected year</span>
+        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-primary/40"></span> Whole Year aggregates Jan 1 – Dec 31 for the selected year</span>
+    </div>
+</div>
+
+<!-- Three Prominent Cards (Bento Style Layout) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter mb-stack-lg">
+    <div class="bg-white border border-outline-variant p-stack-lg rounded-xl flex flex-col justify-between hover:border-secondary transition-colors group">
+        <div>
+            <div class="flex justify-between items-start mb-stack-md">
+                <div class="p-3 bg-secondary-container/20 rounded-lg text-secondary group-hover:bg-secondary group-hover:text-on-secondary transition-colors">
+                    <span class="material-symbols-outlined">history</span>
+                </div>
+            </div>
+            <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-unit">Unsold Stock Value</p>
+            <h3 id="past-sales-value" class="font-headline-md text-headline-md text-primary">$--</h3>
+        </div>
+    </div>
+    <div class="bg-white border border-outline-variant p-stack-lg rounded-xl flex flex-col justify-between hover:border-secondary transition-colors group">
+        <div>
+            <div class="flex justify-between items-start mb-stack-md">
+                <div class="p-3 bg-secondary-container/20 rounded-lg text-secondary group-hover:bg-secondary group-hover:text-on-secondary transition-colors">
+                    <span class="material-symbols-outlined">monitoring</span>
+                </div>
+            </div>
+            <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-unit">Current Sales (<span id="current-sales-period-label">May</span>)</p>
+            <h3 id="current-sales-value" class="font-headline-md text-headline-md text-primary">$--</h3>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-stack-lg">
+    <!-- Material Cost Card -->
+    <div class="bg-white border border-outline-variant p-stack-lg rounded-xl flex flex-col justify-between hover:border-primary transition-all duration-300 group cost-card cursor-pointer relative shadow-sm hover:-translate-y-0.5 hover:shadow-md" data-cost-type="material">
+        <div>
+            <div class="flex justify-between items-start mb-stack-md">
+                <div class="p-3 bg-surface-container-low rounded-lg text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                    <span class="material-symbols-outlined">inventory_2</span>
+                </div>
+            </div>
+            <div class="flex justify-between items-baseline mb-unit">
+                <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Material Cost</p>
+            </div>
+            <h3 id="material-cost-value" class="font-headline-md text-headline-md text-primary">$--</h3>
+        </div>
+    </div>
+
+    <!-- Labour Cost Card -->
+    <div onclick="window.location.href='/staff-management/salaries.html'" class="bg-white border border-outline-variant p-stack-lg rounded-xl flex flex-col justify-between hover:border-primary transition-all duration-300 group cost-card cursor-pointer relative shadow-sm hover:-translate-y-0.5 hover:shadow-md" data-cost-type="labour">
+        <div>
+            <div class="flex justify-between items-start mb-stack-md">
+                <div class="p-3 bg-surface-container-low rounded-lg text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                    <span class="material-symbols-outlined">groups</span>
+                </div>
+            </div>
+            <div class="flex justify-between items-baseline mb-unit">
+                <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Labour Cost</p>
+            </div>
+            <h3 id="labour-cost-value" class="font-headline-md text-headline-md text-primary">$--</h3>
+        </div>
+        <div class="mt-stack-lg grid grid-cols-2 gap-stack-md pt-stack-md border-t border-outline-variant">
+            <div>
+                <p class="text-[10px] font-bold text-on-surface-variant uppercase">Staff Roster</p>
+                <p id="labour-staff-count" class="font-data-tabular text-data-tabular text-on-surface">0 Members</p>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-on-surface-variant uppercase">Payroll Status</p>
+                <p id="labour-payroll-status" class="font-data-tabular text-data-tabular text-on-surface">0% Paid</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overheads Card (Renamed from Indirect Cost) -->
+    <div class="bg-white border border-outline-variant p-stack-lg rounded-xl flex flex-col justify-between hover:border-primary transition-all duration-300 group cost-card cursor-pointer relative shadow-sm hover:-translate-y-0.5 hover:shadow-md" data-cost-type="overheads">
+        <div>
+            <div class="flex justify-between items-start mb-stack-md">
+                <div class="p-3 bg-surface-container-low rounded-lg text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                    <span class="material-symbols-outlined">account_balance</span>
+                </div>
+            </div>
+            <div class="flex justify-between items-baseline mb-unit">
+                <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Overheads</p>
+            </div>
+            <h3 id="overheads-cost-value" class="font-headline-md text-headline-md text-primary">$--</h3>
+        </div>
+        <div class="mt-stack-lg pt-stack-md border-t border-outline-variant">
+            <ul id="overheads-preview-list" class="space-y-unit">
+                <li class="flex justify-between text-body-md">
+                    <span class="text-on-surface-variant">Utilities</span>
+                    <span id="oh-util-val" class="font-data-tabular">$--</span>
+                </li>
+                <li class="flex justify-between text-body-md">
+                    <span class="text-on-surface-variant">Factory Operations</span>
+                    <span id="oh-factory-val" class="font-data-tabular">$--</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- 12-Month Financial Performance Trends Chart -->
+<div class="bg-white border border-outline-variant rounded-xl p-6 mb-stack-lg shadow-sm">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+            <h4 class="font-headline-sm text-headline-sm text-primary font-bold">12-Month Financial Performance Trends</h4>
+            <p class="text-xs text-on-surface-variant mt-0.5">Comparative trajectory of Sales revenue and Total Operating Cost over the last 12 months.</p>
+        </div>
+
+        <!-- Legend and summary stats -->
+        <div class="flex flex-wrap items-center gap-6">
+            <div class="flex items-center gap-2">
+                <span class="w-3.5 h-1 rounded-full bg-primary flex-shrink-0" style="height: 3px;"></span>
+                <div>
+                    <span class="text-[10px] text-on-surface-variant uppercase font-bold block leading-none">Gross Sales (Line)</span>
+                    <span class="text-sm font-extrabold text-primary font-data-tabular" id="chart-gross-sales">$--</span>
+                </div>
+            </div>
+
+            <!-- Stacked Cost Categories -->
+            <div class="flex flex-wrap items-center gap-4 border-l border-outline-variant/60 pl-4">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded bg-[#475f87] flex-shrink-0"></span>
+                    <div>
+                        <span class="text-[9px] text-on-surface-variant uppercase font-bold block leading-none">Material Cost</span>
+                        <span class="text-xs font-bold text-on-surface font-data-tabular" id="chart-material-cost">$--</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded bg-[#b7d0fe] flex-shrink-0"></span>
+                    <div>
+                        <span class="text-[9px] text-on-surface-variant uppercase font-bold block leading-none">Labour Cost</span>
+                        <span class="text-xs font-bold text-on-surface font-data-tabular" id="chart-labour-cost">$--</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded bg-[#031635] flex-shrink-0"></span>
+                    <div>
+                        <span class="text-[9px] text-on-surface-variant uppercase font-bold block leading-none">Overheads</span>
+                        <span class="text-xs font-bold text-on-surface font-data-tabular" id="chart-overhead-cost">$--</span>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+    </div>
+
+    <!-- Chart.js Canvas Chart -->
+    <div class="relative w-full" style="height:320px;">
+        <canvas id="operationsChart"></canvas>
+    </div>
+</div>
+</div>
+</div>
+</div>
+
+
+<div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center hidden" id="prediction-modal"><div class="bg-white rounded-xl max-w-2xl w-full p-margin shadow-2xl"><div class="flex justify-between items-center mb-stack-lg"><h3 class="font-headline-md">Predictive Analysis Report</h3><button class="material-symbols-outlined" onclick="this.closest('#prediction-modal').classList.add('hidden')">close</button></div><div class="grid grid-cols-2 gap-gutter"><div class="p-stack-md bg-surface-container-low rounded-lg"><p class="font-label-md uppercase text-on-surface-variant mb-unit">Predicted Revenue (Next Q)</p><p class="text-headline-sm font-bold text-primary">$2.4M</p><p class="text-[12px] text-green-600 flex items-center gap-unit"><span class="material-symbols-outlined text-[14px]">trending_up</span> 15% increase</p></div><div class="p-stack-md bg-surface-container-low rounded-lg"><p class="font-label-md uppercase text-on-surface-variant mb-unit">Stock Requirement</p><p class="text-headline-sm font-bold text-primary">+24% Polymer</p><p class="text-[12px] text-on-surface-variant">Based on Q3 sales velocity</p></div></div><div class="mt-stack-lg"><h4 class="font-label-md uppercase mb-stack-sm">Strategic Recommendations</h4><ul class="space-y-stack-sm text-body-md"><li class="flex gap-2 items-start"><span class="material-symbols-outlined text-primary text-[20px]">check_circle</span><span>Increase procurement of High-grade Polymer Batch B by 15th Nov.</span></li><li class="flex gap-2 items-start"><span class="material-symbols-outlined text-primary text-[20px]">check_circle</span><span>Schedule additional 200 labor hours for production line Alpha.</span></li></ul></div></div></div>
+</div>
+
+<script>
+        const searchInput = document.querySelector('input[type="text"]');
+        if (searchInput) {
+            searchInput.addEventListener('focus', () => {
+                searchInput.parentElement.classList.add('scale-105');
+            });
+            searchInput.addEventListener('blur', () => {
+                searchInput.parentElement.classList.remove('scale-105');
+            });
+        }
+
+        let _overheadsCache = [];
+        let _factoryBookingsCache = [];
+        let _staffCache = [];
+        let _salariesCache = [];
+
+
+        // Load PO-based material cost for a period
+        // = sum of all raw_material_orders total_amount created in the period
+        async function loadPOMaterialCostForPeriod(period) {
+            const { dateFrom, dateTo } = getPeriodDates(period);
+            try {
+                const poOrders = await supabaseAPI({
+                    table: 'raw_material_orders',
+                    operation: 'select',
+                    columns: 'total_amount, created_at',
+                    filters: {
+                        gte: { created_at: dateFrom },
+                        lte: { created_at: dateTo + 'T23:59:59' }
+                    }
+                });
+                const total = (poOrders || []).reduce((sum, o) => {
+                    return sum + (parseFloat(o.total_amount) || 0);
+                }, 0);
+                console.log('[PO MATERIAL COST DEBUG]', period, ':', total, 'from', (poOrders || []).length, 'orders');
+                return total;
+            } catch (err) {
+                console.warn('[PO MATERIAL COST DEBUG] error for', period, ':', err);
+                return 0;
+            }
+        }
+
+        // Custom date range PO material cost
+        async function fetchPOMaterialCostForRange(dateFrom, dateTo) {
+            try {
+                const poOrders = await supabaseAPI({
+                    table: 'raw_material_orders',
+                    operation: 'select',
+                    columns: 'total_amount',
+                    filters: {
+                        gte: { created_at: dateFrom },
+                        lte: { created_at: dateTo + 'T23:59:59' }
+                    }
+                });
+                const total = (poOrders || []).reduce((sum, o) => {
+                    return sum + (parseFloat(o.total_amount) || 0);
+                }, 0);
+                return total;
+            } catch (err) { return 0; }
+        }
+
+        // Load finished goods inventory — Unsold Stock Value = current_stock × unit_cost of all finished products
+        async function loadUnsoldStockValue() {
+            try {
+                const fgData = await supabaseAPI({
+                    table: 'inventory',
+                    operation: 'select',
+                    columns: 'item_code, name, current_stock, unit_cost, category',
+                    filters: { eq: { category: 'finished_good' } }
+                });
+                const total = (fgData || []).reduce((sum, item) => {
+                    return sum + (parseFloat(item.current_stock) || 0) * (parseFloat(item.unit_cost) || 0);
+                }, 0);
+                console.log('[UNSOLD STOCK DEBUG] finished goods:', fgData?.length, '→ total value:', total);
+                return total;
+            } catch (err) { console.warn('[UNSOLD STOCK DEBUG] error:', err); return 0; }
+        }
+
+        function getFactoryOverheadsTotal(period) {
+            if (_overheadsCache.length === 0) return 0;
+            const { dateFrom, dateTo } = getPeriodDates(period);
+            const from = new Date(dateFrom);
+            const to = new Date(dateTo + 'T23:59:59');
+            return _overheadsCache.reduce((sum, entry) => {
+                if (entry.source !== 'factory_booking') return sum;
+                const entryDate = new Date(entry.created_at);
+                if (entryDate >= from && entryDate <= to) {
+                    return sum + entry.amount;
+                }
+                return sum;
+            }, 0);
+        }
+
+        function getAdminOverheadsTotal(period) {
+            if (_overheadsCache.length === 0) return 0;
+            const { dateFrom, dateTo } = getPeriodDates(period);
+            const from = new Date(dateFrom);
+            const to = new Date(dateTo + 'T23:59:59');
+            return _overheadsCache.reduce((sum, entry) => {
+                if (entry.source !== 'overhead') return sum;
+                const entryDate = new Date(entry.created_at);
+                if (entryDate >= from && entryDate <= to) {
+                    return sum + entry.amount;
+                }
+                return sum;
+            }, 0);
+        }
+
+        // Initialize Supabase client
+        const supabaseUrl = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const dashboardClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+        async function supabaseAPI({ table, operation, data, filters, columns, returning }) {
+            // Try direct Supabase client first (same approach as fulfillment page)
+            if (dashboardClient) {
+                try {
+                    if (operation === 'select') {
+                        let query = dashboardClient.from(table).select(columns || '*');
+                        // Apply filters
+                        if (filters) {
+                            if (filters.eq) Object.entries(filters.eq).forEach(([col, val]) => { query = query.eq(col, val); });
+                            if (filters.gte) Object.entries(filters.gte).forEach(([col, val]) => { query = query.gte(col, val); });
+                            if (filters.lte) Object.entries(filters.lte).forEach(([col, val]) => { query = query.lte(col, val); });
+                        }
+                        const { data: result, error } = await query;
+                        if (error) { console.warn(`[dashboard API] ${table} select error:`, error); return []; }
+                        return result || [];
+                    }
+                    // Fallback to server proxy for non-select ops
+                    const resp = await fetch('/api/supabase', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ table, operation, data, filters, columns, returning })
+                    });
+                    const result = await resp.json();
+                    if (result.error && result.data !== undefined) return result.data;
+                    if (result.error) return [];
+                    return result.data || [];
+                } catch (e) {
+                    console.warn(`[dashboard API] ${table} direct call failed, trying server proxy:`, e);
+                }
+            }
+            // Fallback to server proxy
+            try {
+                const resp = await fetch('/api/supabase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ table, operation, data, filters, columns, returning })
+                });
+                const result = await resp.json();
+                if (result.error && result.data !== undefined) return result.data;
+                if (result.error) return [];
+                return result.data || [];
+            } catch (err) {
+                console.warn('[dashboard API] Server proxy also failed:', err);
+                return [];
+            }
+        }
+
+        async function loadOverheadsFromSupabase() {
+            try {
+                const [overheadRows, bookingRows] = await Promise.all([
+                    supabaseAPI({ table: 'overheads', operation: 'select', columns: '*' }),
+                    supabaseAPI({ table: 'factory_bookings', operation: 'select', columns: '*' })
+                ]);
+                // DEBUG: Log cache population
+                console.log('[DEBUG H1] overheadRows:', overheadRows, 'bookingRows:', bookingRows);
+                _overheadsCache = [
+                    ...(overheadRows || []).map(o => ({
+                        amount: parseFloat(o.amount || 0),
+                        period: o.period || '',
+                        created_at: o.created_at,
+                        source: 'overhead'
+                    })),
+                    ...(bookingRows || []).map(b => ({
+                        amount: parseFloat(b.booking_fee || 0),
+                        period: b.period || '',
+                        created_at: b.booking_date || b.created_at,
+                        source: 'factory_booking'
+                    }))
+                ];
+                console.log('[DEBUG H1-H3] _overheadsCache after populate:', JSON.stringify(_overheadsCache));
+            } catch (err) { console.warn('Error loading overheads:', err); }
+        }
+
+        async function loadStaffAndSalariesFromSupabase() {
+            try {
+                const [staffData, salariesData] = await Promise.all([
+                    supabaseAPI({ table: 'staff_profiles', operation: 'select', columns: '*', filters: { eq: { is_active: true } } }),
+                    supabaseAPI({ table: 'salaries', operation: 'select', columns: '*' })
+                ]);
+                _staffCache = (staffData || []).map(s => ({ id: s.id, name: s.name, role: s.role }));
+
+                // Filter salaries by the active cycle (month/year)
+                const months = ['January','February','March','April','May','June',
+                                'July','August','September','October','November','December'];
+                const monthMap = {
+                    jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+                    jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+                };
+                const targetPeriod = currentActivePeriod;
+                const targetYear = currentActiveYear;
+                
+                let filteredSalaries = salariesData || [];
+                if (targetPeriod !== 'year') {
+                    const mIdx = monthMap[targetPeriod];
+                    const cycleLabel = mIdx !== undefined ? `${months[mIdx]} ${targetYear}` : '';
+                    filteredSalaries = filteredSalaries.filter(s => s.cycle === cycleLabel);
+                } else {
+                    filteredSalaries = filteredSalaries.filter(s => s.cycle && s.cycle.endsWith(` ${targetYear}`));
+                }
+
+                _salariesCache = filteredSalaries.map(s => ({
+                    staffId: s.staff_id,
+                    salaryType: s.salary_type || 'Monthly',
+                    baseRate: parseFloat(s.base_rate || 0),
+                    hoursWorked: parseFloat(s.hours_worked || 0),
+                    bonus: parseFloat(s.bonus || 0),
+                    deductions: parseFloat(s.deductions || 0),
+                    paymentStatus: s.payment_status || 'Pending'
+                }));
+            } catch (err) { console.warn('Error loading staff/salaries:', err); }
+        }
+
+        function getTotalOverheads(period) {
+            return getFactoryOverheadsTotal(period) + getAdminOverheadsTotal(period);
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await detectAvailableYears();
+            await loadAllData();
+            await buildAndRenderChart();
+        });
+
+        function formatLocalDate(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function getPeriodDates(period, year) {
+            const now = new Date();
+            const y = (typeof year === 'number' && !isNaN(year)) ? year : currentActiveYear || now.getFullYear();
+            const month = now.getMonth();
+            const day = now.getDate();
+            const monthMap = {
+                jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+                jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+            };
+            // Whole year: Jan 1 - Dec 31 of the selected year
+            if (period === 'year') {
+                return {
+                    dateFrom: formatLocalDate(new Date(y, 0, 1)),
+                    dateTo: formatLocalDate(new Date(y, 11, 31))
+                };
+            }
+            // Specific month: 1st of that month through last day of that month, for the selected year
+            if (Object.prototype.hasOwnProperty.call(monthMap, period)) {
+                const m = monthMap[period];
+                const lastDay = new Date(y, m + 1, 0).getDate();
+                return {
+                    dateFrom: formatLocalDate(new Date(y, m, 1)),
+                    dateTo: formatLocalDate(new Date(y, m, lastDay))
+                };
+            }
+            // Fallback (legacy keys): treat as month-to-date of current month
+            const localDateFrom = new Date(y, month, 1);
+            const localDateTo = new Date(y, month, day);
+            return { dateFrom: formatLocalDate(localDateFrom), dateTo: formatLocalDate(localDateTo) };
+        }
+
+        async function fetchSalesTotals(period) {
+            const { dateFrom, dateTo } = getPeriodDates(period);
+            try {
+                // Sales = source-of-truth order rows only.
+                // order_fulfillments.total_amount is a 1:1 mirror of the source
+                // order (server.js:1381 `total_amount: row.total_amount || 0`),
+                // so summing it would double-count every order.
+                const [b2cData, b2bData] = await Promise.all([
+                    supabaseAPI({
+                        table: 'retail_purchases',
+                        operation: 'select',
+                        columns: 'total_amount, created_at, status',
+                        filters: {
+                            gte: { created_at: dateFrom },
+                            lte: { created_at: dateTo + 'T23:59:59' }
+                        }
+                    }),
+                    supabaseAPI({
+                        table: 'orders',
+                        operation: 'select',
+                        columns: 'total_amount, created_at, status',
+                        filters: {
+                            gte: { created_at: dateFrom },
+                            lte: { created_at: dateTo + 'T23:59:59' }
+                        }
+                    })
+                ]);
+                console.log(`[SALES DEBUG ${period}] b2cData:`, b2cData?.length, b2cData, '| b2bData:', b2bData?.length, b2bData);
+                const isExcluded = (status) => status === 'Cancelled' || status === 'Refund Requested';
+                const b2cTotal = (b2cData || [])
+                    .filter(r => !isExcluded(r.status))
+                    .reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
+                const b2bTotal = (b2bData || [])
+                    .filter(r => !isExcluded(r.status))
+                    .reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
+                const totalSales = b2cTotal + b2bTotal;
+                return { b2cTotal, b2bTotal, totalSales, dateFrom, dateTo };
+            } catch (err) {
+                return { b2cTotal: 0, b2bTotal: 0, totalSales: 0, dateFrom, dateTo };
+            }
+        }
+
+        const PERIOD_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec','year'];
+        const PERIOD_LABEL = { jan:'Jan', feb:'Feb', mar:'Mar', apr:'Apr', may:'May', jun:'Jun', jul:'Jul', aug:'Aug', sep:'Sep', oct:'Oct', nov:'Nov', dec:'Dec', year:'Year' };
+
+        function _emptyLivePeriod() {
+            return { materials: 0, materialsPct: '0%', materialsTrend: '0%', labourBase: 0, overheads: 0, overheadsUtil: 0, overheadsAdmin: 0, currentSales: 0, dateFrom: '', dateTo: '' };
+        }
+
+        let liveData = PERIOD_KEYS.reduce((acc, k) => { acc[k] = _emptyLivePeriod(); return acc; }, {});
+
+        async function loadAllData() {
+            console.log('[OPERATION FINANCE DEBUG] loadAllData started');
+            await Promise.all([
+                loadSalesData(),
+                loadOverheadsFromSupabase(),
+                loadStaffAndSalariesFromSupabase()
+            ]);
+
+            // Material cost = sum of received PO totals (raw_material_orders with intake_date)
+            // Past Sales (unsold stock) = sum of finished goods current_stock × unit_cost
+            const costPromises = PERIOD_KEYS.map(k => loadPOMaterialCostForPeriod(k));
+            const unsoldStock = await loadUnsoldStockValue();
+            const allCosts = await Promise.all(costPromises);
+            PERIOD_KEYS.forEach((k, idx) => { liveData[k].materials = allCosts[idx]; });
+            console.log('[OPERATION FINANCE DEBUG] PO material costs by period:', allCosts);
+
+            // Update Unsold Stock Value card with current finished goods valuation
+            const pastSalesEl = document.getElementById('past-sales-value');
+            if (pastSalesEl) {
+                pastSalesEl.textContent = unsoldStock > 0
+                    ? `$${unsoldStock.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : '$--';
+            }
+
+            for (const period of PERIOD_KEYS) {
+                liveData[period].overheads = getTotalOverheads(period);
+            }
+            if (typeof setPeriod === 'function') setPeriod(currentActivePeriod);
+        }
+
+        async function loadSalesData() {
+            for (const period of PERIOD_KEYS) {
+                const result = await fetchSalesTotals(period);
+                liveData[period].currentSales = result.totalSales;
+                liveData[period].dateFrom = result.dateFrom;
+                liveData[period].dateTo = result.dateTo;
+                console.log(`[SALES DEBUG] period=${period}, totalSales=${result.totalSales}`);
+            }
+            updateChartSummary(liveData.year.currentSales);
+        }
+
+        function updateChartSummary(ytdSales) {
+            const el = document.querySelector('.text-sm.font-extrabold.text-primary.font-data-tabular');
+            if (el) el.textContent = ytdSales > 0 ? `$${ytdSales.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '$--';
+            const el2 = document.getElementById('chart-gross-sales');
+            if (el2) el2.textContent = ytdSales > 0 ? `$${ytdSales.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '$--';
+        }
+
+        let currentActivePeriod = (function() {
+            const m = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+            return m[new Date().getMonth()];
+        })();
+
+        let currentActiveYear = new Date().getFullYear();
+        let _availableYears = []; // populated dynamically from data
+
+        function renderYearSelect() {
+            const sel = document.getElementById('year-select');
+            if (!sel) return;
+            sel.innerHTML = _availableYears.map(y =>
+                `<option value="${y}" ${y === currentActiveYear ? 'selected' : ''}>${y}</option>`
+            ).join('');
+        }
+
+        async function detectAvailableYears() {
+            try {
+                const [b2c, b2b, po, fb, pr] = await Promise.all([
+                    supabaseAPI({ table: 'retail_purchases', operation: 'select', columns: 'created_at' }),
+                    supabaseAPI({ table: 'orders', operation: 'select', columns: 'created_at' }),
+                    supabaseAPI({ table: 'raw_material_orders', operation: 'select', columns: 'created_at' }),
+                    supabaseAPI({ table: 'factory_bookings', operation: 'select', columns: 'booking_date, created_at' }),
+                    supabaseAPI({ table: 'payroll_runs', operation: 'select', columns: 'date_processed' })
+                ]);
+                const years = new Set();
+                const extractYear = (val) => {
+                    if (!val) return null;
+                    const d = new Date(val);
+                    return isNaN(d.getTime()) ? null : d.getFullYear();
+                };
+                [...(b2c || []), ...(b2b || [])].forEach(r => { const y = extractYear(r.created_at); if (y) years.add(y); });
+                (po || []).forEach(r => { const y = extractYear(r.created_at); if (y) years.add(y); });
+                (fb || []).forEach(r => { const y = extractYear(r.booking_date || r.created_at); if (y) years.add(y); });
+                (pr || []).forEach(r => { const y = extractYear(r.date_processed); if (y) years.add(y); });
+                const yearList = Array.from(years).sort((a, b) => b - a); // newest first
+                if (yearList.length === 0) yearList.push(new Date().getFullYear());
+                _availableYears = yearList;
+                // Keep currentActiveYear valid; default to newest year
+                if (!_availableYears.includes(currentActiveYear)) {
+                    currentActiveYear = _availableYears[0];
+                }
+                renderYearSelect();
+            } catch (err) {
+                console.warn('detectAvailableYears error:', err);
+                _availableYears = [new Date().getFullYear()];
+                renderYearSelect();
+            }
+        }
+
+        async function onYearChange(year) {
+            const y = parseInt(year, 10);
+            if (!y || y === currentActiveYear) return;
+            currentActiveYear = y;
+            await reloadForCurrentYear();
+        }
+
+        async function reloadForCurrentYear() {
+            await loadSalesData();
+            // Recompute material costs for the selected year across all periods
+            const costPromises = PERIOD_KEYS.map(k => loadPOMaterialCostForPeriod(k));
+            const allCosts = await Promise.all(costPromises);
+            PERIOD_KEYS.forEach((k, idx) => { liveData[k].materials = allCosts[idx]; });
+            // Recalculate overheads (already cached, recompute totals per period for new year)
+            for (const period of PERIOD_KEYS) {
+                liveData[period].overheads = getTotalOverheads(period);
+            }
+            if (typeof setPeriod === 'function') setPeriod(currentActivePeriod);
+            await buildAndRenderChart();
+        }
+
+        function setPeriod(period) {
+            currentActivePeriod = period;
+            PERIOD_KEYS.forEach(p => {
+                const btn = document.getElementById(`btn-period-${p}`);
+                if (btn) btn.className = p === period
+                    ? "px-3 py-1.5 text-xs font-bold rounded-md transition-all bg-primary text-on-primary shadow-sm"
+                    : "px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white";
+            });
+            const data = liveData[period];
+            if (!data) return;
+            const dateFromEl = document.getElementById('date-from');
+            if (dateFromEl) dateFromEl.value = data.dateFrom || '';
+            const dateToEl = document.getElementById('date-to');
+            if (dateToEl) dateToEl.value = data.dateTo || '';
+            const lbl = document.getElementById('current-sales-period-label');
+            if (lbl) lbl.textContent = (PERIOD_LABEL[period] || period.toUpperCase()) + ' ' + currentActiveYear;
+            updateCostCardsHTML(data);
+            renderChartLegend(liveData[period]);
+        }
+
+        function triggerCustomDate() {
+            const fromEl = document.getElementById('date-from');
+            const toEl = document.getElementById('date-to');
+            if (!fromEl || !toEl) return;
+            const fromVal = fromEl.value;
+            const textToVal = toEl.value;
+            if (!fromVal || !textToVal) return;
+            Promise.all([
+                fetchSalesTotalsForRange(fromVal, textToVal),
+                fetchPOMaterialCostForRange(fromVal, textToVal),
+                loadUnsoldStockValue()
+            ]).then(([result, poCost, unsoldStock]) => {
+                const customData = {
+                    materials: poCost,
+                    materialsPct: '--%',
+                    materialsTrend: '0.0%',
+                    labourBase: 0,
+                    overheads: getTotalOverheadsForRange(fromVal, textToVal),
+                    overheadsAdmin: getAdminOverheadsForRange(fromVal, textToVal),
+                    currentSales: result.totalSales || 0
+                };
+                updateCostCardsHTML(customData);
+                // Update Past Sales card with current unsold stock value
+                const pastSalesEl = document.getElementById('past-sales-value');
+                if (pastSalesEl) {
+                    pastSalesEl.textContent = unsoldStock > 0
+                        ? `$${unsoldStock.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : '$--';
+                }
+            });
+        }
+
+        // Fetch finished goods for custom date range (replaces batch_trace_view)
+        function getTotalOverheadsForRange(dateFrom, dateTo) {
+            if (_overheadsCache.length === 0) return 0;
+            const from = new Date(dateFrom);
+            const to = new Date(dateTo + 'T23:59:59');
+            return _overheadsCache.reduce((sum, entry) => {
+                const entryDate = new Date(entry.created_at);
+                if (entryDate >= from && entryDate <= to) return sum + entry.amount;
+                return sum;
+            }, 0);
+        }
+
+        function getAdminOverheadsForRange(dateFrom, dateTo) {
+            if (_overheadsCache.length === 0) return 0;
+            const from = new Date(dateFrom);
+            const to = new Date(dateTo + 'T23:59:59');
+            return _overheadsCache.reduce((sum, entry) => {
+                if (entry.source !== 'overhead') return sum;
+                const entryDate = new Date(entry.created_at);
+                if (entryDate >= from && entryDate <= to) return sum + entry.amount;
+                return sum;
+            }, 0);
+        }
+
+        async function fetchSalesTotalsForRange(dateFrom, dateTo) {
+            try {
+                // Net sales = source orders only (order_fulfillments is a 1:1
+                // mirror of the source total_amount, so including it double-counts).
+                const [b2cData, b2bData] = await Promise.all([
+                    supabaseAPI({
+                        table: 'retail_purchases',
+                        operation: 'select',
+                        columns: 'total_amount, created_at, status',
+                        filters: {
+                            gte: { created_at: dateFrom },
+                            lte: { created_at: dateTo + 'T23:59:59' }
+                        }
+                    }),
+                    supabaseAPI({
+                        table: 'orders',
+                        operation: 'select',
+                        columns: 'total_amount, created_at, status',
+                        filters: {
+                            gte: { created_at: dateFrom },
+                            lte: { created_at: dateTo + 'T23:59:59' }
+                        }
+                    })
+                ]);
+                const isExcluded = (status) => status === 'Cancelled' || status === 'Refund Requested';
+                const b2cTotal = (b2cData || [])
+                    .filter(r => !isExcluded(r.status))
+                    .reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
+                const b2bTotal = (b2bData || [])
+                    .filter(r => !isExcluded(r.status))
+                    .reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
+                return { totalSales: b2cTotal + b2bTotal };
+            } catch (err) { return { totalSales: 0 }; }
+        }
+
+        function updateCostCardsHTML(data) {
+            // Calculate overheads using the same logic as the chart (direct from factory_bookings)
+            const { dateFrom, dateTo } = getPeriodDates(currentActivePeriod);
+            const from = new Date(dateFrom);
+            const to = new Date(dateTo + 'T23:59:59');
+            let factoryCosts = 0;
+            
+            console.log('[DEBUG H2] updateCostCardsHTML called:', {period: currentActivePeriod, dateFrom, dateTo, cacheSize: _overheadsCache.length});
+            
+            // Calculate from _overheadsCache (same data source as chart)
+            _overheadsCache.forEach(entry => {
+                const entryDate = new Date(entry.created_at);
+                if (entryDate >= from && entryDate <= to) {
+                    if (entry.source === 'factory_booking') {
+                        factoryCosts += entry.amount;
+                    }
+                }
+            });
+            
+            console.log('[DEBUG H2-H3] Overhead totals:', {factoryCosts, total: factoryCosts, dataOverheads: data.overheads});
+            
+            // Fallback: also check if data object has overheads directly set
+            const totalOverheads = factoryCosts || data.overheads || 0;
+            const fmt = (val, showZero = true) => {
+                if (!val && val !== 0) return '$--';
+                if (val === 0 && !showZero) return '$--';
+                return `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            };
+            const el = document.getElementById('material-cost-value');
+            if (el) el.textContent = fmt(data.materials);
+            const trendEl = document.getElementById('material-trend-pct');
+            if (trendEl) trendEl.textContent = data.materialsTrend;
+            const ovValEl = document.getElementById('overheads-cost-value');
+            if (ovValEl) ovValEl.textContent = fmt(totalOverheads);
+            const ohUtilEl = document.getElementById('oh-util-val');
+            if (ohUtilEl) ohUtilEl.textContent = factoryCosts > 0 ? `$${Math.round(factoryCosts).toLocaleString('en-US')}` : '$--';
+            const ohFactoryEl = document.getElementById('oh-factory-val');
+            if (ohFactoryEl) {
+                if (factoryCosts > 0) {
+                    ohFactoryEl.textContent = `$${factoryCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    ohFactoryEl.classList.add('text-primary', 'font-bold');
+                } else {
+                    ohFactoryEl.textContent = '$--';
+                    ohFactoryEl.classList.remove('text-primary', 'font-bold');
+                }
+            }
+            const salesValEl = document.getElementById('current-sales-value');
+            if (salesValEl) salesValEl.textContent = fmt(data.currentSales);
+            loadDynamicLabourCosts();
+        }
+
+        async function loadDynamicLabourCosts(customTotal = null) {
+            await loadStaffAndSalariesFromSupabase();
+            let totalPayroll = 0, paidCount = 0, pendingCount = 0;
+            _salariesCache.forEach(sal => {
+                const basePay = sal.salaryType === 'Monthly' ? sal.baseRate : (sal.baseRate * sal.hoursWorked);
+                const grossPay = Math.max(0, basePay + sal.bonus - sal.deductions);
+                totalPayroll += grossPay;
+                sal.paymentStatus === 'Paid' ? paidCount++ : pendingCount++;
+            });
+            const paidRatio = _salariesCache.length > 0 ? Math.round((paidCount / _salariesCache.length) * 100) : 0;
+            const displayed = _salariesCache.length > 0 ? totalPayroll : totalPayroll;
+            const valEl = document.getElementById('labour-cost-value');
+            if (valEl) valEl.textContent = `$${displayed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const countEl = document.getElementById('labour-staff-count');
+            if (countEl) countEl.textContent = `${_salariesCache.length} Members`;
+            const statusEl = document.getElementById('labour-payroll-status');
+            if (statusEl) statusEl.textContent = `${paidRatio}% Paid`;
+            const budgetStatus = document.getElementById('labour-budget-status');
+            const budgetContainer = document.getElementById('labour-budget-status-container');
+            const budgetIcon = document.getElementById('labour-budget-status-icon');
+            if (budgetStatus && budgetContainer && budgetIcon) {
+                if (pendingCount === 0) {
+                    budgetStatus.textContent = "Verified";
+                    budgetContainer.className = "flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full";
+                    budgetIcon.textContent = "check_circle";
+                } else {
+                    budgetStatus.textContent = `${pendingCount} Pending`;
+                    budgetContainer.className = "flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full";
+                    budgetIcon.textContent = "warning";
+                }
+            }
+            return totalPayroll;
+        }
+
+        async function buildAndRenderChart() {
+            const chartData = await fetchChartData();
+            renderChartBars(chartData);
+            renderChartLegend(chartData);
+        }
+
+        async function fetchChartData() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            // Determine chart range: from earliest available year to current month.
+            // If _availableYears is empty, fall back to current year.
+            const earliestYear = (_availableYears && _availableYears.length > 0)
+                ? _availableYears[_availableYears.length - 1]
+                : currentYear;
+            const months = [];
+            // Walk month-by-month from earliest year/Jan up to current year/current month
+            let iterY = earliestYear;
+            let iterM = 0;
+            while (iterY < currentYear || (iterY === currentYear && iterM <= currentMonth)) {
+                months.push({ year: iterY, month: iterM });
+                iterM++;
+                if (iterM > 11) { iterM = 0; iterY++; }
+            }
+
+            try {
+                const [salesData, poOrdersData, factoryBookingData, payrollRunsData] = await Promise.all([
+                    Promise.all([
+                        supabaseAPI({ table: 'retail_purchases', operation: 'select', columns: 'total_amount, created_at, status' }),
+                        supabaseAPI({ table: 'orders', operation: 'select', columns: 'total_amount, created_at, status' })
+                    ]),
+                    supabaseAPI({
+                        table: 'raw_material_orders',
+                        operation: 'select',
+                        columns: 'total_amount, created_at'
+                    }),
+                    supabaseAPI({ table: 'factory_bookings', operation: 'select', columns: 'booking_fee, booking_date' }),
+                    supabaseAPI({ table: 'payroll_runs', operation: 'select', columns: 'total_paid, date_processed' })
+                ]);
+
+                // Net sales = source orders only. order_fulfillments.total_amount
+                // is a 1:1 mirror of the source row's total_amount (server.js:1381),
+                // so including it would double-count every order in the chart too.
+                const isExcluded = (status) => status === 'Cancelled' || status === 'Refund Requested';
+                const allSales = [
+                    ...(salesData[0] || []).filter(r => !isExcluded(r.status)),
+                    ...(salesData[1] || []).filter(r => !isExcluded(r.status))
+                ];
+
+                const salesByMonth = {};
+                allSales.forEach(item => {
+                    const dateField = item.created_at || item.order_date;
+                    const d = new Date(dateField);
+                    const key = `${d.getFullYear()}-${d.getMonth()}`;
+                    salesByMonth[key] = (salesByMonth[key] || 0) + (parseFloat(item.total_amount) || 0);
+                });
+
+                // Material cost = PO totals from raw_material_orders created in each month
+                const materialsByMonth = {};
+                (poOrdersData || []).forEach(item => {
+                    const d = item.created_at ? new Date(item.created_at) : new Date();
+                    const key = `${d.getFullYear()}-${d.getMonth()}`;
+                    materialsByMonth[key] = (materialsByMonth[key] || 0) + (parseFloat(item.total_amount) || 0);
+                });
+
+                const overheadsByMonth = {};
+                (factoryBookingData || []).forEach(item => {
+                    const d = new Date(item.booking_date);
+                    const key = `${d.getFullYear()}-${d.getMonth()}`;
+                    overheadsByMonth[key] = (overheadsByMonth[key] || 0) + (parseFloat(item.booking_fee) || 0);
+                });
+                
+                console.log('[DEBUG H3] Chart overheadsByMonth:', overheadsByMonth, 'factoryBookingData:', factoryBookingData);
+
+                const payrollByMonth = {};
+                (payrollRunsData || []).forEach(run => {
+                    const d = new Date(run.date_processed);
+                    const key = `${d.getFullYear()}-${d.getMonth()}`;
+                    payrollByMonth[key] = (payrollByMonth[key] || 0) + (parseFloat(run.total_paid) || 0);
+                });
+
+                let maxSales = 0;
+                const chartData = months.map(m => {
+                    const key = `${m.year}-${m.month}`;
+                    const sales = salesByMonth[key] || 0;
+                    const materials = materialsByMonth[key] || 0;
+                    const overhead = overheadsByMonth[key] || 0;
+                    const labourCost = payrollByMonth[key] || 0;
+                    if (sales > maxSales) maxSales = sales;
+                    return { year: m.year, month: m.month, sales, materials, labourCost, overhead };
+                });
+
+                if (maxSales > 0) {
+                    chartData.forEach(d => {
+                        d.salesNorm = (d.sales / maxSales) * 80;
+                    });
+                }
+
+                return chartData;
+            } catch (err) {
+                console.warn('Error fetching chart data:', err);
+                return months.map(() => ({ sales: 0, materials: 0, labourCost: 0, overhead: 0, salesNorm: 40 }));
+            }
+        }
+
+        // Chart.js instance
+        let operationsChart = null;
+
+        function renderChartBars(chartData) {
+            const ctx = document.getElementById('operationsChart');
+            if (!ctx) return;
+
+            const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+            const labels = chartData.map(d => `${monthNames[d.month]} ${d.year.toString().slice(-2)}`);
+
+            const labourData = chartData.map(d => d.labourCost);
+            const overheadData = chartData.map(d => d.overhead);
+            const salesData = chartData.map(d => d.sales);
+
+            // Destroy existing chart if present
+            if (operationsChart) {
+                operationsChart.destroy();
+            }
+
+            // Create new Chart.js chart
+            operationsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Materials',
+                            data: chartData.map(d => d.materials),
+                            backgroundColor: '#475f87',
+                            borderRadius: 4,
+                            stack: 'costs'
+                        },
+                        {
+                            label: 'Labour',
+                            data: labourData,
+                            backgroundColor: '#b7d0fe',
+                            borderRadius: 4,
+                            stack: 'costs'
+                        },
+                        {
+                            label: 'Overheads',
+                            data: overheadData,
+                            backgroundColor: '#031635',
+                            borderRadius: 4,
+                            stack: 'costs'
+                        },
+                        {
+                            label: 'Sales',
+                            data: salesData,
+                            type: 'line',
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#10b981',
+                            pointBorderWidth: 2,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#031635',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#475f87',
+                            borderWidth: 1,
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += '$' + context.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: {
+                                    size: 10,
+                                    weight: '600'
+                                }
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            position: 'left',
+                            grid: {
+                                color: '#f1f5f9'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: {
+                                    size: 10
+                                },
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        y1: {
+                            position: 'right',
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#10b981',
+                                font: {
+                                    size: 10
+                                },
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderChartLegend(chartData) {
+            const period = currentActivePeriod;
+            const data = liveData[period] || liveData[PERIOD_KEYS[0]];
+
+            // Recalculate overheads from _overheadsCache for the current period (same as chart)
+            const { dateFrom, dateTo } = getPeriodDates(period);
+            const from = new Date(dateFrom);
+            const to = new Date(dateTo + 'T23:59:59');
+            let totalOverheadsFromCache = 0;
+            _overheadsCache.forEach(entry => {
+                const entryDate = new Date(entry.created_at);
+                if (entryDate >= from && entryDate <= to) {
+                    totalOverheadsFromCache += entry.amount;
+                }
+            });
+
+            const salesEl = document.getElementById('chart-gross-sales');
+            if (salesEl) {
+                salesEl.textContent = data.currentSales > 0
+                    ? `$${data.currentSales.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                    : '$--';
+            }
+
+            const matCostEl = document.getElementById('chart-material-cost');
+            if (matCostEl) {
+                matCostEl.textContent = data.materials > 0
+                    ? `$${data.materials.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                    : '$--';
+            }
+
+            const labCostEl = document.getElementById('chart-labour-cost');
+            if (labCostEl) {
+                const liveLabour = _salariesCache.reduce((sum, sal) => {
+                    const basePay = sal.salaryType === 'Monthly' ? sal.baseRate : (sal.baseRate * sal.hoursWorked);
+                    return sum + Math.max(0, basePay + sal.bonus - sal.deductions);
+                }, 0);
+                labCostEl.textContent = liveLabour > 0
+                    ? `$${liveLabour.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                    : '$--';
+            }
+
+            const ohCostEl = document.getElementById('chart-overhead-cost');
+            if (ohCostEl) {
+                ohCostEl.textContent = totalOverheadsFromCache > 0
+                    ? `$${totalOverheadsFromCache.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                    : '$--';
+            }
+
+            const avgMarginEl = document.getElementById('avg-margin-pct');
+            if (avgMarginEl && data.currentSales > 0) {
+                const liveLabour = _salariesCache.reduce((sum, sal) => {
+                    const basePay = sal.salaryType === 'Monthly' ? sal.baseRate : (sal.baseRate * sal.hoursWorked);
+                    return sum + Math.max(0, basePay + sal.bonus - sal.deductions);
+                }, 0);
+                const totalCosts = data.materials + liveLabour + totalOverheadsFromCache;
+                const margin = ((data.currentSales - totalCosts) / data.currentSales) * 100;
+                avgMarginEl.textContent = `${margin >= 0 ? '+' : ''}${margin.toFixed(1)}%`;
+            }
+        }
+
+    </script>
+</body></html>

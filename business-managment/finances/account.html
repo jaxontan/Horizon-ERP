@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Account Portfolio - Finance Ops</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/components/tailwind-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="/public/js/rbac.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script src="/components/sidebar.js"></script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f7f9fb;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        .form-input-focus:focus {
+            outline: none;
+            border-color: #031635;
+            box-shadow: 0 0 0 1px #031635;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .tab-active {
+            border-bottom: 2px solid #031635;
+            color: #031635;
+            font-weight: 700;
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"], [class*="w-[calc(100%-16rem)]"] { margin-left: 0 !important; width: 100% !important; }
+            .overflow-x-auto { overflow-x: auto !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .grid-cols-3 { grid-template-columns: 1fr !important; }
+            .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+            th, td { padding: 6px 8px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+            .grid-cols-4 { grid-template-columns: 1fr !important; }
+            .text-2xl { font-size: 1.25rem !important; }
+            .text-xl { font-size: 1rem !important; }
+        }
+    </style>
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+<!-- TopAppBar Shell -->
+<header class="flex justify-between items-center w-full px-margin h-16 ml-64 max-w-[calc(100%-16rem)] bg-surface dark:bg-background border-b border-outline-variant dark:border-outline sticky top-0 z-30">
+<div class="flex items-center gap-stack-md">
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed">Financial Dashboard</h1>
+</div>
+<div class="flex items-center gap-stack-md">
+<div class="flex items-center gap-stack-sm">
+</div>
+</div>
+</header>
+    <!-- Tabs Navigation -->
+    <div class="bg-surface border-b border-outline-variant sticky top-16 z-30 ml-64 px-margin w-[calc(100%-16rem)]">
+        <nav class="flex gap-6 pt-4">
+            <a href="opertation.html" id="tab-costs" class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-colors">Cost of Operations</a>
+            <a href="account.html" id="tab-health" class="pb-3 border-b-2 border-primary text-primary font-bold transition-colors">Account Portfolio</a>
+        </nav>
+    </div>
+
+<div class='flex-1 overflow-y-auto pb-10'>
+    <!-- Tab Contents -->
+    <div id="content-health" class="tab-content block ml-64 mt-8">
+        <div class="p-margin max-w-[calc(100%-16rem)]">
+            <div id="portfolio-dashboard-view" class="space-y-stack-lg">
+            
+            <!-- Filters Toolbar (Debit/Credit toggle & Account Category dropdown) -->
+            <div class="flex flex-col gap-2">
+                <div id="journal-api-status" class="hidden"></div>
+                <div class="flex flex-col sm:flex-row justify-between items-center bg-white border border-outline-variant p-4 rounded-xl shadow-sm gap-4">
+                <!-- Left toggle button group -->
+                <div class="flex rounded-lg overflow-hidden border border-outline-variant bg-surface-container-low p-1 gap-1">
+                    <button onclick="filterAccountType('all')" id="btn-acc-all" class="px-4 py-1.5 text-xs font-bold rounded-md transition-all bg-primary text-on-primary shadow-sm">All</button>
+                    <button onclick="filterAccountType('debit')" id="btn-acc-debit" class="px-4 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white">Debit</button>
+                    <button onclick="filterAccountType('credit')" id="btn-acc-credit" class="px-4 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white">Credit</button>
+                </div>
+                
+                <!-- Right filter dropdown -->
+                <div class="flex items-center gap-2">
+                    <select id="account-category-filter" onchange="filterAccountCategory(this.value)" class="w-48 rounded-lg border-outline-variant focus:border-primary focus:ring-primary text-xs font-bold cursor-pointer py-1.5">
+                        <option value="all">Account Category</option>
+                        <option value="asset">Assets</option>
+                        <option value="liability">Liabilities</option>
+                        <option value="expense">Expenses</option>
+                        <option value="income">Incomes</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tab Section Header -->
+            <div class="mb-4">
+                <h3 class="font-headline-lg text-headline-lg text-primary font-extrabold">Account Portfolio</h3>
+                <p class="text-body-md text-on-surface-variant mt-1">Overview of key general ledger accounts and manufacturing costs.</p>
+            </div>
+
+            <!-- The 11 Account Cards Grid -->
+            <div id="accounts-portfolio-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
+                
+                <!-- Card 1: DIRECT LABOUR -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="expense" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-red-50 text-red-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Direct Labour</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">E001</span>
+                            <span class="px-2.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 text-[9px] font-black uppercase">Expense</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: DIRECT MATERIAL -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="expense" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-red-50 text-red-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Direct Material</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">E002</span>
+                            <span class="px-2.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 text-[9px] font-black uppercase">Expense</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: FACTORY OVERHEAD -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="expense" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-red-50 text-red-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">factory</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Factory Overhead</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">E003</span>
+                            <span class="px-2.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 text-[9px] font-black uppercase">Expense</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: CASH -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="asset" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-green-50 text-green-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Cash</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">A001</span>
+                            <span class="px-2.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 text-[9px] font-black uppercase">Asset</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5: RAW MATERIAL INVENTORY -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="asset" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-green-50 text-green-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">widgets</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Raw Material Inventory</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">A002</span>
+                            <span class="px-2.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 text-[9px] font-black uppercase">Asset</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 6: ACCOUNTS PAYABLE -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="liability" data-nature="credit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-amber-50 text-amber-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">unarchive</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Accounts Payable</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">L001</span>
+                            <span class="px-2.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black uppercase">Liability</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 7: ACCOUNTS RECEIVABLE -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="asset" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-green-50 text-green-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">archive</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Accounts Receivable</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">A004</span>
+                            <span class="px-2.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 text-[9px] font-black uppercase">Asset</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 8: WORK IN PROCESS -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="asset" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-green-50 text-green-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Work in Process</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">A005</span>
+                            <span class="px-2.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 text-[9px] font-black uppercase">Asset</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 9: FINISHED GOODS -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="asset" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-green-50 text-green-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment_turned_in</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Finished Goods</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">A003</span>
+                            <span class="px-2.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200 text-[9px] font-black uppercase">Asset</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 10: COST OF GOODS SOLD -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="expense" data-nature="debit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-red-50 text-red-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">trending_down</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Cost of Goods Sold</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">E004</span>
+                            <span class="px-2.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200 text-[9px] font-black uppercase">Expense</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 11: REVENUE -->
+                <div class="bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer" data-type="income" data-nature="credit">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-blue-50 text-blue-500 rounded-xl">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">Sales Revenue</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">I001</span>
+                            <span class="px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-black uppercase">Income</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add New Account Card -->
+                <div id="add-account-card" class="bg-white border-2 border-dashed border-outline/50 p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:bg-primary/5 transition-all duration-300 relative group cursor-pointer" onclick="openAddAccountModal()">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-3.5 bg-surface-container-lowest text-on-surface-variant rounded-xl border border-outline-variant">
+                            <span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 0;">add_circle</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-extrabold text-sm text-on-surface-variant uppercase tracking-wide group-hover:text-primary transition-colors">Add Account</h4>
+                        <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                            <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular"></span>
+                            <span class="px-2.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 text-[9px] font-black uppercase">NEW</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- Full-Page Inline Account Ledger Detail View (replaces modal details window) -->
+            <div id="ledger-details-view" class="space-y-6 hidden animate-fade-in">
+                <!-- Boxed Account Header -->
+                <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-6">
+                        <div id="ledger-account-icon-box" class="size-16 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
+                            <span id="ledger-account-icon" class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <h2 id="ledger-account-title" class="text-2xl font-bold text-slate-900">Cash Account</h2>
+                            <p class="text-slate-500 text-xs font-semibold">Current Balance: <span id="ledger-account-balance" class="font-bold text-slate-900 font-data-tabular">$45,200.00</span></p>
+                        </div>
+                    </div>
+                    <!-- Right search & Add Entry inside the detailed view toolbar -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative w-64">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[18px]">search</span>
+                            <input type="text" id="ledger-search-input" onkeyup="filterLedgerEntries()" placeholder="Search entries..." class="pl-10 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg w-full text-xs font-bold focus:ring-1 focus:ring-primary focus:border-primary text-primary" />
+                        </div>
+                        <div class="flex items-center gap-2 border border-outline-variant rounded-lg bg-white px-3 py-1.5 text-[11px] font-black text-[#031635] shadow-sm">
+                            <span class="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_today</span>
+                            <span id="ledger-date-start">01/10/2023</span>
+                            <span class="text-outline-variant">→</span>
+                            <span id="ledger-date-end">31/10/2023</span>
+                        </div>
+                        <button onclick="openAddEntryModal()" class="bg-[#031635] text-white px-4 py-1.5 rounded-lg font-black text-xs hover:bg-[#1a2b4b] transition-all flex items-center gap-1.5 shadow-md">
+                            <span class="material-symbols-outlined text-[16px]">add</span>
+                            <span>Add Entry</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ledger Transactions Grid List (Scrollable) -->
+                <div id="ledger-entries-container" class="space-y-6">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            </div>
+
+            <!-- Add Ledger Entry Sub-Modal -->
+            <div id="add-entry-modal" class="fixed inset-0 bg-[#031635]/40 backdrop-blur-md z-[110] hidden flex items-center justify-center p-4">
+                <div class="bg-[#f7f9fb] border border-outline-variant rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative animate-fade-in transition-all">
+                    <!-- Modal Header -->
+                    <div class="bg-white border-b border-outline-variant p-5 flex justify-between items-center shrink-0">
+                        <h4 class="font-headline-sm text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">add_box</span>
+                            New Journal Entry
+                        </h4>
+                        <button onclick="closeAddEntryModal()" class="p-1 hover:bg-slate-100 rounded-full text-outline-variant hover:text-primary transition-colors flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px] font-bold">close</span>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body / Form (Scrollable) -->
+                    <div class="flex-1 overflow-y-auto p-6 bg-surface-container-low custom-scrollbar">
+                        <form onsubmit="postJournalEntry(event)" class="space-y-6" id="journal-entry-form">
+                            <!-- Basic Info Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-5 border border-outline-variant rounded-xl shadow-sm">
+                                <!-- Date Input -->
+                                <div class="space-y-2">
+                                    <label class="block font-label-md text-label-md text-on-surface" for="entry-form-date">Date of Transaction</label>
+                                    <div class="relative">
+                                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">calendar_today</span>
+                                        <input class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-10 pr-4 py-2 font-bold text-xs text-primary form-input-focus transition-all" id="entry-form-date" type="date" required>
+                                    </div>
+                                </div>
+                                <!-- Invoice Number -->
+                                <div class="space-y-2">
+                                    <label class="block font-label-md text-label-md text-on-surface" for="entry-form-invoice">Invoice / Reference Number</label>
+                                    <div class="relative">
+                                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">tag</span>
+                                        <input class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-10 pr-4 py-2 font-bold text-xs text-primary form-input-focus transition-all" id="entry-form-invoice" placeholder="e.g., INV-2024-001" type="text" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Accounts Allocation -->
+                            <div class="space-y-6 bg-white p-5 border border-outline-variant rounded-xl shadow-sm">
+                                <div class="flex justify-between items-center border-b border-outline-variant pb-2">
+                                    <h3 class="font-headline-sm text-base font-extrabold text-primary">Account Entries</h3>
+                                </div>
+                                
+                                <!-- Debit Section -->
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="text-xs font-black text-on-surface-variant uppercase tracking-wider">Debit Entries</h4>
+                                        <button class="flex items-center space-x-1 px-2.5 py-1 text-primary hover:bg-surface-container-low rounded-lg transition-all border border-transparent hover:border-outline-variant text-[11px] font-bold" type="button" onclick="addDebitRow()">
+                                            <span class="material-symbols-outlined text-[16px]">add</span>
+                                            <span>Add Debit Account</span>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-12 gap-4 font-caption-bold text-[10px] font-black text-on-surface-variant px-2">
+                                        <div class="col-span-6">ACCOUNT</div>
+                                        <div class="col-span-5 text-right">DEBIT AMOUNT ($)</div>
+                                        <div class="col-span-1"></div>
+                                    </div>
+                                    <div id="debit-rows-container" class="space-y-2">
+                                        <!-- Dynamic rows -->
+                                    </div>
+                                </div>
+
+                                <!-- Credit Section -->
+                                <div class="space-y-3 pt-6 border-t border-dashed border-outline-variant">
+                                    <div class="flex justify-between items-center">
+                                        <h4 class="text-xs font-black text-on-surface-variant uppercase tracking-wider">Credit Entries</h4>
+                                        <button class="flex items-center space-x-1 px-2.5 py-1 text-primary hover:bg-surface-container-low rounded-lg transition-all border border-transparent hover:border-outline-variant text-[11px] font-bold" type="button" onclick="addCreditRow()">
+                                            <span class="material-symbols-outlined text-[16px]">add</span>
+                                            <span>Add Credit Account</span>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-12 gap-4 font-caption-bold text-[10px] font-black text-on-surface-variant px-2">
+                                        <div class="col-span-6">ACCOUNT</div>
+                                        <div class="col-span-5 text-right">CREDIT AMOUNT ($)</div>
+                                        <div class="col-span-1"></div>
+                                    </div>
+                                    <div id="credit-rows-container" class="space-y-2">
+                                        <!-- Dynamic rows -->
+                                    </div>
+                                </div>
+
+                                <!-- Totals & Balance Check -->
+                                <div class="bg-surface-container rounded-lg p-4 flex justify-between items-center">
+                                    <div id="journal-balance-status" class="flex items-center space-x-2 text-success-text">
+                                        <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                                        <span class="font-label-md text-label-md uppercase tracking-wider">Balanced</span>
+                                    </div>
+                                    <div class="flex space-x-8 font-bold">
+                                        <div class="text-right">
+                                            <p class="text-[10px] font-black text-on-surface-variant uppercase">Total Debit</p>
+                                            <p id="journal-total-debit" class="font-data-tabular text-sm font-extrabold text-primary"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-[10px] font-black text-on-surface-variant uppercase">Total Credit</p>
+                                            <p id="journal-total-credit" class="font-data-tabular text-sm font-extrabold text-primary"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Narration -->
+                            <div class="space-y-2 bg-white p-5 border border-outline-variant rounded-xl shadow-sm">
+                                <label class="block font-label-md text-label-md text-on-surface" for="entry-form-narration">Narration / Transaction Description</label>
+                                <textarea class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-4 py-3 text-xs font-bold text-primary form-input-focus transition-all resize-none" id="entry-form-narration" placeholder="Provide a detailed description of the transaction for audit purposes..." rows="3" required></textarea>
+                            </div>
+
+                            <!-- Documentation Upload -->
+                            <div class="space-y-2 bg-white p-5 border border-outline-variant rounded-xl shadow-sm">
+                                <label class="block font-label-md text-label-md text-on-surface">Relevant Documentation</label>
+                                <div class="border-2 border-dashed border-outline-variant rounded-lg p-8 text-center bg-surface-container-low hover:bg-surface-container transition-all cursor-pointer group">
+                                    <input class="hidden" id="file-upload" type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx">
+                                    <div class="flex flex-col items-center" onclick="document.getElementById('file-upload').click()">
+                                        <span class="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary mb-2 transition-colors">cloud_upload</span>
+                                        <p class="font-body-md text-xs font-bold text-on-surface mb-1">Click to upload or drag and drop</p>
+                                        <p class="text-[10px] text-on-surface-variant">PDF, PNG, JPG up to 10MB (Max 3 files)</p>
+                                    </div>
+                                </div>
+                                <!-- File Preview Placeholder -->
+                                <div class="flex items-center p-3 bg-surface border border-outline-variant rounded-lg mt-2 hidden" id="file-preview">
+                                    <span class="material-symbols-outlined text-primary mr-3">description</span>
+                                    <div class="flex-1 min-w-0">
+                                        <p id="file-preview-name" class="font-label-md text-xs font-bold text-primary truncate">invoice_july_tech_supplies.pdf</p>
+                                        <p id="file-preview-size" class="text-[10px] text-on-surface-variant">2.4 MB • Uploaded</p>
+                                        <a id="file-preview-link" href="#" target="_blank" rel="noopener" class="hidden text-[10px] font-bold text-primary hover:underline">Open file</a>
+                                    </div>
+                                    <button class="text-on-surface-variant hover:text-expense-red" type="button" onclick="removeUploadedFile()">
+                                        <span class="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                                <p id="file-upload-error" class="hidden text-[10px] text-expense-red mt-1"></p>
+                            </div>
+
+                            <!-- Modal Footer Buttons -->
+                            <div class="pt-4 flex justify-end space-x-4 border-t border-outline-variant bg-white p-5 rounded-xl shadow-sm">
+                                <button type="button" onclick="closeAddEntryModal()" class="px-5 py-2 border border-outline-variant rounded-lg text-xs font-bold text-primary hover:bg-slate-50 transition-colors">Cancel</button>
+                                <button id="post-journal-btn" class="px-8 py-2 bg-primary text-on-primary font-bold text-xs rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed" type="submit" disabled>
+                                    Post Transaction
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Account Modal -->
+            <div id="add-account-modal" class="fixed inset-0 bg-[#031635]/40 backdrop-blur-md z-[110] hidden flex items-center justify-center p-4">
+                <div class="bg-[#f7f9fb] border border-outline-variant rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative animate-fade-in transition-all">
+                    <!-- Modal Header -->
+                    <div class="bg-white border-b border-outline-variant p-5 flex justify-between items-center shrink-0">
+                        <h4 class="font-headline-sm text-sm font-black text-primary uppercase tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">add_box</span>
+                            New Account
+                        </h4>
+                        <button onclick="closeAddAccountModal()" class="p-1 hover:bg-slate-100 rounded-full text-outline-variant hover:text-primary transition-colors flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px] font-bold">close</span>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body / Form -->
+                    <div class="flex-1 overflow-y-auto p-6 bg-surface-container-low custom-scrollbar">
+                        <form onsubmit="saveNewAccount(event)" class="space-y-6" id="add-account-form">
+                            <!-- Account Name -->
+                            <div class="bg-white p-5 border border-outline-variant rounded-xl shadow-sm">
+                                <div class="space-y-2">
+                                    <label class="block font-label-md text-label-md text-on-surface" for="account-name-input">Account Name</label>
+                                    <div class="relative">
+                                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">label</span>
+                                        <input class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-10 pr-4 py-2 font-bold text-xs text-primary form-input-focus transition-all" id="account-name-input" type="text" placeholder="e.g., Office Supplies" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Account Type -->
+                            <div class="bg-white p-5 border border-outline-variant rounded-xl shadow-sm">
+                                <div class="space-y-2">
+                                    <label class="block font-label-md text-label-md text-on-surface" for="account-type-input">Account Type</label>
+                                    <div class="relative">
+                                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">category</span>
+                                        <select class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-10 pr-4 py-2 font-bold text-xs text-primary form-input-focus transition-all appearance-none" id="account-type-input" required onchange="updateAccountNaturePreview()">
+                                            <option value="" disabled selected>Select Type</option>
+                                            <option value="asset">Asset</option>
+                                            <option value="liability">Liability</option>
+                                            <option value="expense">Expense</option>
+                                            <option value="income">Income</option>
+                                        </select>
+                                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Nature Preview -->
+                            <div id="account-nature-preview" class="bg-white p-5 border border-outline-variant rounded-xl shadow-sm">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-on-surface-variant">Nature (Auto-assigned)</span>
+                                    <span id="nature-badge" class="px-2.5 py-0.5 rounded text-[9px] font-black uppercase">---</span>
+                                </div>
+                            </div>
+
+                            <!-- Account Code Preview -->
+                            <div class="bg-white p-5 border border-outline-variant rounded-xl shadow-sm">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-on-surface-variant">Account Code</span>
+                                    <span id="account-code-preview" class="text-xs font-black font-data-tabular text-primary">---</span>
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="flex justify-end gap-3 pt-2">
+                                <button type="button" onclick="closeAddAccountModal()" class="px-5 py-2 border border-outline-variant rounded-lg text-xs font-bold text-primary hover:bg-slate-50 transition-colors">Cancel</button>
+                                <button id="save-account-btn" class="px-8 py-2 bg-primary text-on-primary font-bold text-xs rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all" type="submit">
+                                    Create Account
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+        // ── Require a logged-in session; redirect to login if missing ─────────
+        // Probe /api/staff-session/me — the cookie is the only authority.
+        (async () => {
+            try {
+                const probe = await fetch('/api/staff-session/me', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+                const data = await probe.json().catch(() => ({}));
+                if (!probe.ok || !data || !data.session || !data.session.role) {
+                    window.location.replace('/index.html');
+                    return;
+                }
+                window.__staffIdentity = {
+                    role: data.session.role,
+                    department: data.session.department || '',
+                    email: data.session.email || '',
+                };
+            } catch {
+                window.location.replace('/index.html');
+            }
+        })();
+
+        // ── RBAC: Finance pages need at least finance:read ────────────────────
+        window.RBAC.enforcePageAccess('finance:read', { pageName: 'Finance & Accounts' })
+            .then(() => window.RBAC.applyRBACToDOM())
+            .catch((err) => {
+                if (!String(err.message || '').startsWith('RBAC:')) throw err;
+            });
+
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        // --- Local Supabase proxy helper ---
+        async function journalAPI({ table, operation, data, filters, columns, returning, query }) {
+            // Identity comes from the verified espressgo_staff_session cookie
+            // server-side; the body no longer carries user_email/user_role.
+            fetch('http://127.0.0.1:7518/ingest/22f97819-2be6-4387-933e-a9741f1cb00f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'23daab'},body:JSON.stringify({sessionId:'23daab',location:'account.html:journalAPI',message:'journalAPI called',data:{table,operation},timestamp:Date.now()})}).catch(()=>{});
+
+            try {
+                const resp = await fetch('/api/supabase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        schema: 'journal', table, operation, data, filters, columns, returning, query,
+                    })
+                });
+
+                let payload = null;
+                try { payload = await resp.json(); } catch { payload = null; }
+
+                // Debug: log the full response
+                console.log('[DEBUG journalAPI] status:', resp.status, 'payload:', JSON.stringify(payload)?.slice(0, 300));
+                fetch('http://127.0.0.1:7518/ingest/22f97819-2be6-4387-933e-a9741f1cb00f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'23daab'},body:JSON.stringify({sessionId:'23daab',location:'account.html:journalAPI',message:'journalAPI response',data:{ok:resp.ok,payload,status:resp.status},timestamp:Date.now()})}).catch(()=>{});
+
+                // Return null on error so callers can detect it with `if (!result || !result.id)`
+                if (!resp.ok || (payload && payload.error)) {
+                    const message = (payload && (payload.error || payload.message)) || `HTTP ${resp.status}`;
+                    const display = document.getElementById('journal-api-status');
+                    if (display) {
+                        display.textContent = `Journal API error: ${message}`;
+                        display.className = 'text-[11px] font-black text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2';
+                    }
+                    console.warn('Journal API error:', message);
+                    return null;  // ← Return null (not []) so callers can check `if (!result)`
+                }
+
+                // For SELECT/raw: return array (may be empty legitimately)
+                if (['select', 'raw'].includes(operation)) {
+                    const data = (payload && payload.data) || [];
+                    console.log('[DEBUG journalAPI] returning data, length:', data.length);
+                    return data;
+                }
+                // For INSERT/UPDATE/DELETE: return the data or null
+                return (payload && payload.data) || null;
+            } catch (e) {
+                const message = e?.message || String(e || 'Network error');
+                fetch('http://127.0.0.1:7518/ingest/22f97819-2be6-4387-933e-a9741f1cb00f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'23daab'},body:JSON.stringify({sessionId:'23daab',location:'account.html:journalAPI',message:'journalAPI exception',data:{error:message},timestamp:Date.now()})}).catch(()=>{});
+                const display = document.getElementById('journal-api-status');
+                if (display) {
+                    display.textContent = `Journal API error: ${message}`;
+                    display.className = 'text-[11px] font-black text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2';
+                }
+                console.warn('Journal API error:', e);
+                return null;
+            }
+        }
+
+        function filterAccountType(nature) {
+            // Toggle button states
+            ['all', 'debit', 'credit'].forEach(n => {
+                const btn = document.getElementById(`btn-acc-${n}`);
+                if (btn) {
+                    if (n === nature) {
+                        btn.className = "px-4 py-1.5 text-xs font-bold rounded-md transition-all bg-primary text-on-primary shadow-sm";
+                    } else {
+                        btn.className = "px-4 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white";
+                    }
+                }
+            });
+
+            const cards = document.querySelectorAll('#accounts-portfolio-grid > div[data-type]');
+            const activeCategory = document.getElementById('account-category-filter').value;
+            
+            cards.forEach(card => {
+                const cardNature = card.getAttribute('data-nature');
+                const cardType = card.getAttribute('data-type');
+                
+                const matchNature = (nature === 'all') || (cardNature === nature);
+                const matchCategory = (activeCategory === 'all') || (cardType === activeCategory);
+                
+                if (matchNature && matchCategory) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function filterAccountCategory(category) {
+            const cards = document.querySelectorAll('#accounts-portfolio-grid > div[data-type]');
+            
+            // Find which nature button is currently active
+            let activeNature = 'all';
+            ['all', 'debit', 'credit'].forEach(n => {
+                const btn = document.getElementById(`btn-acc-${n}`);
+                if (btn && btn.classList.contains('bg-primary')) {
+                    activeNature = n;
+                }
+            });
+            
+            cards.forEach(card => {
+                const cardNature = card.getAttribute('data-nature');
+                const cardType = card.getAttribute('data-type');
+                
+                const matchNature = (activeNature === 'all') || (cardNature === activeNature);
+                const matchCategory = (category === 'all') || (cardType === category);
+                
+                if (matchNature && matchCategory) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Account Balance Registry — populated from journal.ledger
+        let accountBalances = {};
+        // General Ledger Database — organized by account name
+        let ledgerDatabase = {};
+        let accountCardsInitialized = false;
+
+        async function loadAccountData() {
+            try {
+                // Fetch all ledger rows for all accounts
+                const ledgerRows = await journalAPI({
+                    table: 'ledger',
+                    operation: 'raw',
+                    query: `SELECT account_name, account_code, account_type, date, entry_number, narration, debit, credit, running_balance FROM journal.ledger ORDER BY account_name, date ASC`
+                });
+
+                console.log('[DEBUG] ledgerRows count:', ledgerRows?.length, 'type:', typeof ledgerRows, 'isArray:', Array.isArray(ledgerRows));
+                if (ledgerRows?.length > 0) {
+                    console.log('[DEBUG] First row sample:', JSON.stringify(ledgerRows[0]));
+                    console.log('[DEBUG] Unique account_names:', [...new Set(ledgerRows.map(r => r.account_name))]);
+                } else {
+                    console.log('[DEBUG] ledgerRows is empty');
+                    console.log('[DEBUG] ledgerRows:', ledgerRows);
+                }
+
+                // Fetch all accounts from database
+                const dbAccounts = await journalAPI({
+                    table: 'accounts',
+                    operation: 'select',
+                    columns: 'id, code, name, type, nature'
+                });
+                console.log('[DEBUG] dbAccounts:', dbAccounts);
+                
+                // Deduplicate by code
+                const uniqueAccounts = {};
+                (dbAccounts || []).forEach(acc => {
+                    if (!uniqueAccounts[acc.code]) uniqueAccounts[acc.code] = acc;
+                });
+                const dedupedAccounts = Object.values(uniqueAccounts);
+                if (dedupedAccounts.length < (dbAccounts || []).length) {
+                    console.warn('[DEBUG] Removed', (dbAccounts || []).length - dedupedAccounts.length, 'duplicate accounts from database');
+                }
+
+                // Get existing card names
+                document.querySelectorAll('#accounts-portfolio-grid > div h4').forEach(h4 => {
+                    // These are just for reference, actual dedup is done below by code
+                });
+
+                // Dynamically add cards for accounts not in HTML
+                if (dedupedAccounts && dedupedAccounts.length > 0) {
+                    const grid = document.getElementById('accounts-portfolio-grid');
+                    const addCard = document.getElementById('add-account-card');
+                    
+                    // Build set of existing codes to avoid duplicates
+                    const existingCodes = new Set();
+                    document.querySelectorAll('#accounts-portfolio-grid > div[data-code]').forEach(card => {
+                        existingCodes.add(card.getAttribute('data-code'));
+                    });
+
+                    dedupedAccounts.forEach(acc => {
+                        // Skip if already exists by code (primary key) or by name (case-insensitive)
+                        if (existingCodes.has(acc.code)) return;
+                        const nameLower = acc.name.toLowerCase();
+                        let exists = false;
+                        document.querySelectorAll('#accounts-portfolio-grid > div h4').forEach(h4 => {
+                            if (h4.textContent.trim().toLowerCase() === nameLower) exists = true;
+                        });
+                        if (exists) {
+                            existingCodes.add(acc.code); // Mark as processed
+                            return;
+                        }
+                        
+                        const typeColors = {
+                            'asset': { bg: 'bg-green-50', text: 'text-green-500', badge: 'bg-green-50 text-green-700 border-green-200' },
+                            'liability': { bg: 'bg-amber-50', text: 'text-amber-500', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
+                            'expense': { bg: 'bg-red-50', text: 'text-red-500', badge: 'bg-red-50 text-red-700 border-red-200' },
+                            'income': { bg: 'bg-blue-50', text: 'text-blue-500', badge: 'bg-blue-50 text-blue-700 border-blue-200' }
+                        };
+                        const colors = typeColors[acc.type] || typeColors['asset'];
+                        const nature = acc.nature || 'debit';
+                        
+                        const card = document.createElement('div');
+                        card.className = 'bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer';
+                        card.setAttribute('data-type', acc.type);
+                        card.setAttribute('data-nature', nature);
+                        card.setAttribute('data-code', acc.code);
+                        card.innerHTML = `
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="p-3.5 ${colors.bg} ${colors.text} rounded-xl">
+                                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+                                </div>
+                                <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">${acc.name}</h4>
+                                <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                                    <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">${acc.code}</span>
+                                    <span class="px-2.5 py-0.5 rounded ${colors.badge} text-[9px] font-black uppercase">${acc.type}</span>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Add hover effects
+                        card.addEventListener('mouseenter', () => {
+                            card.style.transform = 'translateY(-2px)';
+                            card.style.boxShadow = '0 6px 16px rgba(26, 43, 75, 0.08)';
+                        });
+                        card.addEventListener('mouseleave', () => {
+                            card.style.transform = 'translateY(0)';
+                            card.style.boxShadow = 'none';
+                        });
+                        card.addEventListener('click', () => {
+                            window.location.href = `account-detail.html?name=${encodeURIComponent(acc.name)}&code=${encodeURIComponent(acc.code)}&nature=${encodeURIComponent(nature)}&type=${encodeURIComponent(acc.type)}&icon=${encodeURIComponent('account_balance')}`;
+                        });
+                        
+                        grid.insertBefore(card, addCard);
+                    });
+                }
+
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+                // Organize by account name
+                const byAccount = {};
+                (ledgerRows || []).forEach(row => {
+                    const accName = row.account_name;
+                    const dateObj = new Date(row.date);
+                    const monthIdx = dateObj.getMonth();
+                    const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                    const debit = parseFloat(row.debit) || 0;
+                    const credit = parseFloat(row.credit) || 0;
+
+                    if (!byAccount[accName]) byAccount[accName] = { rows: [], byMonth: {}};
+
+                    byAccount[accName].rows.push({
+                        groupId: row.entry_number,
+                        date: dateStr,
+                        narration: row.narration,
+                        debit,
+                        credit,
+                        runningBalance: parseFloat(row.running_balance) || 0
+                    });
+
+                    const monthKey = months[monthIdx];
+                    if (!byAccount[accName].byMonth[monthKey]) {
+                        byAccount[accName].byMonth[monthKey] = { debit: 0, credit: 0 };
+                    }
+                    byAccount[accName].byMonth[monthKey].debit += debit;
+                    byAccount[accName].byMonth[monthKey].credit += credit;
+                });
+
+                console.log('[DEBUG] byAccount keys:', Object.keys(byAccount));
+                ledgerDatabase = byAccount;
+
+                // Get latest running balance per account
+                // Use the hardcoded account names (matching the HTML cards) as source of truth,
+                // then look up the actual running_balance from byAccount dynamically.
+                accountBalances = {};
+                const cardAccountNames = [
+                    'Direct Labour', 'Direct Material', 'Factory Overhead',
+                    'Cash', 'Raw Material Inventory', 'Accounts Payable',
+                    'Accounts Receivable', 'Work in Process',
+                    'Finished Goods', 'Cost of Goods Sold', 'Sales Revenue'
+                ];
+                
+                // Add dynamically loaded account names from db
+                if (dbAccounts && dbAccounts.length > 0) {
+                    dbAccounts.forEach(acc => {
+                        if (!cardAccountNames.includes(acc.name)) {
+                            cardAccountNames.push(acc.name);
+                        }
+                    });
+                }
+                
+                cardAccountNames.forEach(name => {
+                    const acc = byAccount[name];
+                    console.log('[DEBUG] Looking for account:', name, '| found:', acc ? 'YES rows=' + acc.rows.length : 'NO');
+                    if (acc && acc.rows.length > 0) {
+                        const last = acc.rows[acc.rows.length - 1];
+                        console.log('[DEBUG]   last row:', JSON.stringify(last));
+                        accountBalances[name] = `$${Math.abs(last.runningBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    } else {
+                        accountBalances[name] = '';
+                    }
+                });
+
+                // Update summary metric cards
+                updateMetrics(ledgerDatabase, months);
+
+                console.log('[DEBUG] Final accountBalances:', JSON.stringify(accountBalances, null, 2));
+
+                // Update account cards with balances
+                updateAccountCards(accountBalances);
+
+                // Build monthly margin data from journal entries
+                buildMarginChart(ledgerDatabase, months);
+
+            } catch (err) {
+                console.warn('[DEBUG] Could not load journal data:', err);
+            }
+        }
+
+        function updateMetrics(db, months) {
+            // Total Liquidity = Cash + AR (assets)
+            const cashBal = db['Cash']?.rows?.length ? db['Cash'].rows[db['Cash'].rows.length - 1].runningBalance : 0;
+            const arBal   = db['Accounts Receivable']?.rows?.length ? db['Accounts Receivable'].rows[db['Accounts Receivable'].rows.length - 1].runningBalance : 0;
+            const totalLiq = cashBal + arBal;
+            const liqEl = document.getElementById('metric-total-liquidity');
+            if (liqEl) liqEl.textContent = `$${totalLiq.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            // Payables Aging = AP balance (credit = liability owed)
+            const apBal = db['Accounts Payable']?.rows?.length ? Math.abs(db['Accounts Payable'].rows[db['Accounts Payable'].rows.length - 1].runningBalance) : 0;
+            const payEl = document.getElementById('metric-payables-aging');
+            if (payEl) payEl.textContent = `$${apBal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            // Inventory Turnover = COGS / ((Opening Finished Goods + Closing Finished Goods) / 2)
+            // Approximate using journal COGS and Finished Goods balances
+            const cogsBal = db['Cost of Goods Sold']?.rows?.length ? Math.abs(db['Cost of Goods Sold'].rows[db['Cost of Goods Sold'].rows.length - 1].runningBalance) : 0;
+            const fgBal   = db['Finished Goods']?.rows?.length ? Math.abs(db['Finished Goods'].rows[db['Finished Goods'].rows.length - 1].runningBalance) : 1;
+            const turnover = fgBal > 0 ? (cogsBal / fgBal) : 0;
+            const turnEl = document.querySelector('#metric-inventory-turnover');
+            if (turnEl) {
+                turnEl.textContent = `${turnover.toFixed(1)}x`;
+                const bar = document.getElementById('turnover-bar');
+                if (bar) bar.style.width = `${Math.min(turnover * 5, 100)}%`;
+            }
+        }
+
+        function updateAccountCards(balances) {
+            const cards = document.querySelectorAll('#accounts-portfolio-grid > div[data-type]');
+            cards.forEach(card => {
+                const name = card.querySelector('h4')?.textContent?.trim();
+                if (!name || !balances[name]) return;
+
+                // Find or create a balance element inside the card
+                let balEl = card.querySelector('.account-balance');
+                if (!balEl) {
+                    const div = document.createElement('div');
+                    div.className = 'account-balance';
+                    const borderDiv = card.querySelector('.border-t');
+                    if (borderDiv) {
+                        borderDiv.parentNode.insertBefore(div, borderDiv.nextSibling);
+                    }
+                    balEl = div;
+                }
+                balEl.innerHTML = `<p class="text-[22px] font-black text-[#031635] font-data-tabular mt-1">${balances[name]}</p>`;
+            });
+        }
+
+        function buildMarginChart(db, months) {
+            // Profit Margin per month = (Revenue - COGS) / Revenue
+            // Compute monthly totals
+            const revenue = db['Sales Revenue']?.byMonth || {};
+            const cogs    = db['Cost of Goods Sold']?.byMonth || {};
+            const directLabour    = db['Direct Labour']?.byMonth || {};
+            const directMaterial  = db['Direct Material']?.byMonth || {};
+            const factoryOverhead = db['Factory Overhead']?.byMonth || {};
+
+            const monthlyMargins = months.map(m => {
+                const rev  = revenue[m]?.credit || 0;
+                const totalExp = (cogs[m]?.debit || 0) + (directLabour[m]?.debit || 0) + (directMaterial[m]?.debit || 0) + (factoryOverhead[m]?.debit || 0);
+                const profit = rev - totalExp;
+                return rev > 0 ? (profit / rev) : 0;
+            });
+
+            // Find min/max for Y scaling
+            const maxM = Math.max(...monthlyMargins, 0.01);
+            const minM = Math.min(...monthlyMargins, 0);
+            const range = maxM - minM || 0.01;
+
+            // Chart dimensions
+            const SVG_W = 1000;
+            const SVG_H = 240;
+            const Y_MIN = 30;  // top padding
+            const Y_MAX = 200; // bottom padding area
+            const PADDING_X = 30;
+            const PADDING_X_END = 35;
+            const usableW = SVG_W - PADDING_X - PADDING_X_END;
+            const usableH = Y_MAX - Y_MIN;
+
+            // Map month index to x position
+            const xPos = i => PADDING_X + (i / (months.length - 1)) * usableW;
+            // Map margin to y position (inverted — higher margin = lower y)
+            const yPos = v => Y_MIN + ((maxM - v) / range) * usableH;
+
+            // Build SVG path points
+            const points = monthlyMargins.map((v, i) => `${xPos(i)},${yPos(v)}`);
+            const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'C'}${i === 0 ? p : ''}`).join(' ');
+
+            // Smooth cubic bezier path
+            const lineD = monthlyMargins.map((v, i) => {
+                const x = xPos(i);
+                const y = yPos(v);
+                if (i === 0) return `M ${x},${y}`;
+                const px = xPos(i - 1);
+                const py = yPos(monthlyMargins[i - 1]);
+                const cx1 = px + (x - px) / 3;
+                const cy1 = py;
+                const cx2 = x - (x - px) / 3;
+                const cy2 = y;
+                return `C ${cx1},${cy1} ${cx2},${cy2} ${x},${y}`;
+            }).join(' ');
+
+            const areaD = `${lineD} L ${xPos(monthlyMargins.length - 1)},${Y_MAX} L ${xPos(0)},${Y_MAX} Z`;
+
+            // Update line and area
+            const lineEl = document.getElementById('profit-line');
+            const areaEl = document.getElementById('profit-area');
+            if (lineEl) lineEl.setAttribute('d', lineD);
+            if (areaEl) areaEl.setAttribute('d', areaD);
+
+            // Update dots
+            const dotsContainer = document.getElementById('profit-dots');
+            if (dotsContainer) {
+                dotsContainer.innerHTML = monthlyMargins.map((v, i) => {
+                    const x = xPos(i);
+                    const y = yPos(v);
+                    const isLast = i === monthlyMargins.length - 1;
+                    const r = isLast ? 5 : 4;
+                    const fill = isLast ? '#f47424' : '#031635';
+                    return `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="#ffffff" stroke-width="2"/>`;
+                }).join('');
+            }
+
+            // Update average margin stat
+            const avg = monthlyMargins.reduce((a, b) => a + b, 0) / monthlyMargins.length;
+            const avgEl = document.getElementById('avg-margin-value');
+            if (avgEl) avgEl.textContent = `${(avg * 100).toFixed(1)}%`;
+
+            // Update highest/lowest
+            const maxVal = Math.max(...monthlyMargins);
+            const minVal = Math.min(...monthlyMargins);
+            const maxIdx = monthlyMargins.indexOf(maxVal);
+            const minIdx = monthlyMargins.indexOf(minVal);
+            const highEl = document.getElementById('highest-margin');
+            const lowEl  = document.getElementById('lowest-margin');
+            if (highEl) highEl.innerHTML = `${(maxVal * 100).toFixed(1)}% <span class="text-xs font-semibold text-on-surface-variant/80 normal-case">in ${months[maxIdx]}</span>`;
+            if (lowEl)  lowEl.innerHTML  = `${(minVal * 100).toFixed(1)}% <span class="text-xs font-semibold text-on-surface-variant/80 normal-case">in ${months[minIdx]}</span>`;
+        }
+
+        // State controller
+        let activeLedgerAccount = null;
+
+        function getLedgerEntriesForAccount(accountTitle) {
+            const accountData = ledgerDatabase[accountTitle];
+            if (!accountData || !accountData.rows) return [];
+
+            // Group flat ledger rows by entry_number
+            const grouped = {};
+            accountData.rows.forEach(row => {
+                const key = row.groupId;
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        groupId: key,
+                        date: row.date,
+                        narration: row.narration,
+                        lines: []
+                    };
+                }
+                if (row.debit > 0) {
+                    grouped[key].lines.push({ details: accountTitle, debit: row.debit, credit: null });
+                }
+                if (row.credit > 0) {
+                    grouped[key].lines.push({ details: accountTitle, debit: null, credit: row.credit });
+                }
+            });
+
+            return Object.values(grouped).reverse(); // newest first
+        }
+
+        function openLedgerModal(accountInfo) {
+            activeLedgerAccount = accountInfo;
+            
+            // Set header info
+            document.getElementById('ledger-account-title').innerText = `${accountInfo.title} Account`;
+            
+            const bal = accountBalances[accountInfo.title] || '';
+            document.getElementById('ledger-account-balance').innerText = bal;
+            
+            document.getElementById('ledger-account-icon').innerText = accountInfo.icon;
+            
+            const iconBox = document.getElementById('ledger-account-icon-box');
+            if (iconBox) {
+                if (accountInfo.nature === 'debit') {
+                    iconBox.className = "size-16 rounded-lg bg-green-50 text-green-700 flex items-center justify-center";
+                } else {
+                    iconBox.className = "size-16 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center";
+                }
+            }
+            
+            // Reset filters & search
+            document.getElementById('ledger-search-input').value = '';
+
+            // Fetch and render
+            const entries = getLedgerEntriesForAccount(accountInfo.title);
+            renderLedgerEntriesList(entries);
+
+            // Transition: Hide portfolio dashboard, show ledger view
+            document.getElementById('portfolio-dashboard-view').classList.add('hidden');
+            document.getElementById('ledger-details-view').classList.remove('hidden');
+        }
+
+        function closeLedgerView() {
+            activeLedgerAccount = null;
+            document.getElementById('ledger-details-view').classList.add('hidden');
+            document.getElementById('portfolio-dashboard-view').classList.remove('hidden');
+        }
+
+        function closeLedgerModal() {
+            closeLedgerView();
+        }
+
+        function renderLedgerEntriesList(entries) {
+            const container = document.getElementById('ledger-entries-container');
+            container.innerHTML = '';
+
+            if (entries.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white border border-outline-variant rounded-2xl p-10 text-center text-on-surface-variant font-bold">
+                        <span class="material-symbols-outlined text-[48px] text-outline-variant mb-2">find_in_page</span>
+                        <p>No transaction history entries found for this query.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            entries.forEach(group => {
+                let totalDebit = 0;
+                let totalCredit = 0;
+                let rowsHTML = '';
+
+                group.lines.forEach((line, idx) => {
+                    const debVal = line.debit ? `$${line.debit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-';
+                    const credVal = line.credit ? `$${line.credit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-';
+                    
+                    if (line.debit) totalDebit += line.debit;
+                    if (line.credit) totalCredit += line.credit;
+
+                    // Show date only on first row
+                    const dateCell = idx === 0 ? `<td class="px-6 py-4 text-[13px] text-slate-500 font-medium">${group.date}</td>` : `<td class="px-6 py-4 text-[13px] text-slate-500 font-medium"><br></td>`;
+
+                    rowsHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            ${dateCell}
+                            <td class="px-6 py-4 text-sm text-slate-900 font-semibold">
+                                <div class="flex flex-col">
+                                    <span class="">${line.details}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-[13px] text-right font-medium ${line.debit ? 'text-slate-900' : 'text-slate-400'}">${debVal}</td>
+                            <td class="px-6 py-4 text-[13px] text-right font-medium ${line.credit ? 'text-slate-900' : 'text-slate-400'}">${credVal}</td>
+                        </tr>
+                    `;
+                });
+
+                const formattedTotalDebit = `$${totalDebit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                const formattedTotalCredit = `$${totalCredit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+                const groupCard = document.createElement('div');
+                groupCard.className = "bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm";
+                groupCard.innerHTML = `
+                    <div class="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ENTRY GROUP ID: ${group.groupId}</span>
+                    </div>
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-white border-b border-slate-200">
+                            <tr>
+                                <th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider w-40">DATE</th>
+                                <th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">DETAILS</th>
+                                <th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-right w-32">DEBIT</th>
+                                <th class="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-right w-32">CREDIT</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white">
+                            ${rowsHTML}
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-slate-50/50">
+                                <td class="px-6 py-4 border-t border-slate-100" colspan="4">
+                                    <p class="text-xs text-slate-500 italic">
+                                        <span class="font-bold text-slate-700 not-italic mr-2">Narration:</span>
+                                        ${group.narration}
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr class="bg-slate-100">
+                                <td class="px-6 py-3 text-[11px] text-slate-900 font-bold text-right" colspan="2"><br></td>
+                                <td class="px-6 py-3 text-[13px] font-bold text-slate-900 text-right">${formattedTotalDebit}</td>
+                                <td class="px-6 py-3 text-[13px] font-bold text-slate-900 text-right">${formattedTotalCredit}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+
+                container.appendChild(groupCard);
+            });
+        }
+
+        function filterLedgerEntries() {
+            if (!activeLedgerAccount) return;
+            const term = document.getElementById('ledger-search-input').value.toLowerCase();
+            const entries = getLedgerEntriesForAccount(activeLedgerAccount.title);
+            
+            const filtered = entries.filter(group => {
+                const matchGroupId = group.groupId.toLowerCase().includes(term);
+                const matchNarration = group.narration.toLowerCase().includes(term);
+                const matchLines = group.lines.some(line => line.details.toLowerCase().includes(term));
+                return matchGroupId || matchNarration || matchLines;
+            });
+            
+            renderLedgerEntriesList(filtered);
+        }
+
+        // Add ledger entry modal operations
+        const ACCOUNT_OPTIONS = `
+            <option disabled selected value="">Select Account</option>
+            <option value="Direct Labour">E001 - Direct Labour</option>
+            <option value="Direct Material">E002 - Direct Material</option>
+            <option value="Factory Overhead">E003 - Factory Overhead</option>
+            <option value="Cash">A001 - Cash</option>
+            <option value="Raw Material Inventory">A002 - Raw Material Inventory</option>
+            <option value="Accounts Payable">L001 - Accounts Payable</option>
+            <option value="Accounts Receivable">A004 - Accounts Receivable</option>
+            <option value="Work in Process">A005 - Work in Process</option>
+            <option value="Finished Goods">A003 - Finished Goods</option>
+            <option value="Cost of Goods Sold">E004 - Cost of Goods Sold</option>
+                        <option value="Sales Revenue">I001 - Sales Revenue</option>
+        `;
+
+        function openAddEntryModal() {
+            document.getElementById('entry-form-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('entry-form-invoice').value = `INV-2026-${Math.floor(100 + Math.random() * 900)}`;
+            document.getElementById('entry-form-narration').value = '';
+            
+            // Clear containers
+            const debitContainer = document.getElementById('debit-rows-container');
+            const creditContainer = document.getElementById('credit-rows-container');
+            debitContainer.innerHTML = '';
+            creditContainer.innerHTML = '';
+            
+            // Insert initial rows
+            addDebitRow();
+            addCreditRow();
+            
+            // Context aware pre-selection
+            if (activeLedgerAccount) {
+                if (activeLedgerAccount.nature === 'debit') {
+                    const firstSelect = debitContainer.querySelector('select');
+                    if (firstSelect) firstSelect.value = activeLedgerAccount.title;
+                } else {
+                    const firstSelect = creditContainer.querySelector('select');
+                    if (firstSelect) firstSelect.value = activeLedgerAccount.title;
+                }
+            }
+            
+            // Reset upload preview
+            removeUploadedFile();
+            
+            // Recalculate totals
+            updateJournalTotals();
+            
+            document.getElementById('add-entry-modal').classList.remove('hidden');
+        }
+
+        function closeAddEntryModal() {
+            document.getElementById('add-entry-modal').classList.add('hidden');
+        }
+
+        function openAddAccountModal() {
+            document.getElementById('account-name-input').value = '';
+            document.getElementById('account-type-input').value = '';
+            document.getElementById('nature-badge').textContent = '---';
+            document.getElementById('account-code-preview').textContent = '---';
+            document.getElementById('add-account-modal').classList.remove('hidden');
+        }
+
+        function closeAddAccountModal() {
+            document.getElementById('add-account-modal').classList.add('hidden');
+        }
+
+        function updateAccountNaturePreview() {
+            const type = document.getElementById('account-type-input').value;
+            const typeMap = {
+                'asset': { nature: 'Debit', color: 'bg-green-50 text-green-700 border-green-200' },
+                'liability': { nature: 'Credit', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+                'expense': { nature: 'Debit', color: 'bg-red-50 text-red-700 border-red-200' },
+                'income': { nature: 'Credit', color: 'bg-blue-50 text-blue-700 border-blue-200' }
+            };
+            const mapping = typeMap[type] || { nature: '---', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+            document.getElementById('nature-badge').textContent = mapping.nature;
+            document.getElementById('nature-badge').className = `px-2.5 py-0.5 rounded text-[9px] font-black uppercase border ${mapping.color}`;
+            
+            // Update account code preview
+            if (type) {
+                const prefix = type.charAt(0).toUpperCase();
+                document.getElementById('account-code-preview').textContent = `${prefix}??? (auto-assigned)`;
+            } else {
+                document.getElementById('account-code-preview').textContent = '---';
+            }
+        }
+
+        async function saveNewAccount(event) {
+            event.preventDefault();
+            const name = document.getElementById('account-name-input').value.trim();
+            const type = document.getElementById('account-type-input').value;
+            
+            if (!name || !type) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            const btn = document.getElementById('save-account-btn');
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+
+            try {
+                // Check if account with same name already exists (case-insensitive)
+                const existingByName = await journalAPI({
+                    table: 'accounts',
+                    operation: 'select',
+                    columns: 'id, name',
+                    filters: {}
+                });
+                
+                const nameExists = (existingByName || []).some(acc => 
+                    acc.name && acc.name.toLowerCase() === name.toLowerCase()
+                );
+                
+                if (nameExists) {
+                    throw new Error(`An account named "${name}" already exists. Please use a different name.`);
+                }
+
+                // Get existing codes for this type to generate unique code
+                const prefix = type.charAt(0).toUpperCase();
+                const existingRows = await journalAPI({
+                    table: 'accounts',
+                    operation: 'select',
+                    columns: 'code',
+                    filters: { like: { code: `${prefix}%` } }
+                });
+
+                // Generate unique 4-digit code
+                const existingCodes = (existingRows || []).map(r => r.code).filter(Boolean);
+                let newCode;
+                let attempts = 0;
+                do {
+                    newCode = prefix + String(Math.floor(Math.random() * 900 + 100));
+                    attempts++;
+                } while (existingCodes.includes(newCode) && attempts < 100);
+
+                if (existingCodes.includes(newCode)) {
+                    throw new Error('Could not generate unique account code. Please try again.');
+                }
+
+                // Insert new account
+                const result = await journalAPI({
+                    table: 'accounts',
+                    operation: 'insert',
+                    data: {
+                        code: newCode,
+                        name: name,
+                        type: type,
+                        nature: (type === 'liability' || type === 'income') ? 'credit' : 'debit'
+                    }
+                });
+
+                if (result) {
+                    closeAddAccountModal();
+                    showPostSuccessToast(`Account "${name}" created with code ${newCode}`);
+                    
+                    // Dynamically add the new card to the grid
+                    const grid = document.getElementById('accounts-portfolio-grid');
+                    const addCard = document.getElementById('add-account-card');
+                    
+                    const typeColors = {
+                        'asset': { bg: 'bg-green-50', text: 'text-green-500', badge: 'bg-green-50 text-green-700 border-green-200' },
+                        'liability': { bg: 'bg-amber-50', text: 'text-amber-500', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
+                        'expense': { bg: 'bg-red-50', text: 'text-red-500', badge: 'bg-red-50 text-red-700 border-red-200' },
+                        'income': { bg: 'bg-blue-50', text: 'text-blue-500', badge: 'bg-blue-50 text-blue-700 border-blue-200' }
+                    };
+                    const colors = typeColors[type] || typeColors['asset'];
+                    const nature = (type === 'liability' || type === 'income') ? 'credit' : 'debit';
+                    
+                    const newCard = document.createElement('div');
+                    newCard.className = 'bg-white border border-outline-variant p-5 rounded-2xl flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-300 relative group cursor-pointer';
+                    newCard.setAttribute('data-type', type);
+                    newCard.setAttribute('data-nature', nature);
+                    newCard.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="p-3.5 ${colors.bg} ${colors.text} rounded-xl">
+                                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+                            </div>
+                            <span class="material-symbols-outlined text-outline/40 group-hover:text-primary transition-colors text-[20px]">open_in_new</span>
+                        </div>
+                        <div class="space-y-4">
+                            <h4 class="font-extrabold text-sm text-[#031635] uppercase tracking-wide group-hover:text-primary transition-colors">${name}</h4>
+                            <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                                <span class="text-[10px] font-black text-on-surface-variant/60 font-data-tabular">${newCode}</span>
+                                <span class="px-2.5 py-0.5 rounded ${colors.badge} text-[9px] font-black uppercase">${type}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add click handler
+                    newCard.addEventListener('mouseenter', () => {
+                        newCard.style.transform = 'translateY(-2px)';
+                        newCard.style.boxShadow = '0 6px 16px rgba(26, 43, 75, 0.08)';
+                    });
+                    newCard.addEventListener('mouseleave', () => {
+                        newCard.style.transform = 'translateY(0)';
+                        newCard.style.boxShadow = 'none';
+                    });
+                    newCard.addEventListener('click', () => {
+                        window.location.href = `account-detail.html?name=${encodeURIComponent(name)}&code=${encodeURIComponent(newCode)}&nature=${encodeURIComponent(nature)}&type=${encodeURIComponent(type)}&icon=${encodeURIComponent('account_balance')}`;
+                    });
+                    
+                    grid.insertBefore(newCard, addCard);
+                } else {
+                    throw new Error('Failed to create account');
+                }
+            } catch (err) {
+                alert('Error creating account: ' + (err.message || 'Unknown error'));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Account';
+            }
+        }
+
+        function addDebitRow() {
+            const container = document.getElementById('debit-rows-container');
+            const row = document.createElement('div');
+            row.className = "grid grid-cols-12 gap-4 items-center group animate-fade-in";
+            row.innerHTML = `
+                <div class="col-span-6">
+                    <select class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-2 font-body-md text-body-md form-input-focus transition-all" required onchange="updateJournalTotals()">
+                        ${ACCOUNT_OPTIONS}
+                    </select>
+                </div>
+                <div class="col-span-5">
+                    <input class="w-full text-right bg-surface border border-outline-variant rounded-lg px-4 py-2 font-data-tabular text-data-tabular form-input-focus transition-all" placeholder="0.00" step="0.01" type="number" required min="0.01" oninput="updateJournalTotals()">
+                </div>
+                <div class="col-span-1 flex justify-center">
+                    <button class="text-on-surface-variant opacity-0 group-hover:opacity-100 hover:text-expense-red transition-all" type="button" onclick="removeDebitRow(this)">
+                        <span class="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+            updateJournalTotals();
+        }
+
+        function addCreditRow() {
+            const container = document.getElementById('credit-rows-container');
+            const row = document.createElement('div');
+            row.className = "grid grid-cols-12 gap-4 items-center group animate-fade-in";
+            row.innerHTML = `
+                <div class="col-span-6">
+                    <select class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-2 font-body-md text-body-md form-input-focus transition-all" required onchange="updateJournalTotals()">
+                        ${ACCOUNT_OPTIONS}
+                    </select>
+                </div>
+                <div class="col-span-5">
+                    <input class="w-full text-right bg-surface border border-outline-variant rounded-lg px-4 py-2 font-data-tabular text-data-tabular form-input-focus transition-all" placeholder="0.00" step="0.01" type="number" required min="0.01" oninput="updateJournalTotals()">
+                </div>
+                <div class="col-span-1 flex justify-center">
+                    <button class="text-on-surface-variant opacity-0 group-hover:opacity-100 hover:text-expense-red transition-all" type="button" onclick="removeCreditRow(this)">
+                        <span class="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+            updateJournalTotals();
+        }
+
+        function removeDebitRow(btn) {
+            const container = document.getElementById('debit-rows-container');
+            if (container.children.length > 1) {
+                btn.closest('.grid').remove();
+                updateJournalTotals();
+            } else {
+                alert("A journal entry requires at least one debit account entry.");
+            }
+        }
+
+        function removeCreditRow(btn) {
+            const container = document.getElementById('credit-rows-container');
+            if (container.children.length > 1) {
+                btn.closest('.grid').remove();
+                updateJournalTotals();
+            } else {
+                alert("A journal entry requires at least one credit account entry.");
+            }
+        }
+
+        function updateJournalTotals() {
+            let totalDebit = 0;
+            let totalCredit = 0;
+            
+            const debitInputs = document.querySelectorAll('#debit-rows-container input[type="number"]');
+            debitInputs.forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                totalDebit += val;
+            });
+            
+            const creditInputs = document.querySelectorAll('#credit-rows-container input[type="number"]');
+            creditInputs.forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                totalCredit += val;
+            });
+            
+            document.getElementById('journal-total-debit').textContent = `$${totalDebit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('journal-total-credit').textContent = `$${totalCredit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            
+            const balanceStatusContainer = document.getElementById('journal-balance-status');
+            const balanced = (totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01);
+            
+            if (balanced) {
+                balanceStatusContainer.className = "flex items-center space-x-2 text-success-text";
+                balanceStatusContainer.innerHTML = `
+                    <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                    <span class="font-label-md text-label-md uppercase tracking-wider">Balanced</span>
+                `;
+            } else {
+                balanceStatusContainer.className = "flex items-center space-x-2 text-amber-600";
+                balanceStatusContainer.innerHTML = `
+                    <span class="material-symbols-outlined text-[20px]">warning</span>
+                    <span class="font-label-md text-label-md uppercase tracking-wider">Unbalanced</span>
+                `;
+            }
+            
+            const postBtn = document.getElementById('post-journal-btn');
+            if (postBtn) {
+                postBtn.disabled = !balanced;
+                if (balanced) {
+                    postBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    postBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        async function postJournalEntry(event) {
+            event.preventDefault();
+            
+            const rawDate = document.getElementById('entry-form-date').value;
+            const invoiceNum = document.getElementById('entry-form-invoice').value;
+            const narration = document.getElementById('entry-form-narration').value;
+            
+            if (!rawDate) {
+                showPostErrorToast("Please select a date for the entry.");
+                return;
+            }
+
+            const lines = [];
+            
+            // Debits
+            const debitRows = document.querySelectorAll('#debit-rows-container > div');
+            debitRows.forEach(row => {
+                const select = row.querySelector('select');
+                const input = row.querySelector('input');
+                const account = select.value;
+                const amt = parseFloat(input.value) || 0.00;
+                if (account) {
+                    lines.push({
+                        details: account,
+                        debit: amt,
+                        credit: null
+                    });
+                }
+            });
+            
+            // Credits
+            const creditRows = document.querySelectorAll('#credit-rows-container > div');
+            creditRows.forEach(row => {
+                const select = row.querySelector('select');
+                const input = row.querySelector('input');
+                const account = select.value;
+                const amt = parseFloat(input.value) || 0.00;
+                if (account) {
+                    lines.push({
+                        details: account,
+                        debit: null,
+                        credit: amt
+                    });
+                }
+            });
+            
+            if (lines.length < 2) {
+                showPostErrorToast("Please add at least one debit line and one credit line.");
+                return;
+            }
+            
+            let totalDeb = 0;
+            let totalCred = 0;
+            lines.forEach(l => {
+                if (l.debit) totalDeb += l.debit;
+                if (l.credit) totalCred += l.credit;
+            });
+            
+            if (Math.abs(totalDeb - totalCred) > 0.01) {
+                showPostErrorToast("Transaction is unbalanced. Debits must equal Credits.");
+                return;
+            }
+
+            // Resolve account IDs from journal.accounts
+            const accountMap = {};
+            const accResults = await journalAPI({ table: 'accounts', operation: 'select', columns: 'id, name' });
+            (accResults || []).forEach(a => { accountMap[a.name] = a.id; });
+
+            // 1. Insert the journal entry header
+            const entryResult = await journalAPI({
+                table: 'entries',
+                operation: 'insert',
+                data: {
+                    date: rawDate,
+                    invoice_ref: invoiceNum || null,
+                    narration: narration || `Transaction ${invoiceNum}`,
+                    is_posted: false
+                }
+            });
+
+            // entryResult is null on error, or an object with id on success
+            if (!entryResult || !entryResult.id) {
+                // Error message was already shown by journalAPI
+                showPostErrorToast("Failed to save entry. Check the error message above.");
+                return;
+            }
+
+            const entryId = entryResult.id;
+
+            // 2. Insert each journal line
+            for (const line of lines) {
+                const accId = accountMap[line.details];
+                if (!accId) continue;
+                await journalAPI({
+                    table: 'entry_lines',
+                    operation: 'insert',
+                    data: {
+                        entry_id: entryId,
+                        account_id: accId,
+                        debit: line.debit || 0,
+                        credit: line.credit || 0,
+                        memo: narration || null
+                    }
+                });
+            }
+
+            // 3. Mark entry as posted
+            await journalAPI({
+                table: 'entries',
+                operation: 'update',
+                data: { is_posted: true },
+                filters: { eq: { id: entryId } }
+            });
+
+            // 3b. Best-effort: attach the uploaded receipt to the new entry so it
+            // survives a refresh and shows up in the ledger view. We probe the
+            // entries table for the columns we want to write (handled by the
+            // /api/supabase OR /api/journal endpoints), and silently skip if
+            // none exist. The journal POST itself is NOT gated on this — the
+            // entry is already saved by this point.
+            if (uploadedReceipt && uploadedReceipt.publicUrl) {
+                const candidateCols = ['attachment_url', 'attachment_path', 'attachment_name', 'receipt_url', 'receipt_path'];
+                let available = entryAttachmentColumns; // module-scoped cache, null on first call
+                if (available === null) {
+                    try {
+                        const probe = await journalAPI({
+                            table: 'entries',
+                            operation: 'select',
+                            columns: candidateCols.join(','),
+                            filters: { eq: { id: entryId } }
+                        });
+                        available = new Set();
+                        const row = Array.isArray(probe) ? probe[0] : probe;
+                        if (row) candidateCols.forEach((c) => { if (c in row) available.add(c); });
+                    } catch (probeErr) {
+                        console.warn('[account] entries column probe failed; receipt will not be attached:', probeErr?.message || probeErr);
+                        available = new Set();
+                    }
+                    entryAttachmentColumns = available;
+                }
+                const attachData = {};
+                if (available.has('attachment_url')) attachData.attachment_url = uploadedReceipt.publicUrl;
+                if (available.has('attachment_path')) attachData.attachment_path = uploadedReceipt.storedPath || null;
+                if (available.has('attachment_name')) attachData.attachment_name = uploadedReceipt.fileName || null;
+                if (available.has('receipt_url')) attachData.receipt_url = uploadedReceipt.publicUrl;
+                if (available.has('receipt_path')) attachData.receipt_path = uploadedReceipt.storedPath || null;
+                if (Object.keys(attachData).length > 0) {
+                    try {
+                        await journalAPI({
+                            table: 'entries',
+                            operation: 'update',
+                            data: attachData,
+                            filters: { eq: { id: entryId } }
+                        });
+                    } catch (attachErr) {
+                        console.warn('[account] could not attach receipt to journal entry:', attachErr?.message || attachErr);
+                    }
+                } else {
+                    console.warn('[account] entries table has no attachment columns; receipt uploaded to disk but not linked to entry.');
+                }
+                uploadedReceipt = null; // consumed
+            }
+
+            // In-memory updates for immediate UI feedback
+            const groupId = `JE-${entryId}`;
+            const dateObj = new Date(rawDate);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const newEntry = {
+                groupId,
+                date: formattedDate,
+                narration: narration || `Transaction ${invoiceNum}`,
+                lines
+            };
+
+            lines.forEach(line => {
+                const accountTitle = line.details;
+                if (ledgerDatabase[accountTitle]) {
+                    const alreadyExists = ledgerDatabase[accountTitle].some(e => e.groupId === groupId);
+                    if (!alreadyExists) {
+                        ledgerDatabase[accountTitle].unshift(newEntry);
+                    }
+                } else {
+                    ledgerDatabase[accountTitle] = [newEntry];
+                }
+                
+                const currentValStr = (accountBalances[accountTitle] || '').replace(/[$,]/g, '');
+                const currentVal = parseFloat(currentValStr) || 0;
+                
+                const card = Array.from(document.querySelectorAll('#accounts-portfolio-grid > div')).find(c => {
+                    return c.querySelector('h4').textContent.trim() === accountTitle;
+                });
+                
+                let nature = 'debit';
+                if (card) {
+                    nature = card.getAttribute('data-nature');
+                } else {
+                    const creditAccounts = ['Accounts Payable', 'Sales Revenue'];
+                    if (creditAccounts.includes(accountTitle)) {
+                        nature = 'credit';
+                    }
+                }
+                
+                let delta = 0;
+                if (nature === 'debit') {
+                    if (line.debit) delta += line.debit;
+                    if (line.credit) delta -= line.credit;
+                } else {
+                    if (line.credit) delta += line.credit;
+                    if (line.debit) delta -= line.debit;
+                }
+                
+                if (delta !== 0) {
+                    const newVal = currentVal + delta;
+                    accountBalances[accountTitle] = `$${newVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                }
+            });
+            
+            if (activeLedgerAccount) {
+                const entries = getLedgerEntriesForAccount(activeLedgerAccount.title);
+                renderLedgerEntriesList(entries);
+                document.getElementById('ledger-account-balance').innerText = accountBalances[activeLedgerAccount.title];
+            }
+            
+            document.querySelectorAll('#accounts-portfolio-grid > div').forEach(card => {
+                const title = card.querySelector('h4').textContent.trim();
+                const balSpan = card.querySelector('.font-data-tabular');
+                if (balSpan && accountBalances[title]) {
+                    balSpan.textContent = accountBalances[title];
+                }
+            });
+
+            closeAddEntryModal();
+            showPostSuccessToast("Journal entry saved to General Ledger!");
+        }
+
+        function removeUploadedFile() {
+            document.getElementById('file-upload').value = '';
+            document.getElementById('file-preview').classList.add('hidden');
+            document.getElementById('file-preview').classList.remove('flex');
+            const link = document.getElementById('file-preview-link');
+            if (link) { link.classList.add('hidden'); link.href = '#'; }
+            const errEl = document.getElementById('file-upload-error');
+            if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+            uploadedReceipt = null;
+        }
+
+        function showPostErrorToast(message) {
+            let toast = document.getElementById('ledger-post-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'ledger-post-toast';
+                toast.className = 'fixed bottom-8 right-8 bg-red-600 text-white border border-red-700 px-6 py-4 rounded-xl shadow-2xl z-[150] transition-all duration-300 translate-y-32 flex items-center gap-3';
+                document.body.appendChild(toast);
+            } else {
+                toast.className = 'fixed bottom-8 right-8 bg-red-600 text-white border border-red-700 px-6 py-4 rounded-xl shadow-2xl z-[150] transition-all duration-300 flex items-center gap-3';
+            }
+
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">error</span>
+                <div>
+                    <p class="text-xs font-bold font-headline-sm">${message}</p>
+                </div>
+            `;
+
+            toast.classList.remove('translate-y-32');
+            setTimeout(() => {
+                toast.classList.add('translate-y-32');
+            }, 3500);
+        }
+
+        function showPostSuccessToast(message) {
+            let toast = document.getElementById('ledger-post-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'ledger-post-toast';
+                toast.className = 'fixed bottom-8 right-8 bg-[#031635] text-white border border-[#1e293b] px-6 py-4 rounded-xl shadow-2xl z-[150] transition-all duration-300 translate-y-32 flex items-center gap-3';
+                document.body.appendChild(toast);
+            }
+
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-green-400" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                <div>
+                    <p class="text-xs font-bold font-headline-sm">${message}</p>
+                </div>
+            `;
+
+            toast.classList.remove('translate-y-32');
+            setTimeout(() => {
+                toast.classList.add('translate-y-32');
+            }, 3000);
+        }
+
+        // --- Account Detail Panel ---
+        let activeAccountDetail = null;
+
+        const TYPE_COLORS = {
+            asset: { bg: 'bg-green-500/15', text: 'text-green-400', border: 'border-green-500/20', icon: 'bg-green-50', iconText: 'text-green-600' },
+            liability: { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/20', icon: 'bg-amber-50', iconText: 'text-amber-600' },
+            expense: { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/20', icon: 'bg-red-50', iconText: 'text-red-600' },
+            income: { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/20', icon: 'bg-blue-50', iconText: 'text-blue-600' },
+        };
+
+        const ACCOUNT_RULES = {
+            'asset': { icon: 'trending_up', iconBg: 'bg-green-50', iconColor: 'text-green-600', title: 'Debit increases balance', desc: 'This is an asset account. Increases are recorded on the debit side, decreases on the credit side. Debit = Dr., Credit = Cr.' },
+            'liability': { icon: 'trending_down', iconBg: 'bg-amber-50', iconColor: 'text-amber-600', title: 'Credit increases balance', desc: 'This is a liability account. Increases are recorded on the credit side, decreases on the debit side. Debit = Cr., Credit = Dr.' },
+            'expense': { icon: 'trending_up', iconBg: 'bg-red-50', iconColor: 'text-red-600', title: 'Debit increases balance', desc: 'This is an expense account. Increases are recorded on the debit side, decreases on the credit side. Debit = Dr., Credit = Cr.' },
+            'income': { icon: 'trending_up', iconBg: 'bg-blue-50', iconColor: 'text-blue-600', title: 'Credit increases balance', desc: 'This is an income/revenue account. Increases are recorded on the credit side, decreases on the debit side. Debit = Cr., Credit = Dr.' },
+        };
+
+        function openAccountDetail(accountInfo) {
+            activeAccountDetail = accountInfo;
+
+            // Populate header
+            document.getElementById('detail-account-name').innerText = accountInfo.title;
+            const bal = accountBalances[accountInfo.title] || '';
+            document.getElementById('detail-account-balance').innerText = bal;
+
+            // Icon
+            document.getElementById('detail-account-icon').innerText = accountInfo.icon || 'account_balance_wallet';
+
+            // Type badge
+            const typeColors = TYPE_COLORS[accountInfo.type] || TYPE_COLORS.asset;
+            const typeBadge = document.getElementById('detail-account-type-badge');
+            typeBadge.className = `px-3 py-1 rounded-full text-[10px] font-black uppercase ${typeColors.bg} ${typeColors.text} border ${typeColors.border}`;
+            typeBadge.innerText = accountInfo.type;
+
+            // Code
+            document.getElementById('detail-account-code').innerText = accountInfo.code;
+
+            // Nature
+            document.getElementById('detail-account-nature').innerText = accountInfo.nature === 'credit' ? 'Credit' : 'Debit';
+
+            // Get entries and compute stats
+            const entries = getLedgerEntriesForAccount(accountInfo.title);
+            const allLines = [];
+            entries.forEach(g => g.lines.forEach(l => {
+                const val = l.debit || l.credit || 0;
+                const type = l.debit ? 'debit' : 'credit';
+                allLines.push({ ...l, type, rawVal: val, date: g.date, groupId: g.groupId, narration: g.narration });
+            }));
+
+            document.getElementById('detail-account-entry-count').innerText = allLines.length;
+
+            // This month total
+            const thisMonth = new Date().toLocaleDateString('en-US', { month: 'short' });
+            const monthTotal = allLines
+                .filter(l => l.date && l.date.includes(thisMonth))
+                .reduce((s, l) => s + l.rawVal, 0);
+            document.getElementById('detail-account-month-total').innerText = `$${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            // Render transactions list
+            renderDetailTransactions(allLines, accountInfo);
+
+            // Performance stats
+            const allVals = allLines.map(l => l.rawVal);
+            const highest = allVals.length ? Math.max(...allVals) : 0;
+            const avg = allVals.length ? allVals.reduce((a, b) => a + b, 0) / allVals.length : 0;
+            const totalDeb = allLines.filter(l => l.type === 'debit').reduce((s, l) => s + l.rawVal, 0);
+            const totalCred = allLines.filter(l => l.type === 'credit').reduce((s, l) => s + l.rawVal, 0);
+
+            document.getElementById('detail-stat-highest').innerText = `$${highest.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('detail-stat-avg').innerText = `$${avg.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('detail-stat-total-debit').innerText = `$${totalDeb.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('detail-stat-total-credit').innerText = `$${totalCred.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            // Render chart bars
+            renderDetailChart(allLines);
+
+            // Info tab
+            document.getElementById('detail-info-code').innerText = accountInfo.code;
+            document.getElementById('detail-info-category').innerText = accountInfo.type;
+            document.getElementById('detail-info-nature').innerText = accountInfo.nature === 'credit' ? 'Credit' : 'Debit';
+            document.getElementById('detail-info-type').innerText = accountInfo.type === 'asset' || accountInfo.type === 'liability' ? 'Real Account' : 'Nominal Account';
+            document.getElementById('detail-info-entries').innerText = allLines.length;
+
+            const rule = ACCOUNT_RULES[accountInfo.type] || ACCOUNT_RULES.asset;
+            document.getElementById('detail-info-rule-box').className = `w-10 h-10 rounded-lg ${rule.iconBg} flex items-center justify-center shrink-0 mt-0.5`;
+            document.getElementById('detail-info-rule-box').innerHTML = `<span class="material-symbols-outlined ${rule.iconColor} text-[18px]" style="font-variation-settings: 'FILL' 1;">${rule.icon}</span>`;
+            document.getElementById('detail-info-rule-title').innerText = rule.title;
+            document.getElementById('detail-info-rule-desc').innerText = rule.desc;
+
+            // Show panel with slide-in animation
+            const panel = document.getElementById('account-detail-panel');
+            const inner = document.getElementById('account-detail-inner');
+            panel.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            requestAnimationFrame(() => {
+                inner.classList.remove('translate-x-full');
+                inner.classList.add('translate-x-0');
+            });
+
+            // Switch to transactions tab
+            switchAccountTab('transactions');
+        }
+
+        function closeAccountDetail() {
+            activeAccountDetail = null;
+            const panel = document.getElementById('account-detail-panel');
+            const inner = document.getElementById('account-detail-inner');
+            inner.classList.remove('translate-x-0');
+            inner.classList.add('translate-x-full');
+            setTimeout(() => {
+                panel.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        function switchAccountTab(tab) {
+            ['transactions', 'performance', 'info'].forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const pane = document.getElementById(`account-tab-${t}`);
+                if (btn && pane) {
+                    if (t === tab) {
+                        btn.className = 'px-4 py-2.5 text-xs font-bold text-[#031635] border-b-2 border-[#031635] transition-colors';
+                        pane.classList.remove('hidden');
+                    } else {
+                        btn.className = 'px-4 py-2.5 text-xs font-bold text-on-surface-variant border-b-2 border-transparent transition-colors';
+                        pane.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        function renderDetailTransactions(allLines, accountInfo) {
+            const container = document.getElementById('detail-transactions-list');
+            const term = (document.getElementById('detail-search-input') || { value: '' }).value.toLowerCase();
+            const typeFilter = (document.getElementById('detail-type-filter') || { value: 'all' }).value;
+
+            const filtered = allLines.filter(l => {
+                const matchSearch = !term || l.details.toLowerCase().includes(term) || l.groupId.toLowerCase().includes(term) || (l.narration && l.narration.toLowerCase().includes(term));
+                const matchType = typeFilter === 'all' || l.type === typeFilter;
+                return matchSearch && matchType;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white border border-outline-variant rounded-xl p-8 text-center">
+                        <span class="material-symbols-outlined text-[40px] text-outline-variant mb-2">find_in_page</span>
+                        <p class="text-xs font-bold text-on-surface-variant">No transactions found</p>
+                    </div>`;
+                return;
+            }
+
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            container.innerHTML = filtered.map(l => {
+                const isDebit = l.type === 'debit';
+                const val = l.rawVal;
+                const dateParts = l.date ? l.date.split(' ') : ['', ''];
+                const monthStr = dateParts[0] || '';
+                const monthIdx = months.indexOf(monthStr.replace(',', ''));
+                const barH = val > 0 ? Math.max(4, Math.round((val / (Math.max(...allLines.map(x => x.rawVal), 1))) * 100)) : 10;
+                const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+                const isToday = l.date === today;
+                const typeColors = isDebit
+                    ? { bg: 'bg-red-50', border: 'border-red-100', text: 'text-red-600', badge: 'bg-red-100 text-red-700' }
+                    : { bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600', badge: 'bg-green-100 text-green-700' };
+
+                return `
+                    <div class="bg-white border ${typeColors.border} rounded-xl p-3 hover:shadow-sm transition-all cursor-pointer">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="relative w-10 h-10 rounded-lg ${typeColors.bg} flex items-center justify-center">
+                                    <span class="material-symbols-outlined ${typeColors.text} text-[18px]" style="font-variation-settings: 'FILL' 1;">${isDebit ? 'remove' : 'add'}</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-[#031635]">${l.details}</p>
+                                    <p class="text-[10px] text-on-surface-variant mt-0.5">${l.date} · ${l.groupId}</p>
+                                    ${l.narration ? `<p class="text-[10px] text-on-surface-variant/70 mt-0.5 italic truncate max-w-[200px]">${l.narration}</p>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-extrabold font-data-tabular ${isDebit ? 'text-red-600' : 'text-green-600'}">${isDebit ? '-' : '+'}$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                <span class="inline-block mt-1 px-2 py-0.5 rounded text-[9px] font-black uppercase ${typeColors.badge}">${isDebit ? 'Debit' : 'Credit'}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function filterDetailEntries() {
+            if (!activeAccountDetail) return;
+            const allLines = [];
+            const entries = getLedgerEntriesForAccount(activeAccountDetail.title);
+            entries.forEach(g => g.lines.forEach(l => {
+                const val = l.debit || l.credit || 0;
+                const type = l.debit ? 'debit' : 'credit';
+                allLines.push({ ...l, type, rawVal: val, date: g.date, groupId: g.groupId, narration: g.narration });
+            }));
+            renderDetailTransactions(allLines, activeAccountDetail);
+        }
+
+        function renderDetailChart(allLines) {
+            const container = document.getElementById('detail-account-chart');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            // Group by month
+            const monthTotals = {};
+            months.forEach(m => monthTotals[m] = 0);
+            allLines.forEach(l => {
+                const parts = l.date ? l.date.split(' ') : [];
+                const monthName = parts[0] ? parts[0].replace(',', '') : null;
+                if (monthName && monthTotals.hasOwnProperty(monthName)) {
+                    monthTotals[monthName] += l.rawVal;
+                }
+            });
+
+            const values = months.map(m => monthTotals[m]);
+            const maxVal = Math.max(...values, 1);
+
+            container.innerHTML = months.map((m, i) => {
+                const h = Math.round((values[i] / maxVal) * 100) || 2;
+                const isCurrentMonth = i === new Date().getMonth();
+                return `<div class="flex-1 flex flex-col items-center justify-end gap-1">
+                    <div class="w-full rounded-t-sm ${isCurrentMonth ? 'bg-[#031635]' : 'bg-slate-300'} hover:${isCurrentMonth ? 'bg-[#1a3a5c]' : 'bg-slate-400'} transition-colors" style="height:${h}%"></div>
+                </div>`;
+            }).join('');
+        }
+
+        // Wire account cards to open the detail page
+        document.querySelectorAll('#accounts-portfolio-grid > div[data-type]').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.boxShadow = '0 6px 16px rgba(26, 43, 75, 0.08)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = 'none';
+            });
+            card.addEventListener('click', () => {
+                const title = encodeURIComponent(card.querySelector('h4').textContent.trim());
+                const codeEl = card.querySelector('[class*="font-data-tabular"]');
+                const code = encodeURIComponent(codeEl ? codeEl.textContent.trim() : 'E001');
+                const nature = encodeURIComponent(card.getAttribute('data-nature'));
+                const type = encodeURIComponent(card.getAttribute('data-type'));
+                const icon = encodeURIComponent(card.querySelector('.material-symbols-outlined').textContent.trim());
+                window.location.href = `account-detail.html?name=${title}&code=${code}&nature=${nature}&type=${type}&icon=${icon}`;
+            });
+        });
+
+        // File upload setup — actually POSTs to /api/uploads (category=receipts)
+        // so journal entries can attach a durable, clickable proof link.
+        // The change listener uploads inline, mirrors the result into the
+        // preview block, and stashes the URL/path on `uploadedReceipt` so the
+        // form submit can persist it onto the journal row.
+        let uploadedReceipt = null; // { publicUrl, storedPath, fileName, size }
+        let entryAttachmentColumns = null; // Set<string>, lazily probed + cached
+
+        function setReceiptUploading(file) {
+            const preview = document.getElementById('file-preview');
+            const fileName = document.getElementById('file-preview-name');
+            const fileSize = document.getElementById('file-preview-size');
+            const link = document.getElementById('file-preview-link');
+            const errEl = document.getElementById('file-upload-error');
+            if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+            fileName.textContent = file.name;
+            fileSize.textContent = `${(file.size / (1024 * 1024)).toFixed(1)} MB • Uploading…`;
+            if (link) link.classList.add('hidden');
+            preview.classList.remove('hidden');
+            preview.classList.add('flex');
+        }
+
+        function setReceiptUploaded(file, payload) {
+            const fileName = document.getElementById('file-preview-name');
+            const fileSize = document.getElementById('file-preview-size');
+            const link = document.getElementById('file-preview-link');
+            const errEl = document.getElementById('file-upload-error');
+            fileName.textContent = file.name;
+            fileSize.textContent = `${(file.size / (1024 * 1024)).toFixed(1)} MB • Uploaded`;
+            if (link && payload && payload.publicUrl) {
+                link.href = payload.publicUrl;
+                link.classList.remove('hidden');
+            } else if (link) {
+                link.classList.add('hidden');
+            }
+            if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+        }
+
+        function setReceiptFailed(message) {
+            const errEl = document.getElementById('file-upload-error');
+            if (errEl) {
+                errEl.textContent = `Upload failed: ${message}. Post the journal without an attachment, or pick another file.`;
+                errEl.classList.remove('hidden');
+            }
+            uploadedReceipt = null;
+        }
+
+        async function uploadReceiptFile(file) {
+            const fd = new FormData();
+            fd.append('category', 'receipts');
+            fd.append('file', file, file.name);
+            const res = await fetch('/api/uploads', { method: 'POST', body: fd });
+            if (!res.ok) {
+                let detail = '';
+                try { const j = await res.json(); detail = j?.error || j?.message || ''; } catch (_) {}
+                throw new Error(detail || `HTTP ${res.status}`);
+            }
+            const json = await res.json();
+            const data = json?.data || json;
+            if (!data || !data.publicUrl) throw new Error('no publicUrl in response');
+            return {
+                publicUrl: data.publicUrl,
+                storedPath: data.path || null,
+                fileName: file.name,
+                size: file.size,
+            };
+        }
+
+        setTimeout(() => {
+            const fileUpload = document.getElementById('file-upload');
+            if (!fileUpload) return;
+            fileUpload.addEventListener('change', async function() {
+                const errEl = document.getElementById('file-upload-error');
+                if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+                if (this.files.length === 0) return;
+                const file = this.files[0];
+                if (file.size > 10 * 1024 * 1024) {
+                    this.value = '';
+                    setReceiptFailed('file exceeds 10MB cap');
+                    return;
+                }
+                setReceiptUploading(file);
+                try {
+                    uploadedReceipt = await uploadReceiptFile(file);
+                    setReceiptUploaded(file, uploadedReceipt);
+                } catch (e) {
+                    console.warn('[account] receipt upload failed:', e?.message || e);
+                    this.value = '';
+                    setReceiptFailed(e?.message || 'unknown error');
+                    document.getElementById('file-preview').classList.add('hidden');
+                }
+            });
+        }, 100);
+
+        // Load real account data from Supabase on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadAccountData();
+            document.querySelectorAll('#accounts-portfolio-grid > div').forEach(card => {
+                const titleEl = card.querySelector('h4');
+                if (!titleEl) return;
+                const title = titleEl.textContent.trim();
+                const balSpan = card.querySelector('[class*="font-data-tabular"]');
+                if (balSpan && accountBalances[title] !== undefined) {
+                    balSpan.textContent = accountBalances[title];
+                }
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Factory Production Tracking | EspressGo</title>
+    <!-- Tailwind CSS Dynamic CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet"/>
+            <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+            <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+<script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js"></script>
+    <style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.3); }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen">
+    <!-- Component-based App Sidebar -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">precision_manufacturing</span>
+                Factory Production Tracking
+            </h2>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2 text-[11px] font-bold text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Production Floor · Live
+                </div>
+                <a href="/production/index.html" class="text-[11px] font-bold text-primary bg-surface-container-low hover:bg-surface-container border border-outline-variant px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px]">layers</span>
+                    Production Pipeline
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Content Area -->
+    <main class="ml-64 pt-20 pb-12 px-8 flex-grow min-h-[calc(100vh-80px)]">
+
+        <div class="grid grid-cols-1 items-start">
+
+            <!-- Tracking Entry Form (full width) -->
+            <div class="space-y-6">
+                <div class="bg-white border border-outline-variant p-6 rounded-2xl shadow-sm space-y-6">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-xl font-headline-sm">add_circle</span>
+                            <span class="font-bold text-sm text-slate-800">New Production Tracking Entry</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[9px] font-bold uppercase tracking-wider">Auto-save to Overheads</span>
+                    </div>
+
+                    <form id="tracking-form" onsubmit="handleNewTrackingEntry(event)" class="space-y-5">
+
+                        <!-- Date Range (From Date → To Date) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">From Date</label>
+                                <input type="date" id="tracking-date-from" required
+                                    class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">To Date</label>
+                                <input type="date" id="tracking-date-to" required
+                                    class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                        </div>
+
+                        <!-- Batch ID + Cost Row -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Batch ID / Production Ref</label>
+                                <input type="text" id="tracking-batch" placeholder="e.g. Batch-001" required
+                                    class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cost of Rental ($)</label>
+                                <input type="number" id="tracking-cost" step="0.01" min="0" placeholder="0.00" required
+                                    class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                        </div>
+
+                        <!-- Tracking Officer: auto-stamped from logged-in staff session -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tracking Officer</label>
+                            <div id="tracking-officer-display"
+                                class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold flex items-center gap-2.5 min-h-[42px]">
+                                <span class="material-symbols-outlined text-[16px] text-primary">account_circle</span>
+                                <span id="tracking-officer-text" class="text-slate-500 font-bold italic">Loading logged-in officer…</span>
+                            </div>
+                            <p class="mt-1 text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Auto-recorded from your staff session — no manual selection.</p>
+                            <input type="hidden" id="tracking-staff-id" value="">
+                            <input type="hidden" id="tracking-staff-email" value="">
+                        </div>
+
+                        <!-- Link to Production Batch (multi-select with add button) -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                Link to Production Batch
+                                <span class="font-normal normal-case text-[8px] text-slate-400 ml-1">(optional — add one or more production batches)</span>
+                            </label>
+                            <div class="flex gap-2">
+                                <select id="tracking-production-batch-picker"
+                                    class="flex-1 py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
+                                    <option value="">— Select production batch to add —</option>
+                                </select>
+                                <button type="button" onclick="addProductionBatch()"
+                                    class="px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-95 transition-all flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-sm">add</span>
+                                    Add
+                                </button>
+                            </div>
+                            <!-- Selected production batches list -->
+                            <div id="prod-batch-chips" class="hidden mt-2 flex flex-wrap gap-2"></div>
+                            <div id="prod-batch-summary" class="hidden mt-2 bg-purple-50 border border-purple-200 rounded-lg p-2 text-[10px] text-purple-800 font-semibold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[14px] text-purple-600">layers</span>
+                                <span id="prod-batch-summary-text"></span>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                            <div class="flex items-center gap-1 text-slate-400">
+                                <span class="material-symbols-outlined text-[16px] text-emerald-600">verified</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wide">Auto-posts Cost to Overheads</span>
+                            </div>
+                            <button type="submit"
+                                class="bg-primary hover:bg-opacity-95 text-white font-bold py-2.5 px-5 rounded-xl shadow hover:shadow-md transition-all flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                                <span class="material-symbols-outlined text-sm">save</span>
+                                <span>Log Entry &amp; Save to Overheads</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Production Tracking Ledger Table -->
+        <div class="mt-10 bg-white border border-outline-variant rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-outline-variant bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-xl font-headline-sm">table_chart</span>
+                    <span class="font-bold text-slate-800 text-sm">Production Tracking Ledger</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearAllTracking()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors border border-rose-100 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">delete</span> Clear Ledger
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tracking Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="border-b border-outline-variant text-[10px] text-slate-400 font-extrabold tracking-widest uppercase text-left bg-slate-50/50">
+                            <th class="py-4 pl-6">From Date</th>
+                            <th class="py-4">To Date</th>
+                            <th class="py-4">Batch ID</th>
+                            <th class="py-4">Production Batches</th>
+                            <th class="py-4">Tracking Officer</th>
+                            <th class="py-4">Cost Recorded</th>
+                            <th class="py-4 pr-6 text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tracking-ledger-rows" class="divide-y divide-outline-variant/30 text-xs font-semibold text-slate-700">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div class="hidden p-12 text-center text-slate-400 font-semibold" id="ledger-empty-state">
+                <span class="material-symbols-outlined text-4xl font-headline-lg block mb-2 text-slate-300 animate-pulse">fact_check</span>
+                No tracking entries yet. Log a production session above to populate the ledger.
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Interactive success toast notifications -->
+    <div id="toast-success" class="hidden fixed bottom-6 right-6 z-50 bg-slate-900 border border-slate-800 text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3 max-w-sm transform translate-y-12 transition-all duration-300">
+        <span class="material-symbols-outlined bg-emerald-500/20 p-1.5 rounded-xl text-emerald-400 text-[20px]" id="toast-icon">verified</span>
+        <div>
+            <h4 class="text-xs font-bold" id="toast-title">Entry Logged!</h4>
+            <p class="text-[10px] text-slate-400 mt-0.5" id="toast-desc">Tracking entry saved and cost posted to overheads.</p>
+        </div>
+    </div>
+
+    <!-- Core logic scripts -->
+    <script>
+        // ── RBAC: Factory booking access ─────────────────────────────────────────
+        window.RBAC.enforcePageAccess('factory:read', { pageName: 'Factory & Gear Booking' })
+            .then(() => window.RBAC.applyRBACToDOM())
+            .catch((err) => {
+                if (!String(err.message || '').startsWith('RBAC:')) throw err;
+            });
+
+        // --- Get current user role from server-validated cookie ---
+        function getCurrentUserRole() {
+            // Source of truth is window.__staffIdentity (populated by
+            // components/sidebar.js from /api/staff-session/me). No
+            // localStorage, no admin fallback — if the cookie is missing the
+            // sidebar will redirect to login anyway.
+            try {
+                const ident = (typeof window !== 'undefined' && window.__staffIdentity) || null;
+                if (ident && ident.role) return ident.role;
+            } catch (e) {}
+            return null;
+        }
+
+        // --- Local Supabase proxy helper ---
+        async function supabaseAPI({ table, operation, data, filters, columns, returning, noCache }) {
+            try {
+                // user_role intentionally omitted from the body — the server
+                // stamps it from the verified espressgo_staff_session cookie.
+                const resp = await fetch('/api/supabase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ table, operation, data, filters, columns, returning, noCache })
+                });
+                const result = await resp.json();
+                if (result.error) {
+                    console.warn(`API error for ${operation} on ${table}:`, result.error);
+                    try { return JSON.parse(result.error); } catch { return []; }
+                }
+                return result.data || [];
+            } catch (e) {
+                console.warn('API error:', e);
+                return [];
+            }
+        }
+
+        // --- Resolves once the staff session is known ---
+        // The sidebar has already pre-probed /api/staff-session/me and published
+        // the result on window.__staffIdentity. Fall back to a direct fetch in
+        // case rbac.js is loaded but sidebar.js hasn't booted yet.
+        function whenIdentityReady() {
+            return new Promise((resolve) => {
+                const cached = window.__staffIdentity;
+                if (cached && cached.role) {
+                    resolve(cached);
+                    return;
+                }
+                if (window.RBAC && typeof window.RBAC.identityReady === 'function') {
+                    window.RBAC.identityReady().then((id) => resolve(id || null));
+                    return;
+                }
+                fetch('/api/staff-session/me', { credentials: 'same-origin', cache: 'no-store' })
+                    .then((r) => (r && r.ok ? r.json() : null))
+                    .then((data) => resolve((data && data.session) || null))
+                    .catch(() => resolve(null));
+            });
+        }
+
+        // --- Render the read-only "Tracking Officer" badge ---
+        // Whatever this user types into the form, the booking is stamped with
+        // the currently logged-in staff session — no manual drop-down.
+        async function renderLoggedInOfficer() {
+            const textEl  = document.getElementById('tracking-officer-text');
+            const idInput = document.getElementById('tracking-staff-id');
+            const mailIn  = document.getElementById('tracking-staff-email');
+            const display = document.getElementById('tracking-officer-display');
+            if (!textEl || !idInput || !mailIn || !display) return;
+
+            const ident = await whenIdentityReady();
+            if (!ident || !ident.role) {
+                textEl.textContent = 'Not logged in — cannot record booking';
+                textEl.classList.remove('italic', 'text-slate-500');
+                textEl.classList.add('text-rose-600');
+                return;
+            }
+
+            // Prefer staff_id (matches staff_profiles.id used elsewhere as
+            // coordinator_id); fall back to email so something is always
+            // stamped even when the cookie lacks a profile binding.
+            const staffId   = ident.staff_id || '';
+            const email     = ident.email || '';
+            const displayNm = ident.name || (email ? email.split('@')[0] : '') || 'Unknown';
+            const role      = ident.role || 'staff';
+
+            idInput.value = staffId;
+            mailIn.value  = email;
+            textEl.textContent = `${displayNm} · ${role.charAt(0).toUpperCase() + role.slice(1)}`;
+            textEl.classList.remove('italic', 'text-slate-500');
+            textEl.classList.add('text-slate-800');
+        }
+
+        let dbTracking = [];
+        let overheadsLedger = [];
+        let trackingLoadVersion = 0;
+        let productionBatchesCache = [];
+        let selectedProductionBatches = [];
+        // ID → {name, role, email} lookup for the "Tracking Officer" column.
+        // coordinator_id on factory_bookings is a UUID pointing at staff_profiles.id.
+        // Without this, the cell shows a raw UUID.
+        let staffDirectoryCache = {};
+
+        // --- Supabase Data Loading ---
+
+        async function loadTrackingEntries() {
+            const loadVersion = ++trackingLoadVersion;
+            try {
+                const data = await supabaseAPI({
+                    table: 'factory_bookings',
+                    operation: 'select',
+                    filters: { order: { column: 'start_date', ascending: false } },
+                    noCache: true
+                });
+                if (loadVersion !== trackingLoadVersion) return;
+                dbTracking = (data || []).map(b => {
+                    let linked = [];
+                    // Schema uses production_ids (array) and/or production_batch_id (single).
+                    // Older fields are kept as fallbacks for any legacy rows.
+                    if (Array.isArray(b.production_ids) && b.production_ids.length) {
+                        linked = b.production_ids.map(x => typeof x === 'string' ? x : (x?.batch_code || x?.batchCode || x?.id || '')).filter(Boolean);
+                    } else if (Array.isArray(b.production_batch_codes) && b.production_batch_codes.length) {
+                        linked = b.production_batch_codes;
+                    } else if (b.production_batch_id) {
+                        linked = [b.production_batch_id];
+                    } else if (b.production_batch_code) {
+                        linked = [b.production_batch_code];
+                    }
+                    return {
+                        id: b.id || "BKG_" + Date.now().toString().slice(-3),
+                        dateFrom: b.start_date || b.date_from || '',
+                        dateTo: b.end_date   || b.date_to   || b.start_date || '',
+                        batchId: b.space_name || b.booking_code || '-',
+                        productionBatches: linked,
+                        staff: b.coordinator_id || 'Unassigned',
+                        refCode: b.booking_code || '',
+                        overheadRef: '',
+                        status: b.status || 'Logged',
+                        cost: parseFloat(b.booking_fee) || 0
+                    };
+                });
+            } catch (e) {
+                if (loadVersion !== trackingLoadVersion) return;
+                console.warn('Error loading tracking entries:', e);
+                dbTracking = [];
+            }
+        }
+
+        async function loadOverheadsLedger() {
+            try {
+                const data = await supabaseAPI({
+                    table: 'overheads',
+                    operation: 'select',
+                    filters: { order: { column: 'created_at', ascending: false } },
+                    noCache: true
+                });
+                overheadsLedger = (data || []).map(o => ({
+                    id: o.id,
+                    overheadCode: o.overhead_code || o.id,
+                    bookingId: '',
+                    date: o.effective_from || new Date().toISOString().split('T')[0],
+                    description: o.description || '',
+                    category: o.category || 'Factory Operations',
+                    amount: parseFloat(o.amount || 0),
+                    refCode: o.overhead_code || ''
+                }));
+            } catch (e) {
+                console.warn('Error loading overheads:', e);
+                overheadsLedger = [];
+            }
+        }
+
+        // Sync tracking entry to factory_bookings table
+        async function syncTrackingToSupabase(entry) {
+            const entryCode = `FT-${new Date().getFullYear()}-${String(dbTracking.length + 1).padStart(3, '0')}`;
+            try {
+                // Schema notes:
+                //   • Dates → start_date / end_date (not date_from / date_to — the legacy
+                //     names get silently dropped by Postgres, leaving the ledger empty).
+                //   • Linked production batches → production_ids (jsonb).
+                //     We send it as `[{ batch_code: 'PRD-XXX' }]` (an array of objects) so
+                //     that even servers with the old `isLikelyJsonbColumn` heuristic
+                //     will JSON.stringify the value (the old heuristic only checked for
+                //     primitive arrays). The reader accepts both string and object forms.
+                const linkedBatchCodes = entry.productionBatches && entry.productionBatches.length ? entry.productionBatches : null;
+                const linkedBatchesJsonb = linkedBatchCodes
+                    ? linkedBatchCodes.map(code => ({ batch_code: code }))
+                    : null;
+                const result = await supabaseAPI({
+                    table: 'factory_bookings',
+                    operation: 'insert',
+                    data: {
+                        booking_code: entryCode,
+                        start_date: entry.dateFrom,
+                        end_date: entry.dateTo,
+                        // Legacy fallbacks (kept in case the table hasn't been migrated)
+                        date_from: entry.dateFrom,
+                        date_to: entry.dateTo,
+                        space_name: entry.batchId,
+                        booking_fee: entry.cost,
+                        status: 'Logged',
+                        production_ids: linkedBatchesJsonb,
+                        production_batch_codes: linkedBatchCodes,
+                        coordinator_id: entry.staff || null
+                    }
+                });
+                return result;
+            } catch (e) {
+                console.error('Error syncing tracking entry:', e);
+                showToast("Save Failed", `Could not save factory booking: ${e.message || 'Unknown error'}`);
+                throw e;
+            }
+        }
+
+        // Sync cost to overheads ledger
+        async function syncOverheadToSupabase(entry) {
+            const rangeLabel = entry.dateFrom === entry.dateTo
+                ? entry.dateFrom
+                : `${entry.dateFrom} → ${entry.dateTo}`;
+            try {
+                const result = await supabaseAPI({
+                    table: 'overheads',
+                    operation: 'insert',
+                    data: {
+                        category: 'Factory Operations',
+                        description: `Factory Rental - ${entry.batchId} (${rangeLabel})`,
+                        amount: entry.cost,
+                        reference_batch: entry.productionBatches && entry.productionBatches.length ? entry.productionBatches.join(', ') : null
+                    }
+                });
+                return result;
+            } catch (e) {
+                console.error('Error syncing overhead:', e);
+                showToast("Warning", `Factory booking saved, but overhead entry failed: ${e.message || 'Check permissions'}`);
+                return [];
+            }
+        }
+
+        // Load production batches for the "Link to Production Batch" dropdown
+        async function loadProductionBatches() {
+            try {
+                const data = await supabaseAPI({
+                    table: 'production_batches',
+                    operation: 'select',
+                    columns: 'id, batch_code, product_name, qty_produced, unit, status, created_at',
+                    filters: { order: { column: 'created_at', ascending: false } },
+                    noCache: true
+                });
+                productionBatchesCache = (data || []).map(b => ({
+                    id: b.id,
+                    batchCode: b.batch_code || '',
+                    productName: b.product_name || '',
+                    qty: b.qty_produced || 0,
+                    unit: b.unit || 'units',
+                    status: b.status || '',
+                    createdAt: b.created_at || ''
+                }));
+            } catch (e) {
+                console.warn('Error loading production batches:', e);
+                productionBatchesCache = [];
+            }
+        }
+
+        // Load the staff directory and build an id → {name, role, email} lookup map
+        // so the "Tracking Officer" ledger cell can display a real name instead of
+        // the raw coordinator_id UUID. Fetches once per page load — cheap.
+        async function loadStaffDirectory() {
+            try {
+                const rows = await supabaseAPI({
+                    table: 'staff_profiles',
+                    operation: 'select',
+                    columns: 'id, name, role, email',
+                    noCache: true
+                });
+                staffDirectoryCache = {};
+                (rows || []).forEach(s => {
+                    if (s?.id) staffDirectoryCache[s.id] = s;
+                });
+            } catch (e) {
+                console.warn('Error loading staff directory:', e);
+                staffDirectoryCache = {};
+            }
+        }
+
+        // Render a coordinator identifier (UUID, legacy staff_id, or email) into
+        // a human-readable "Name · Role" string. Falls through gracefully.
+        function resolveStaffLabel(rawId) {
+            if (!rawId) return 'Unassigned';
+            const key = String(rawId).trim();
+            // Direct hit on staff_profiles.id
+            const hit = staffDirectoryCache[key];
+            if (hit) {
+                const role = hit.role ? roleLabel(hit.role) : '';
+                return role ? `${hit.name} · ${role}` : (hit.name || key);
+            }
+            // Look up by staff_code as a legacy fallback (older bookings
+            // may store the readable code rather than the UUID)
+            const byCode = Object.values(staffDirectoryCache).find(
+                s => String(s.staff_code || '').trim() === key
+            );
+            if (byCode) {
+                const role = byCode.role ? roleLabel(byCode.role) : '';
+                return role ? `${byCode.name} · ${role}` : (byCode.name || key);
+            }
+            // Email-shaped value? Show only the local-part so it stays compact.
+            if (key.includes('@')) return key.split('@')[0];
+            // Hash or non-UUID legacy value — show a short tag instead of a
+            // full UUID so the cell stays compact.
+            if (key.length > 14) return key.slice(0, 8) + '…';
+            return key;
+        }
+
+        // Pretty-print a role key. Defensive against unknown roles.
+        function roleLabel(r) {
+            const map = {
+                admin: 'Admin',
+                accountant: 'Accountant',
+                procurement: 'Procurement',
+                production: 'Production',
+                logistic: 'Logistic',
+                sales: 'Sales',
+                staff: 'Staff'
+            };
+            return map[String(r).toLowerCase()] || (r.charAt(0).toUpperCase() + r.slice(1));
+        }
+
+        // Populate the production batch dropdown
+        function populateProductionBatchDropdown() {
+            const select = document.getElementById('tracking-production-batch-picker');
+            if (!select) return;
+            select.innerHTML = '<option value="">— Select production batch to add —</option>';
+            productionBatchesCache.forEach(pb => {
+                const dateStr = pb.createdAt ? new Date(pb.createdAt).toLocaleDateString('en-SG', { day:'2-digit', month:'short', year:'numeric' }) : '';
+                const label = `${pb.batchCode}  |  ${pb.productName}  |  ${pb.qty} ${pb.unit}  |  ${pb.status}  |  ${dateStr}`;
+                const opt = document.createElement('option');
+                opt.value = pb.batchCode;
+                opt.textContent = label;
+                select.appendChild(opt);
+            });
+        }
+
+        // Add a production batch to the chip list
+        function addProductionBatch() {
+            const select = document.getElementById('tracking-production-batch-picker');
+            const selectedCode = select.value;
+            if (!selectedCode) return;
+
+            const pb = productionBatchesCache.find(p => p.batchCode === selectedCode);
+            if (!pb) return;
+
+            // Prevent duplicates
+            if (selectedProductionBatches.some(s => s.batchCode === selectedCode)) {
+                showToast("Already Added", `Batch ${selectedCode} is already linked.`);
+                select.value = "";
+                return;
+            }
+
+            const dateStr = pb.createdAt ? new Date(pb.createdAt).toLocaleDateString('en-SG', { day:'2-digit', month:'short', year:'numeric' }) : '';
+            selectedProductionBatches.push({
+                batchCode: pb.batchCode,
+                productName: pb.productName,
+                qty: pb.qty,
+                unit: pb.unit,
+                status: pb.status,
+                dateStr: dateStr
+            });
+
+            renderProductionBatchChips();
+            select.value = "";
+        }
+
+        // Remove a production batch from the chip list
+        function removeProductionBatch(batchCode) {
+            selectedProductionBatches = selectedProductionBatches.filter(s => s.batchCode !== batchCode);
+            renderProductionBatchChips();
+        }
+
+        // Render chips for selected batches
+        function renderProductionBatchChips() {
+            const container = document.getElementById('prod-batch-chips');
+            if (!container) return;
+            container.innerHTML = "";
+            if (selectedProductionBatches.length === 0) {
+                container.classList.add('hidden');
+                const summaryEl = document.getElementById('prod-batch-summary');
+                if (summaryEl) summaryEl.classList.add('hidden');
+                return;
+            }
+            container.classList.remove('hidden');
+            selectedProductionBatches.forEach(s => {
+                const chip = document.createElement('div');
+                chip.className = "flex items-center gap-1.5 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg px-2 py-1 text-[10px] font-bold";
+                chip.innerHTML = `
+                    <span class="material-symbols-outlined text-[14px] text-purple-600">layers</span>
+                    <span>${s.batchCode} · ${s.productName}</span>
+                    <button type="button" onclick="removeProductionBatch('${s.batchCode}')" class="ml-1 text-purple-400 hover:text-purple-700">
+                        <span class="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                `;
+                container.appendChild(chip);
+            });
+
+            // Show summary of all linked batches
+            const summaryEl = document.getElementById('prod-batch-summary');
+            const summaryText = document.getElementById('prod-batch-summary-text');
+            if (summaryEl && summaryText) {
+                summaryText.textContent = `${selectedProductionBatches.length} production batch(es) linked`;
+                summaryEl.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('tracking-date-from').value = today;
+            document.getElementById('tracking-date-to').value = today;
+
+            await Promise.all([
+                renderLoggedInOfficer(),
+                loadTrackingEntries(),
+                loadOverheadsLedger(),
+                loadProductionBatches(),
+                loadStaffDirectory()
+            ]);
+
+            populateProductionBatchDropdown();
+            await initTrackingLedger();
+            highlightBookingRowByQuery();
+        });
+
+        // Initialize ledger from Supabase
+        async function initTrackingLedger() {
+            await loadTrackingEntries();
+            renderTrackingLedger();
+        }
+
+        // Format a booking cost for display in the ledger.
+        // Returns "$0.00" for missing/NaN values so the column never shows "-".
+        function formatCost(value) {
+            const n = parseFloat(value);
+            return Number.isFinite(n) ? `$${n.toFixed(2)}` : '$0.00';
+        }
+
+        // Render tracking table
+        function renderTrackingLedger() {
+            const tableBody = document.getElementById('tracking-ledger-rows');
+            const emptyState = document.getElementById('ledger-empty-state');
+            tableBody.innerHTML = "";
+
+            if (dbTracking.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            dbTracking.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/50 transition-colors";
+                tr.setAttribute('data-booking-id', entry.id || '');
+
+                const batchChips = (entry.productionBatches && entry.productionBatches.length)
+                    ? entry.productionBatches.map(code => `<span class="inline-block px-2 py-0.5 mr-1 mb-1 rounded-full bg-purple-50 border border-purple-100 text-purple-700 text-[9px] font-extrabold uppercase tracking-wider">${code}</span>`).join('')
+                    : '<span class="text-slate-400">—</span>';
+
+                const dateRange = (entry.dateFrom === entry.dateTo)
+                    ? entry.dateFrom
+                    : `${entry.dateFrom} → ${entry.dateTo}`;
+
+                tr.innerHTML = `
+                    <td class="py-4 pl-6 font-bold text-slate-800">${entry.dateFrom || '-'}</td>
+                    <td class="py-4 font-bold text-slate-800">${entry.dateTo || entry.dateFrom || '-'}</td>
+                    <td class="py-4 text-slate-600 font-mono text-[11px]">${entry.batchId}</td>
+                    <td class="py-4">${batchChips}</td>
+                    <td class="py-4 text-slate-700 font-medium">${resolveStaffLabel(entry.staff)}</td>
+                    <td class="py-4 font-bold text-emerald-700">${formatCost(entry.cost)}</td>
+                    <td class="py-4 pr-6 text-right">
+                        <span class="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[9px] font-extrabold uppercase tracking-wider">
+                            ${entry.status}
+                        </span>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Deep-link support: ?booking=<uuid> scrolls to and highlights the matching ledger row.
+        // Also reads sessionStorage 'highlight_factory_booking_id' as a fallback for cross-page nav.
+        function highlightBookingRowByQuery() {
+            let targetId = '';
+            try {
+                const url = new URL(window.location.href);
+                targetId = url.searchParams.get('booking') || sessionStorage.getItem('highlight_factory_booking_id') || '';
+            } catch (_) { /* ignore */ }
+            if (!targetId) return;
+            sessionStorage.removeItem('highlight_factory_booking_id');
+            const row = document.querySelector(`#tracking-ledger-rows tr[data-booking-id="${targetId}"]`);
+            if (!row) {
+                showToast('Booking Not Found', 'The linked booking is not in the current ledger view.', 'info');
+                return;
+            }
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.classList.add('ring-2', 'ring-purple-400', 'ring-offset-2', 'bg-purple-50/40');
+            setTimeout(() => row.classList.remove('bg-purple-50/40'), 2500);
+        }
+
+        // Handle new tracking entry submission
+        async function handleNewTrackingEntry(e) {
+            e.preventDefault();
+
+            const dateFrom = document.getElementById('tracking-date-from').value;
+            const dateTo = document.getElementById('tracking-date-to').value;
+            const batchId = document.getElementById('tracking-batch').value.trim();
+            const cost = parseFloat(document.getElementById('tracking-cost').value) || 0;
+            // Tracking Officer is stamped automatically from the live staff
+            // session — no manual selection. Pull from the hidden inputs that
+            // renderLoggedInOfficer() populates.
+            const staffIdFromSession = document.getElementById('tracking-staff-id')?.value || '';
+            const staffEmail          = document.getElementById('tracking-staff-email')?.value || '';
+            // Prefer staff_id (matches the historic coordinator_id values
+            // from staff_profiles.id); fall back to the email so we always
+            // record *something* even when the cookie doesn't carry a
+            // profile binding.
+            const staff = staffIdFromSession || staffEmail || null;
+            // Auto-pick any batch the user selected from the dropdown but forgot to
+            // click "Add" on — silently include it so we never silently drop their
+            // intent. The chip list still updates in renderProductionBatchChips().
+            const dropdownVal = document.getElementById('tracking-production-batch-picker')?.value;
+            if (dropdownVal && !selectedProductionBatches.some(s => s.batchCode === dropdownVal)) {
+                addProductionBatch();
+            }
+            const productionBatches = selectedProductionBatches.map(s => s.batchCode);
+
+            if (!dateFrom || !dateTo) {
+                showToast("Missing Date", "Please provide both From Date and To Date.");
+                return;
+            }
+            if (new Date(dateTo) < new Date(dateFrom)) {
+                showToast("Invalid Range", "To Date cannot be earlier than From Date.");
+                return;
+            }
+            if (!batchId) {
+                showToast("Missing Batch ID", "Please enter a Batch ID / Production Reference.");
+                return;
+            }
+            if (cost <= 0) {
+                showToast("Missing Cost", "Please enter a valid Cost of Rental.");
+                return;
+            }
+            if (!staff) {
+                // Refresh the badge once more in case identity landed late,
+                // then bail with a clear message if still empty.
+                await renderLoggedInOfficer();
+                if (!document.getElementById('tracking-staff-id')?.value &&
+                    !document.getElementById('tracking-staff-email')?.value) {
+                    showToast("Not Logged In", "Tracking Officer is auto-recorded from your staff session. Please sign in again.");
+                    return;
+                }
+            }
+
+            const entryId = "TRK_" + Date.now().toString().slice(-4);
+            const overheadRef = `OH-${new Date().getFullYear()}-${String(overheadsLedger.length + 1).padStart(3, '0')}`;
+            const entryCode = `FT-${new Date().getFullYear()}-${String(dbTracking.length + 1).padStart(3, '0')}`;
+
+            const newEntry = {
+                id: entryId,
+                dateFrom: dateFrom,
+                dateTo: dateTo,
+                batchId: batchId,
+                cost: cost,
+                staff: staff,
+                overheadRef: overheadRef,
+                refCode: entryCode,
+                productionBatches: productionBatches,
+                status: 'Logged'
+            };
+
+            trackingLoadVersion += 1;
+            dbTracking.unshift(newEntry);
+
+            // Save factory booking + link to production batches
+            const bookingResult = await syncTrackingToSupabase(newEntry);
+
+            // Get the inserted booking's actual UUID if available for linking
+            const bookingId = bookingResult?.id || bookingResult?.[0]?.id || null;
+
+            // Update all linked production batches' factory_booking_id
+            if (productionBatches.length && bookingId) {
+                for (const batchCode of productionBatches) {
+                    await supabaseAPI({
+                        table: 'production_batches',
+                        operation: 'update',
+                        data: { factory_booking_id: bookingId },
+                        filters: { eq: { batch_code: batchCode } }
+                    }).catch((e) => console.warn('Production batch link skipped:', e.message));
+                }
+            } else if (productionBatches.length) {
+                // If no booking ID, store the booking code reference in notes
+                for (const batchCode of productionBatches) {
+                    await supabaseAPI({
+                        table: 'production_batches',
+                        operation: 'update',
+                        data: { notes: `Linked to booking: ${entryCode}` },
+                        filters: { eq: { batch_code: batchCode } }
+                    }).catch(() => {});
+                }
+            }
+
+            await syncOverheadToSupabase(newEntry);
+
+            // Reload both ledgers to reflect the new records
+            await Promise.all([loadTrackingEntries(), loadOverheadsLedger()]);
+
+            renderTrackingLedger();
+            showToast("Entry Logged!", `Batch ${batchId} - $${cost.toFixed(2)} saved to overheads.`);
+
+            document.getElementById('tracking-batch').value = "";
+            document.getElementById('tracking-cost').value = "";
+
+            // Clear selected production batches
+            selectedProductionBatches = [];
+            renderProductionBatchChips();
+        }
+
+        // Get current accounting period
+        function getCurrentPeriod() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const mtdStart = new Date(year, month, 1);
+            const ttdStart = new Date(year, 4, 1);
+            const ttdEnd = new Date(year, 7, 31);
+            const today = new Date(year, month, now.getDate());
+            if (today >= ttdStart && today <= ttdEnd) return 'TTD';
+            if (today >= mtdStart) return 'MTD';
+            return 'MTD';
+        }
+
+        // Clear ledger
+        async function clearAllTracking() {
+            if (confirm("Clear all tracking entries from the ledger? This will not delete database records.")) {
+                dbTracking = [];
+                renderTrackingLedger();
+                showToast("Ledger Cleared", "The tracking ledger history has been reset.");
+            }
+        }
+
+        // Show toast notifications
+        function showToast(title, desc, type = "success") {
+            const toast = document.getElementById('toast-success');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-desc').textContent = desc;
+            toast.classList.remove('hidden', 'translate-y-12');
+            toast.classList.add('translate-y-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-12');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

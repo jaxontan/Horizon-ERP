@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Account Detail - Finance Ops</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="/public/js/rbac.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script src="/components/sidebar.js"></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f7f9fb;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .tab-active {
+            border-bottom: 2px solid #031635;
+            color: #031635;
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"], [class*="w-[calc(100%-16rem)]"] { margin-left: 0 !important; width: 100% !important; }
+            .overflow-x-auto { overflow-x: auto !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .grid-cols-3 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+            th, td { padding: 6px 8px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+            .text-2xl { font-size: 1.25rem !important; }
+            .text-xl { font-size: 1rem !important; }
+        }
+    </style>
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+    <!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top App Bar -->
+    <header class="flex justify-between items-center w-full px-margin h-16 ml-64 max-w-[calc(100%-16rem)] bg-surface border-b border-outline-variant sticky top-0 z-30">
+        <h1 class="font-headline-sm font-bold text-primary flex items-center gap-2">
+            <span class="material-symbols-outlined text-[22px]">account_balance</span>
+            Account Detail
+        </h1>
+        <div class="flex items-center gap-stack-md">
+            <a href="account.html" class="px-4 py-2 border border-outline-variant hover:bg-surface-container-low rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                Back
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto pb-10 ml-64">
+        <div class="p-margin max-w-[calc(100%-16rem)]">
+
+            <!-- Account Hero Card -->
+            <div class="bg-gradient-to-br from-[#031635] to-[#1a3a5c] rounded-2xl p-6 mb-6 animate-fade-in">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div class="flex items-center gap-5">
+                        <div id="detail-icon-box" class="w-16 h-16 rounded-xl bg-white/10 flex items-center justify-center">
+                            <span id="detail-icon" class="material-symbols-outlined text-[32px] text-white" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+                        </div>
+                        <div class="text-white">
+                            <p class="text-[10px] font-black uppercase tracking-widest text-white/60">Account Name</p>
+                            <h2 id="detail-account-name" class="text-2xl font-extrabold mt-0.5">--</h2>
+                            <p class="text-white/60 text-xs mt-1">Current Balance: <span id="detail-account-balance" class="font-bold text-white font-data-tabular">$0.00</span></p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-start md:items-end gap-3">
+                        <div class="flex items-center gap-3">
+                            <span id="detail-type-badge" class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase bg-white/15 text-white border border-white/20">Type</span>
+                            <span id="detail-account-code" class="text-[11px] font-bold text-white/60 font-data-tabular">A001</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Row -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                    <div class="bg-white/10 rounded-xl p-4 text-center">
+                        <p class="text-[10px] font-black text-white/50 uppercase tracking-wider">Nature</p>
+                        <p id="detail-account-nature" class="text-base font-extrabold text-white mt-1 capitalize">--</p>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-4 text-center">
+                        <p class="text-[10px] font-black text-white/50 uppercase tracking-wider">Total Entries</p>
+                        <p id="detail-stat-entries" class="text-base font-extrabold text-white mt-1 font-data-tabular">0</p>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-4 text-center">
+                        <p class="text-[10px] font-black text-white/50 uppercase tracking-wider">This Month</p>
+                        <p id="detail-stat-month" class="text-base font-extrabold text-white mt-1 font-data-tabular">$0.00</p>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-4 text-center">
+                        <p class="text-[10px] font-black text-white/50 uppercase tracking-wider">YTD Total</p>
+                        <p id="detail-stat-ytd" class="text-base font-extrabold text-white mt-1 font-data-tabular">$0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="bg-white border border-outline-variant rounded-t-xl overflow-hidden">
+                <div class="flex border-b border-outline-variant px-2">
+                    <button onclick="switchTab('transactions')" id="btn-tab-transactions" class="px-5 py-3 text-xs font-bold text-[#031635] border-b-2 border-[#031635] transition-colors">Transactions</button>
+                    <button onclick="switchTab('performance')" id="btn-tab-performance" class="px-5 py-3 text-xs font-bold text-on-surface-variant border-b-2 border-transparent transition-colors hover:text-[#031635]">Performance</button>
+                    <button onclick="switchTab('info')" id="btn-tab-info" class="px-5 py-3 text-xs font-bold text-on-surface-variant border-b-2 border-transparent transition-colors hover:text-[#031635]">Info</button>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="bg-white border-x border-b border-outline-variant rounded-b-xl shadow-sm mb-6">
+
+                <!-- Transactions Tab -->
+                <div id="tab-content-transactions" class="tab-content p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+                        <h3 class="font-headline-sm text-headline-sm font-bold text-[#031635]">Transaction History</h3>
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <div class="relative flex-1 sm:flex-none sm:w-64">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[16px]">search</span>
+                                <input type="text" id="search-input" onkeyup="filterTransactions()" placeholder="Search transactions..." class="pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded-lg w-full text-xs font-bold focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" />
+                            </div>
+                            <select id="type-filter" onchange="filterTransactions()" class="bg-surface border border-outline-variant rounded-lg px-3 py-2 text-xs font-bold text-on-surface focus:ring-1 focus:ring-primary focus:border-primary outline-none">
+                                <option value="all">All Types</option>
+                                <option value="debit">Debit</option>
+                                <option value="credit">Credit</option>
+                            </select>
+                            <button onclick="openAddEntryModal()" class="bg-primary text-on-primary px-4 py-2 rounded-lg font-bold text-xs hover:opacity-90 transition-all flex items-center gap-1.5 shadow-sm">
+                                <span class="material-symbols-outlined text-[16px]">add</span>
+                                Add Entry
+                            </button>
+                        </div>
+                    </div>
+                    <div id="transactions-list" class="space-y-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Performance Tab -->
+                <div id="tab-content-performance" class="tab-content hidden p-6 space-y-6">
+                    <!-- Trend Chart -->
+                    <div class="bg-surface border border-outline-variant rounded-xl p-5">
+                        <div class="flex justify-between items-center mb-5">
+                            <div>
+                                <h4 class="text-sm font-bold text-[#031635]">Balance Trend</h4>
+                                <p class="text-[10px] text-on-surface-variant mt-0.5">Monthly transaction volume over the past 12 months</p>
+                            </div>
+                            <select class="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-xs font-bold">
+                                <option>Last 12 Months</option>
+                                <option>Last 6 Months</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end gap-2 h-48">
+                            <div id="chart-bars" class="flex-1 flex items-end gap-1">
+                                <!-- Bars populated by JS -->
+                            </div>
+                        </div>
+                        <div id="chart-labels" class="flex justify-between mt-2 text-[9px] font-black text-on-surface-variant uppercase">
+                            <!-- Labels populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-surface border border-outline-variant rounded-xl p-4">
+                            <p class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider">Highest Entry</p>
+                            <p id="stat-highest" class="text-xl font-extrabold text-[#031635] font-data-tabular mt-2">$0.00</p>
+                            <p class="text-[10px] text-on-surface-variant mt-1">All time record</p>
+                        </div>
+                        <div class="bg-surface border border-outline-variant rounded-xl p-4">
+                            <p class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider">Average Entry</p>
+                            <p id="stat-avg" class="text-xl font-extrabold text-[#031635] font-data-tabular mt-2">$0.00</p>
+                            <p class="text-[10px] text-on-surface-variant mt-1">Per transaction</p>
+                        </div>
+                        <div class="bg-surface border border-outline-variant rounded-xl p-4">
+                            <p class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider">Total Debits</p>
+                            <p id="stat-total-debit" class="text-xl font-extrabold text-red-600 font-data-tabular mt-2">$0.00</p>
+                            <p class="text-[10px] text-on-surface-variant mt-1">Inflows / Increases</p>
+                        </div>
+                        <div class="bg-surface border border-outline-variant rounded-xl p-4">
+                            <p class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider">Total Credits</p>
+                            <p id="stat-total-credit" class="text-xl font-extrabold text-green-600 font-data-tabular mt-2">$0.00</p>
+                            <p class="text-[10px] text-on-surface-variant mt-1">Outflows / Decreases</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Tab -->
+                <div id="tab-content-info" class="tab-content hidden p-6 space-y-5">
+                    <!-- Account Info Table -->
+                    <div class="bg-surface border border-outline-variant rounded-xl overflow-hidden">
+                        <div class="px-5 py-3 border-b border-outline-variant bg-surface-container-low">
+                            <h4 class="text-xs font-bold text-[#031635]">Account Information</h4>
+                        </div>
+                        <div class="divide-y divide-outline-variant">
+                            <div class="px-5 py-3.5 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[16px] text-on-surface-variant">tag</span>
+                                    <span class="text-xs font-semibold text-on-surface">Account Code</span>
+                                </div>
+                                <span id="info-code" class="text-xs font-bold text-[#031635] font-data-tabular">--</span>
+                            </div>
+                            <div class="px-5 py-3.5 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[16px] text-on-surface-variant">category</span>
+                                    <span class="text-xs font-semibold text-on-surface">Category</span>
+                                </div>
+                                <span id="info-category" class="text-xs font-bold text-[#031635] capitalize">--</span>
+                            </div>
+                            <div class="px-5 py-3.5 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[16px] text-on-surface-variant">swap_vert</span>
+                                    <span class="text-xs font-semibold text-on-surface">Normal Balance</span>
+                                </div>
+                                <span id="info-nature" class="text-xs font-bold text-[#031635] capitalize">--</span>
+                            </div>
+                            <div class="px-5 py-3.5 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[16px] text-on-surface-variant">account_balance</span>
+                                    <span class="text-xs font-semibold text-on-surface">Account Type</span>
+                                </div>
+                                <span id="info-account-type" class="text-xs font-bold text-[#031635] capitalize">--</span>
+                            </div>
+                            <div class="px-5 py-3.5 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[16px] text-on-surface-variant">list_alt</span>
+                                    <span class="text-xs font-semibold text-on-surface">Total Entries</span>
+                                </div>
+                                <span id="info-entries" class="text-xs font-bold text-[#031635] font-data-tabular">0</span>
+                            </div>
+                            <div class="px-5 py-3.5 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_today</span>
+                                    <span class="text-xs font-semibold text-on-surface">Created</span>
+                                </div>
+                                <span id="info-created" class="text-xs font-bold text-[#031635]">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accounting Rule -->
+                    <div class="bg-surface border border-outline-variant rounded-xl overflow-hidden">
+                        <div class="px-5 py-3 border-b border-outline-variant bg-surface-container-low">
+                            <h4 class="text-xs font-bold text-[#031635]">Accounting Rule</h4>
+                        </div>
+                        <div class="p-5">
+                            <div class="flex items-start gap-4">
+                                <div id="info-rule-icon" class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined text-green-600 text-[22px]" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+                                </div>
+                                <div>
+                                    <p id="info-rule-title" class="text-sm font-bold text-[#031635]">Debit increases balance</p>
+                                    <p id="info-rule-desc" class="text-xs text-on-surface-variant mt-2 leading-relaxed">This is an expense account. Increases are recorded on the debit side, decreases on the credit side.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Add Entry Modal -->
+    <div id="add-entry-modal" class="fixed inset-0 bg-[#031635]/40 backdrop-blur-md z-[110] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative animate-fade-in">
+            <!-- Header -->
+            <div class="bg-[#031635] px-6 py-4 flex justify-between items-center shrink-0">
+                <h4 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span class="material-symbols-outlined text-white/70">add_box</span>
+                    Add Transaction
+                </h4>
+                <button onclick="closeAddEntryModal()" class="p-1 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-colors">
+                    <span class="material-symbols-outlined text-[20px] font-bold">close</span>
+                </button>
+            </div>
+
+            <!-- Current Account Banner -->
+            <div class="bg-gradient-to-r from-[#031635] to-[#1a3a5c] px-6 py-4 shrink-0">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div id="modal-account-icon-box" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+                            <span id="modal-account-icon" class="material-symbols-outlined text-[24px] text-white" style="font-variation-settings:'FILL' 1;">groups</span>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-white/50 uppercase tracking-widest">Current Account</p>
+                            <p id="modal-account-name" class="text-base font-bold text-white">Direct Labour</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span id="modal-account-code" class="text-[11px] font-bold text-white/60 font-data-tabular">E001</span>
+                        <span id="modal-account-type-badge" class="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-white/15 text-white border border-white/20">Expense</span>
+                        <span id="modal-account-balance" class="text-[13px] font-bold text-white/80 font-data-tabular">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Body -->
+            <div class="flex-1 overflow-y-auto bg-[#f7f9fb] p-6 custom-scrollbar">
+                <form onsubmit="postJournalEntry(event); return false;" class="space-y-5" id="journal-entry-form">
+
+                    <!-- Date & Reference Row -->
+                    <div class="grid grid-cols-2 gap-4 bg-white border border-outline-variant rounded-xl p-4">
+                        <div class="space-y-1.5">
+                            <label class="block text-[11px] font-black text-on-surface-variant uppercase tracking-wider">Date</label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">calendar_today</span>
+                                <input class="w-full bg-surface border border-outline-variant rounded-lg pl-9 pr-3 py-2 font-bold text-xs text-[#031635] focus:outline-none focus:border-[#031635] transition-all" id="entry-form-date" type="date" required>
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block text-[11px] font-black text-on-surface-variant uppercase tracking-wider">Invoice / Reference</label>
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">tag</span>
+                                <input class="w-full bg-surface border border-outline-variant rounded-lg pl-9 pr-3 py-2 font-bold text-xs text-[#031635] focus:outline-none focus:border-[#031635] transition-all" id="entry-form-invoice" placeholder="INV-2026-001" type="text" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Journal Entries -->
+                    <div class="bg-white border border-outline-variant rounded-xl overflow-hidden">
+                        <div class="px-5 py-3 border-b border-outline-variant bg-[#f7f9fb]">
+                            <h3 class="text-xs font-black text-[#031635] uppercase tracking-wider">Journal Entries</h3>
+                        </div>
+
+                        <!-- Column Headers -->
+                        <div class="grid grid-cols-[1fr_120px_120px_120px_40px] gap-3 px-5 py-2 bg-slate-50 border-b border-outline-variant">
+                            <div class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider">Account</div>
+                            <div class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider text-right">Debit</div>
+                            <div class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider text-right">Credit</div>
+                            <div class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider text-right">Amount</div>
+                            <div></div>
+                        </div>
+
+                        <!-- Entry Rows -->
+                        <div id="journal-entries-container" class="divide-y divide-outline-variant">
+                            <!-- Populated by JS -->
+                        </div>
+
+                        <!-- Add Row Button -->
+                        <div class="px-5 py-3">
+                            <button type="button" onclick="addJournalEntryRow()" class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-primary hover:bg-surface-container-low rounded-lg transition-all border border-dashed border-outline-variant hover:border-primary">
+                                <span class="material-symbols-outlined text-[16px]">add</span>
+                                Add Row
+                            </button>
+                        </div>
+
+                        <!-- Totals Bar -->
+                        <div class="bg-[#031635] px-5 py-4 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div id="journal-balance-status" class="flex items-center gap-2 text-green-400">
+                                    <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                                    <span class="text-[11px] font-bold uppercase tracking-wider">Balanced</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-10 font-bold">
+                                <div class="text-right">
+                                    <p class="text-[9px] font-black text-white/40 uppercase tracking-wider">Total Debit</p>
+                                    <p id="journal-total-debit" class="font-data-tabular text-sm font-extrabold text-white">$0.00</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[9px] font-black text-white/40 uppercase tracking-wider">Total Credit</p>
+                                    <p id="journal-total-credit" class="font-data-tabular text-sm font-extrabold text-white">$0.00</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[9px] font-black text-white/40 uppercase tracking-wider">Difference</p>
+                                    <p id="journal-total-diff" class="font-data-tabular text-sm font-extrabold text-white/50">$0.00</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Narration -->
+                    <div class="bg-white border border-outline-variant rounded-xl p-4">
+                        <label class="block text-[11px] font-black text-on-surface-variant uppercase tracking-wider mb-2">Description</label>
+                        <textarea class="w-full bg-surface border border-outline-variant rounded-lg px-4 py-2.5 text-xs font-bold text-[#031635] focus:outline-none focus:border-[#031635] transition-all resize-none" id="entry-form-narration" rows="2" placeholder="Describe the transaction..." required></textarea>
+                    </div>
+
+                    <!-- Footer Buttons -->
+                    <div class="flex justify-end gap-3 pt-1">
+                        <button type="button" onclick="closeAddEntryModal()" class="px-6 py-2 border border-outline-variant rounded-lg text-xs font-bold text-[#031635] hover:bg-slate-50 transition-colors">Cancel</button>
+                        <button id="post-journal-btn" class="px-8 py-2 bg-[#031635] text-white font-bold text-xs rounded-lg shadow-sm hover:bg-[#1a3a5c] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" type="submit" disabled>
+                            <span class="material-symbols-outlined text-[16px]">save</span>
+                            Save Entry
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── RBAC: Finance pages need at least finance:read ────────────────────
+        window.RBAC.enforcePageAccess('finance:read', { pageName: 'Account Details' })
+            .then(() => window.RBAC.applyRBACToDOM())
+            .catch((err) => {
+                if (!String(err.message || '').startsWith('RBAC:')) throw err;
+            });
+
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        // --- Local Supabase proxy helper ---
+        async function journalAPI({ table, operation, data, filters, columns, returning, query }) {
+            try {
+                const resp = await fetch('/api/supabase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    // user_email / user_role intentionally omitted — the server stamps them
+                    // from the verified espressgo_staff_session cookie.
+                    body: JSON.stringify({
+                        schema: 'journal', table, operation, data, filters, columns, returning, query,
+                    })
+                });
+                const result = await resp.json();
+                if (result.error) {
+                    console.warn('Journal API error:', result.error);
+                    return null;  // Return null on error so callers can detect it
+                }
+                // For SELECT/raw: return array
+                if (['select', 'raw'].includes(operation)) {
+                    return result.data || [];
+                }
+                // For INSERT: return the single inserted row
+                if (operation === 'insert') {
+                    return result.data?.[0] || null;
+                }
+                // For UPDATE/DELETE: return the data array or null
+                return result.data || null;
+            } catch (e) {
+                console.warn('Journal API error:', e);
+                return null;
+            }
+        }
+
+        // Parse account info from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const accountTitle = urlParams.get('name') || 'Direct Labour';
+        const accountCode = urlParams.get('code') || 'E001';
+        const accountNature = urlParams.get('nature') || 'debit';
+        const accountType = urlParams.get('type') || 'expense';
+        const accountIcon = urlParams.get('icon') || 'groups';
+
+        let ledgerDatabase = {};
+        let accountBalance = '$0.00';
+
+        const ACCOUNT_OPTIONS = `
+            <option disabled selected value="">Select Account</option>
+            <option value="Direct Labour">E001 - Direct Labour</option>
+            <option value="Direct Material">E002 - Direct Material</option>
+            <option value="Factory Overhead">E003 - Factory Overhead</option>
+            <option value="Cash">A001 - Cash</option>
+            <option value="Raw Material Inventory">A002 - Raw Material Inventory</option>
+            <option value="Accounts Payable">L001 - Accounts Payable</option>
+            <option value="Accounts Receivable">A004 - Accounts Receivable</option>
+            <option value="Work in Process">A005 - Work in Process</option>
+            <option value="Finished Goods">A003 - Finished Goods</option>
+            <option value="Cost of Goods Sold">E004 - Cost of Goods Sold</option>
+            <option value="Revenue">I001 - Revenue</option>
+        `;
+
+        const TYPE_COLORS = {
+            asset: { bg: 'bg-green-500/15', text: 'text-green-300', border: 'border-green-500/20', icon: 'bg-green-50', iconText: 'text-green-600' },
+            liability: { bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-500/20', icon: 'bg-amber-50', iconText: 'text-amber-600' },
+            expense: { bg: 'bg-red-500/15', text: 'text-red-300', border: 'border-red-500/20', icon: 'bg-red-50', iconText: 'text-red-600' },
+            income: { bg: 'bg-blue-500/15', text: 'text-blue-300', border: 'border-blue-500/20', icon: 'bg-blue-50', iconText: 'text-blue-600' },
+        };
+
+        const ACCOUNT_RULES = {
+            'asset': { icon: 'trending_up', bg: 'bg-green-50', color: 'text-green-600', title: 'Debit increases balance', desc: 'This is an asset account. Increases are recorded on the debit side, decreases on the credit side. Assets have a normal debit balance.' },
+            'liability': { icon: 'trending_down', bg: 'bg-amber-50', color: 'text-amber-600', title: 'Credit increases balance', desc: 'This is a liability account. Increases are recorded on the credit side, decreases on the debit side. Liabilities have a normal credit balance.' },
+            'expense': { icon: 'trending_up', bg: 'bg-red-50', color: 'text-red-600', title: 'Debit increases balance', desc: 'This is an expense account. Expenses increase on the debit side and decrease on the credit side. Expenses have a normal debit balance.' },
+            'income': { icon: 'trending_up', bg: 'bg-blue-50', color: 'text-blue-600', title: 'Credit increases balance', desc: 'This is an income/revenue account. Revenue increases on the credit side and decreases on the debit side. Revenue has a normal credit balance.' },
+        };
+
+        function switchTab(tab) {
+            ['transactions', 'performance', 'info'].forEach(t => {
+                const btn = document.getElementById(`btn-tab-${t}`);
+                const pane = document.getElementById(`tab-content-${t}`);
+                if (btn && pane) {
+                    if (t === tab) {
+                        btn.className = 'px-5 py-3 text-xs font-bold text-[#031635] border-b-2 border-[#031635] transition-colors';
+                        pane.classList.remove('hidden');
+                    } else {
+                        btn.className = 'px-5 py-3 text-xs font-bold text-on-surface-variant border-b-2 border-transparent transition-colors hover:text-[#031635]';
+                        pane.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        async function loadAccountData() {
+            // Read from the journal.ledger view — this is the real accounting data
+            const ledgerRows = await journalAPI({
+                table: 'ledger',
+                operation: 'raw',
+                query: `SELECT date, entry_number, narration, debit, credit, running_balance
+                        FROM journal.ledger
+                        WHERE account_name = '${accountTitle.replace(/'/g, "''")}'
+                        ORDER BY date ASC, entry_number ASC`
+            });
+
+            console.log('loadAccountData returned:', ledgerRows?.length, 'rows');
+
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const allLines = (ledgerRows || []).map(row => {
+                const dateObj = new Date(row.date);
+                const monthName = months[dateObj.getMonth()] || '';
+                const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                const debit = parseFloat(row.debit) || 0;
+                const credit = parseFloat(row.credit) || 0;
+                return {
+                    date: dateStr,
+                    monthName,
+                    groupId: row.entry_number || '',
+                    narration: row.narration || '',
+                    details: accountTitle,
+                    type: debit > 0 ? 'debit' : 'credit',
+                    rawVal: debit > 0 ? debit : credit,
+                    runningBalance: parseFloat(row.running_balance) || 0
+                };
+            });
+
+            ledgerDatabase[accountTitle] = allLines;
+            return allLines;
+        }
+
+        function renderTransactions(allLines) {
+            const container = document.getElementById('transactions-list');
+            const term = (document.getElementById('search-input') || { value: '' }).value.toLowerCase();
+            const typeFilter = (document.getElementById('type-filter') || { value: 'all' }).value;
+
+            const filtered = allLines.filter(l => {
+                const matchSearch = !term || l.details.toLowerCase().includes(term) || l.groupId.toLowerCase().includes(term) || (l.narration && l.narration.toLowerCase().includes(term));
+                const matchType = typeFilter === 'all' || l.type === typeFilter;
+                return matchSearch && matchType;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="border border-outline-variant rounded-xl p-10 text-center">
+                        <span class="material-symbols-outlined text-[48px] text-outline-variant mb-3 block">find_in_page</span>
+                        <p class="text-sm font-bold text-on-surface-variant">No transactions found for this query.</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(l => {
+                const isDebit = l.type === 'debit';
+                const colors = isDebit
+                    ? { row: 'border-red-100', iconBg: 'bg-red-50', icon: 'text-red-500', text: 'text-red-600', badge: 'bg-red-100 text-red-700' }
+                    : { row: 'border-green-100', iconBg: 'bg-green-50', icon: 'text-green-500', text: 'text-green-600', badge: 'bg-green-100 text-green-700' };
+
+                return `
+                    <div class="bg-white border ${colors.row} rounded-xl p-4 hover:shadow-sm transition-all">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-11 h-11 rounded-lg ${colors.iconBg} flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined ${colors.icon} text-[20px]" style="font-variation-settings: 'FILL' 1;">${isDebit ? 'remove' : 'add'}</span>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-[#031635] truncate">${l.details}</p>
+                                    <p class="text-[11px] text-on-surface-variant mt-0.5">${l.date} &middot; <span class="font-data-tabular">${l.groupId}</span></p>
+                                    ${l.narration ? `<p class="text-[11px] text-on-surface-variant/70 mt-1 italic truncate max-w-xs">${l.narration}</p>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-base font-extrabold font-data-tabular ${isDebit ? 'text-red-600' : 'text-green-600'}">${isDebit ? '-' : '+'}$${l.rawVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                <span class="inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${colors.badge}">${isDebit ? 'Debit' : 'Credit'}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function renderPerformance(allLines) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthTotals = {};
+            months.forEach(m => monthTotals[m] = 0);
+            allLines.forEach(l => {
+                if (l.monthName && monthTotals.hasOwnProperty(l.monthName)) {
+                    monthTotals[l.monthName] += l.rawVal;
+                }
+            });
+            const values = months.map(m => monthTotals[m]);
+            const maxVal = Math.max(...values, 1);
+
+            const barsContainer = document.getElementById('chart-bars');
+            const labelsContainer = document.getElementById('chart-labels');
+            const currentMonth = new Date().getMonth();
+
+            barsContainer.innerHTML = months.map((m, i) => {
+                const h = Math.round((values[i] / maxVal) * 100) || 2;
+                const isActive = i === currentMonth;
+                return `<div class="flex-1 flex flex-col items-center justify-end gap-0">
+                    <div class="w-2 h-2 rounded-full ${isActive ? 'bg-[#031635]' : 'bg-slate-400'} mb-1 shrink-0"></div>
+                    <span class="text-[9px] font-black text-on-surface-variant font-data-tabular mb-1">$${Math.round(values[i] / 1000)}k</span>
+                    <div class="w-full rounded-t-sm transition-all hover:opacity-80 ${isActive ? 'bg-[#031635]' : 'bg-slate-300'}" style="height:${Math.max(h, 4)}%"></div>
+                </div>`;
+            }).join('');
+
+            labelsContainer.innerHTML = months.map((m, i) =>
+                `<span class="${i === currentMonth ? 'text-[#031635] font-black' : ''}">${m}</span>`
+            ).join('');
+
+            const vals = allLines.map(l => l.rawVal);
+            const highest = vals.length ? Math.max(...vals) : 0;
+            const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+            const totalDeb = allLines.filter(l => l.type === 'debit').reduce((s, l) => s + l.rawVal, 0);
+            const totalCred = allLines.filter(l => l.type === 'credit').reduce((s, l) => s + l.rawVal, 0);
+
+            document.getElementById('stat-highest').innerText = `$${highest.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('stat-avg').innerText = `$${avg.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('stat-total-debit').innerText = `$${totalDeb.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('stat-total-credit').innerText = `$${totalCred.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        function populateInfo(allLines) {
+            const thisMonth = new Date().toLocaleDateString('en-US', { month: 'short' });
+            const monthTotal = allLines.filter(l => l.monthName === thisMonth).reduce((s, l) => s + l.rawVal, 0);
+            const ytdTotal = allLines.reduce((s, l) => s + l.rawVal, 0);
+
+            document.getElementById('info-code').innerText = accountCode;
+            document.getElementById('info-category').innerText = accountType;
+            document.getElementById('info-nature').innerText = accountNature === 'credit' ? 'Credit' : 'Debit';
+            document.getElementById('info-account-type').innerText = (accountType === 'asset' || accountType === 'liability') ? 'Real Account' : 'Nominal Account';
+            document.getElementById('info-entries').innerText = allLines.length;
+            document.getElementById('info-created').innerText = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+            document.getElementById('detail-stat-entries').innerText = allLines.length;
+            document.getElementById('detail-stat-month').innerText = `$${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('detail-stat-ytd').innerText = `$${ytdTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            const rule = ACCOUNT_RULES[accountType] || ACCOUNT_RULES.expense;
+            document.getElementById('info-rule-icon').className = `w-12 h-12 rounded-xl ${rule.bg} flex items-center justify-center shrink-0`;
+            document.getElementById('info-rule-icon').innerHTML = `<span class="material-symbols-outlined ${rule.color} text-[22px]" style="font-variation-settings: 'FILL' 1;">${rule.icon}</span>`;
+            document.getElementById('info-rule-title').innerText = rule.title;
+            document.getElementById('info-rule-desc').innerText = rule.desc;
+        }
+
+        function filterTransactions() {
+            const allLines = ledgerDatabase[accountTitle] || [];
+            renderTransactions(allLines);
+        }
+
+        // --- Journal Entry Modal ---
+        let journalRowCount = 0;
+
+        async function openAddEntryModal() {
+            // Populate modal header banner
+            document.getElementById('modal-account-name').innerText = accountTitle;
+            document.getElementById('modal-account-code').innerText = accountCode;
+            document.getElementById('modal-account-icon').innerText = accountIcon;
+            const tc = TYPE_COLORS[accountType] || TYPE_COLORS.expense;
+            document.getElementById('modal-account-type-badge').innerText = accountType;
+            document.getElementById('modal-account-balance').innerText = accountBalance;
+
+            // Form defaults
+            document.getElementById('entry-form-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('entry-form-invoice').value = `INV-2026-${Math.floor(100 + Math.random() * 900)}`;
+            document.getElementById('entry-form-narration').value = '';
+            document.getElementById('journal-entries-container').innerHTML = '';
+            journalRowCount = 0;
+
+            // Ensure accounts list is loaded
+            if (accountsList.length === 0) {
+                accountsList = await journalAPI({ table: 'accounts', operation: 'select', columns: 'id, code, name' }) || [];
+            }
+
+            // Two initial rows — first pre-selects current account on the debit side
+            addJournalEntryRow(accountTitle, false);
+            addJournalEntryRow('', false);
+
+            updateJournalTotals();
+            document.getElementById('add-entry-modal').classList.remove('hidden');
+        }
+
+        function closeAddEntryModal() {
+            document.getElementById('add-entry-modal').classList.add('hidden');
+        }
+
+        function buildAccountOptions(preselected) {
+            if (accountsList.length === 0) return `<option disabled selected value="">Select Account</option>`;
+            // Deduplicate by name, keep first occurrence
+            const seen = new Set();
+            const unique = accountsList.filter(a => {
+                if (seen.has(a.name)) return false;
+                seen.add(a.name);
+                return true;
+            });
+            return `<option disabled value="">Select Account</option>` +
+                unique.map(a => `<option value="${a.name}" ${a.name === preselected ? 'selected' : ''}>${a.code} - ${a.name}</option>`).join('');
+        }
+
+        function addJournalEntryRow(preselectedAccount, preCheckCredit) {
+            const container = document.getElementById('journal-entries-container');
+            const rowId = ++journalRowCount;
+
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-[1fr_120px_120px_120px_40px] gap-3 items-center px-5 py-3 hover:bg-slate-50 transition-colors group animate-fade-in';
+            row.dataset.rowId = rowId;
+            row.innerHTML = `
+                <div>
+                    <select class="w-full bg-surface border border-outline-variant rounded-lg px-3 py-2 text-xs font-bold text-[#031635] focus:outline-none focus:border-[#031635] transition-all" onchange="updateJournalTotals()">
+                        ${buildAccountOptions(preselectedAccount)}
+                    </select>
+                </div>
+                <div>
+                    <input class="w-full text-right bg-surface border border-outline-variant rounded-lg px-3 py-2 font-data-tabular text-xs text-[#031635] focus:outline-none focus:border-[#031635] transition-all" placeholder="$0.00" step="0.01" type="number" min="0" oninput="updateJournalTotals()">
+                </div>
+                <div>
+                    <input class="w-full text-right bg-surface border border-outline-variant rounded-lg px-3 py-2 font-data-tabular text-xs text-[#031635] focus:outline-none focus:border-[#031635] transition-all" placeholder="$0.00" step="0.01" type="number" min="0" oninput="updateJournalTotals()">
+                </div>
+                <div class="text-right pr-2">
+                    <span class="font-data-tabular text-xs font-bold text-on-surface-variant">—</span>
+                </div>
+                <div class="flex justify-center">
+                    <button class="text-on-surface-variant opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all p-1" type="button" onclick="removeJournalRow(${rowId})">
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                </div>`;
+
+            container.appendChild(row);
+            updateJournalTotals();
+        }
+
+        function removeJournalRow(rowId) {
+            const row = document.querySelector(`[data-row-id="${rowId}"]`);
+            if (row) {
+                const container = document.getElementById('journal-entries-container');
+                if (container.children.length > 1) {
+                    row.remove();
+                    updateJournalTotals();
+                }
+            }
+        }
+
+        function updateJournalTotals() {
+            let totalDeb = 0, totalCred = 0;
+            const rows = document.querySelectorAll('#journal-entries-container > div');
+            rows.forEach(row => {
+                const debInput = row.querySelectorAll('input[type="number"]')[0];
+                const credInput = row.querySelectorAll('input[type="number"]')[1];
+                totalDeb += parseFloat(debInput && debInput.value ? debInput.value : 0) || 0;
+                totalCred += parseFloat(credInput && credInput.value ? credInput.value : 0) || 0;
+            });
+
+            document.getElementById('journal-total-debit').innerText = `$${totalDeb.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('journal-total-credit').innerText = `$${totalCred.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const diff = Math.abs(totalDeb - totalCred);
+            document.getElementById('journal-total-diff').innerText = `$${diff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            const balanced = totalDeb > 0 && Math.abs(totalDeb - totalCred) < 0.01;
+            const statusEl = document.getElementById('journal-balance-status');
+            if (balanced) {
+                statusEl.className = 'flex items-center gap-2 text-green-400';
+                statusEl.innerHTML = `<span class="material-symbols-outlined text-[18px]">check_circle</span><span class="text-[11px] font-bold uppercase tracking-wider">Balanced</span>`;
+            } else {
+                statusEl.className = 'flex items-center gap-2 text-amber-400';
+                statusEl.innerHTML = `<span class="material-symbols-outlined text-[18px]">warning</span><span class="text-[11px] font-bold uppercase tracking-wider">Unbalanced — Difference: $${diff.toFixed(2)}</span>`;
+            }
+            const btn = document.getElementById('post-journal-btn');
+            btn.disabled = !balanced;
+            btn.classList.toggle('opacity-50', !balanced);
+            btn.classList.toggle('cursor-not-allowed', !balanced);
+        }
+
+        async function postJournalEntry(e) {
+            e.preventDefault();
+            
+            const dateRaw = document.getElementById('entry-form-date').value;
+            const invoiceNum = document.getElementById('entry-form-invoice').value;
+            const narration = document.getElementById('entry-form-narration').value;
+
+            // Gather all lines from the form
+            const formLines = [];
+            const rows = document.querySelectorAll('#journal-entries-container > div');
+            rows.forEach(row => {
+                const accName = row.querySelector('select').value;
+                const debInput = row.querySelectorAll('input[type="number"]')[0];
+                const credInput = row.querySelectorAll('input[type="number"]')[1];
+                const debVal = parseFloat(debInput && debInput.value ? debInput.value : 0) || 0;
+                const credVal = parseFloat(credInput && credInput.value ? credInput.value : 0) || 0;
+                if (accName && (debVal > 0 || credVal > 0)) {
+                    formLines.push({ accountName: accName, debit: debVal, credit: credVal });
+                }
+            });
+
+            if (formLines.length === 0) {
+                return;
+            }
+
+            // Get account IDs from the accounts table
+            const accountMap = {};
+            
+            const accResults = await journalAPI({ table: 'accounts', operation: 'select', columns: 'id, name' });
+            (accResults || []).forEach(a => { accountMap[a.name] = a.id; });
+
+            // Insert journal entry header using journalAPI (which correctly extracts result.data)
+            
+            const entryResult = await journalAPI({
+                table: 'entries',
+                operation: 'insert',
+                data: {
+                    date: dateRaw,
+                    invoice_ref: invoiceNum,
+                    narration: narration,
+                    is_posted: false
+                }
+            });
+            
+            if (!entryResult || !entryResult.id) {
+                showToast('Failed to save entry. Please check permissions and try again.', 'error');
+                return;
+            }
+
+            const entryId = entryResult.id;
+
+            // Insert each line
+            let linesInserted = 0;
+            for (const line of formLines) {
+                const accId = accountMap[line.accountName];
+                if (!accId) continue;
+                
+                // Determine which side has the value
+                const isDebit = line.debit > 0 && (line.credit === 0 || line.debit >= line.credit);
+                const debit = isDebit ? line.debit : 0;
+                const credit = !isDebit && line.credit > 0 ? line.credit : 0;
+                
+                if (debit === 0 && credit === 0) continue; // Skip empty lines
+                
+                await journalAPI({
+                    table: 'entry_lines',
+                    operation: 'insert',
+                    data: {
+                        entry_id: entryId,
+                        account_id: accId,
+                        debit: debit,
+                        credit: credit,
+                        memo: narration || null
+                    }
+                });
+                linesInserted++;
+            }
+            console.log('Inserted', linesInserted, 'entry lines');
+
+            // Mark entry as posted
+            await journalAPI({
+                table: 'entries',
+                operation: 'update',
+                data: { is_posted: true },
+                filters: { eq: { id: entryId } }
+            });
+
+            closeAddEntryModal();
+
+            // Reload data from the ledger view
+            const allLines = await loadAccountData();
+            const lastRow = allLines[allLines.length - 1];
+            accountBalance = `$${Math.abs(lastRow?.runningBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('detail-account-balance').innerText = accountBalance;
+            renderTransactions(allLines);
+            renderPerformance(allLines);
+            populateInfo(allLines);
+
+            showToast('Journal entry saved successfully!');
+        }
+
+        function showToast(msg, type = 'success') {
+            let t = document.getElementById('page-toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'page-toast';
+                t.className = 'fixed bottom-8 right-8 text-white px-6 py-4 rounded-xl shadow-2xl z-[200] transition-all duration-300 translate-y-32 flex items-center gap-3';
+                document.body.appendChild(t);
+            }
+            const icon = type === 'error' ? 'error' : 'check_circle';
+            const bg = type === 'error' ? 'bg-red-600' : 'bg-[#031635]';
+            t.className = `fixed bottom-8 right-8 ${bg} text-white px-6 py-4 rounded-xl shadow-2xl z-[200] transition-all duration-300 flex items-center gap-3`;
+            t.innerHTML = `<span class="material-symbols-outlined text-green-400" style="font-variation-settings:'FILL'1;">${icon}</span><p class="text-xs font-bold">${msg}</p>`;
+            t.classList.remove('translate-y-32');
+            setTimeout(() => t.classList.add('translate-y-32'), 3000);
+        }
+
+        // Cache for accounts list
+        let accountsList = [];
+
+        // --- Require a logged-in session; redirect to login if missing ---
+        // Probe /api/staff-session/me — the cookie is the only authority.
+        (async () => {
+            try {
+                const probe = await fetch('/api/staff-session/me', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+                const data = await probe.json().catch(() => ({}));
+                if (!probe.ok || !data || !data.session || !data.session.role) {
+                    window.location.replace('/index.html');
+                    return;
+                }
+                window.__staffIdentity = {
+                    role: data.session.role,
+                    department: data.session.department || '',
+                    email: data.session.email || '',
+                };
+            } catch {
+                window.location.replace('/index.html');
+            }
+        })();
+
+        // --- Debug logging ---
+        window.addEventListener('error', function(e) {
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+        });
+        
+        // --- Init ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            
+            document.title = `${accountTitle} - Account Detail - Finance Ops`;
+            document.getElementById('detail-account-name').innerText = accountTitle;
+            document.getElementById('detail-account-balance').innerText = accountBalance;
+            document.getElementById('detail-icon').innerText = accountIcon;
+            document.getElementById('detail-account-code').innerText = accountCode;
+            document.getElementById('detail-account-nature').innerText = accountNature === 'credit' ? 'Credit' : 'Debit';
+
+            const tc = TYPE_COLORS[accountType] || TYPE_COLORS.expense;
+            const typeBadge = document.getElementById('detail-type-badge');
+            typeBadge.className = `px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${tc.bg} ${tc.text} border ${tc.border}`;
+            typeBadge.innerText = accountType;
+
+            try {
+                const allLines = await loadAccountData();
+                const lastRow = allLines[allLines.length - 1];
+                accountBalance = `$${Math.abs(lastRow?.runningBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('detail-account-balance').innerText = accountBalance;
+
+                renderTransactions(allLines);
+                renderPerformance(allLines);
+                populateInfo(allLines);
+                
+            } catch(e) {
+            }
+        });
+    </script>
+</body>
+</html>

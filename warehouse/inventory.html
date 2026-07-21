@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Management | EspressGo Warehouse</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/public/js/erp-supabase.js"></script>
+  <script src="/public/js/rbac.js"></script>
+  <script src="/components/sidebar.js?v=20260705a"></script>
+  <style>
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.batch-code { font-family: monospace; font-size: 0.75rem; font-weight: 700; /* font-bold */ letter-spacing: 0.05em; /* tracking-wider */ }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-slide-up { animation: slideUp 0.2s ease-out forwards; }
+    @media (max-width: 1024px) { main { margin-left: 0 !important; width: 100% !important; padding: 1rem !important; } [class*="ml-64"] { margin-left: 0 !important; } }
+    @media (max-width: 768px) { .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; } }
+  </style>
+</head>
+
+<body class="font-body-md bg-[#f7f9fb] text-[#191c1e] text-sm antialiased flex min-h-screen">
+  <app-sidebar layout="fixed"></app-sidebar>
+
+  <main class="ml-64 flex-1 min-h-screen flex flex-col transition-all duration-300">
+
+    <!-- Top App Bar -->
+    <header class="flex justify-between items-center w-full px-8 h-16 sticky top-0 z-40 bg-white border-b border-[#c5c6cf]">
+      <div>
+        <h2 class="font-headline-sm text-xl font-extrabold text-[#031635] flex items-center gap-2">
+          <span class="material-symbols-outlined text-[24px]">inventory_2</span>
+          Stock Management
+        </h2>
+        <p class="text-[10px] text-[#44474e] font-medium mt-0.5">Manage raw materials and finished goods inventory</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="openAddModal()" class="px-4 py-2.5 bg-[#031635] hover:bg-[#1a2b4b] text-white font-bold rounded-xl shadow-md transition-all text-xs flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">add</span><span style="font-variant:small-caps">Add Item</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <div class="flex-1 p-8 bg-[#f7f9fb] space-y-6">
+
+      <!-- KPI Row -->
+      <div class="grid grid-cols-3 gap-4">
+        <div class="bg-white border border-[#c5c6cf] rounded-xl p-5 flex items-center gap-3 shadow-sm">
+          <div class="w-11 h-11 bg-[#031635]/10 rounded-xl flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[#031635]">inventory</span>
+          </div>
+          <div>
+            <p class="text-[9px] font-bold text-[#44474e] uppercase tracking-wider">Total Items</p>
+            <p class="text-2xl font-headline-md font-extrabold text-[#031635]" id="kpi-total">—</p>
+          </div>
+        </div>
+        <div class="bg-white border border-[#c5c6cf] rounded-xl p-5 flex items-center gap-3 shadow-sm">
+          <div class="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-emerald-600">check_circle</span>
+          </div>
+          <div>
+            <p class="text-[9px] font-bold text-[#44474e] uppercase tracking-wider">In Stock</p>
+            <p class="text-2xl font-headline-md font-extrabold text-emerald-700" id="kpi-instock">—</p>
+          </div>
+        </div>
+        <div class="bg-white border border-[#c5c6cf] rounded-xl p-5 flex items-center gap-3 shadow-sm">
+          <div class="w-11 h-11 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-red-500">error</span>
+          </div>
+          <div>
+            <p class="text-[9px] font-bold text-[#44474e] uppercase tracking-wider">Out of Stock</p>
+            <p class="text-2xl font-headline-md font-extrabold text-red-600" id="kpi-out">—</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="bg-white border border-[#c5c6cf] rounded-xl shadow-sm overflow-hidden">
+        <div class="flex border-b border-[#c5c6cf]">
+          <button onclick="switchTab('raw_material')" id="tab-rm" class="flex-1 px-6 py-4 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 border-[#031635] text-[#031635]">
+            <span class="material-symbols-outlined text-[18px]">grain</span>
+            Raw Materials
+            <span id="count-rm" class="bg-[#031635] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">0</span>
+          </button>
+          <button onclick="switchTab('finished_good')" id="tab-fg" class="flex-1 px-6 py-4 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 border-transparent text-[#44474e] hover:text-[#191c1e] hover:bg-[#f7f9fb]">
+            <span class="material-symbols-outlined text-[18px]">inventory_2</span>
+            Finished Goods
+            <span id="count-fg" class="bg-[#eceef0] text-[#44474e] text-[10px] font-extrabold px-2 py-0.5 rounded-full">0</span>
+          </button>
+        </div>
+
+        <!-- Filter Bar (within tab panel) -->
+        <div id="filter-bar" class="px-5 py-3 bg-[#f2f4f6] flex flex-col sm:flex-row gap-3 items-center justify-between border-b border-[#eceef0]">
+          <div class="relative w-full sm:w-72">
+            <span class="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-[#75777f]">search</span>
+            <input type="text" id="search-input" oninput="renderTable()" placeholder="Search by name or code..." class="w-full pl-10 pr-4 py-2 bg-white border border-[#c5c6cf] rounded-xl focus:ring-2 focus:ring-[#031635] focus:border-[#031635] text-xs font-semibold" />
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select id="stock-filter" onchange="renderTable()" class="border border-[#c5c6cf] rounded-xl text-xs py-2 px-3 bg-white focus:ring-2 focus:ring-[#031635] font-semibold">
+              <option value="all">All Stock</option>
+              <option value="instock">In Stock</option>
+              <option value="low">Low Stock</option>
+              <option value="out">Out of Stock</option>
+            </select>
+            <select id="active-filter" onchange="renderTable()" class="border border-[#c5c6cf] rounded-xl text-xs py-2 px-3 bg-white focus:ring-2 focus:ring-[#031635] font-semibold">
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <button id="produce-btn" onclick="openProduceModal()" class="hidden px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[14px]">play_arrow</span>Produce
+            </button>
+          </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-[#f2f4f6] border-b border-[#c5c6cf]">
+              <tr>
+                <th class="text-left px-4 py-3 font-extrabold text-[#44474e] uppercase tracking-wider">Item Code</th>
+                <th class="text-left px-4 py-3 font-extrabold text-[#44474e] uppercase tracking-wider">Name</th>
+                <th class="text-right px-4 py-3 font-extrabold text-[#44474e] uppercase tracking-wider">Current</th>
+                <th class="text-center px-4 py-3 font-extrabold text-[#44474e] uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="stock-tbody" class="divide-y divide-[#eceef0]">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div id="empty-state" class="hidden p-16 text-center">
+          <span class="material-symbols-outlined text-[60px] text-[#c5c6cf]">inventory_2</span>
+          <p class="text-base font-bold text-[#44474e] mt-4">No items found</p>
+          <p class="text-xs text-[#75777f] mt-1">Try adjusting your search or add new items.</p>
+        </div>
+        <div id="loading-state" class="p-16 text-center">
+          <span class="material-symbols-outlined text-[48px] text-[#c5c6cf] animate-spin">progress_activity</span>
+          <p class="text-xs text-[#75777f] mt-3 font-semibold">Loading inventory...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Add / Edit Item Modal -->
+  <div id="item-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#c5c6cf] bg-[#f2f4f6]">
+        <div>
+          <h2 class="text-sm font-bold header-font text-[#031635]" id="modal-title">Add Item</h2>
+          <p class="text-[10px] text-[#44474e] mt-0.5">Fill in the item details below</p>
+        </div>
+        <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#e6e8ea] transition-colors">
+          <span class="material-symbols-outlined text-xl font-headline-sm text-[#44474e]">close</span>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-6 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">Item Code *</label>
+            <div class="flex gap-2">
+              <input type="text" id="f-item-code" placeholder="Type to search or enter new code..." list="item-code-suggestions" autocomplete="off" class="flex-1 rounded-xl border border-[#c5c6cf] text-xs py-2.5 px-3 focus:ring-2 focus:ring-[#031635] focus:border-[#031635] font-mono font-semibold" />
+              <button type="button" id="f-item-code-regen" onclick="regenerateItemCode()" title="Generate new random code" class="shrink-0 w-9 h-[34px] flex items-center justify-center rounded-xl border border-[#c5c6cf] bg-white hover:bg-[#f2f4f6] text-[#44474e] hover:text-[#031635] transition-colors">
+                <span class="material-symbols-outlined text-[18px]">autorenew</span>
+              </button>
+            </div>
+            <datalist id="item-code-suggestions"></datalist>
+            <p id="f-item-code-hint" class="text-[9px] text-[#75777f] mt-1 hidden"></p>
+          </div>
+          <div>
+            <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">Category</label>
+            <select id="f-category" onchange="onCategoryChange()" class="w-full rounded-xl border border-[#c5c6cf] text-xs py-2.5 px-3 focus:ring-2 focus:ring-[#031635] bg-white font-semibold">
+              <option value="raw_material">Raw Material</option>
+              <option value="finished_good">Finished Good</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">Name *</label>
+          <input type="text" id="f-name" placeholder="e.g. Arabica Coffee Beans" class="w-full rounded-xl border border-[#c5c6cf] text-xs py-2.5 px-3 focus:ring-2 focus:ring-[#031635] focus:border-[#031635] font-semibold" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div id="fg-unit-row">
+            <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">Unit</label>
+            <input type="text" id="f-unit" placeholder="kg, pcs..." value="units" class="w-full rounded-xl border border-[#c5c6cf] text-xs py-2.5 px-3 focus:ring-2 focus:ring-[#031635] focus:border-[#031635] font-semibold" />
+          </div>
+          <div id="fg-cost-row">
+            <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">Unit Cost ($)</label>
+            <input type="number" id="f-unit-cost" value="0" min="0" step="0.01" class="w-full rounded-xl border border-[#c5c6cf] text-xs py-2.5 px-3 focus:ring-2 focus:ring-[#031635] focus:border-[#031635] font-semibold text-center" />
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-3 bg-[#f2f4f6] rounded-xl">
+          <input type="checkbox" id="f-active" checked class="w-4 h-4 rounded border-[#c5c6cf] accent-[#031635]" />
+          <label for="f-active" class="text-xs font-semibold text-[#191c1e]">Active item (visible in stock reports)</label>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-[#c5c6cf] bg-[#f2f4f6] flex justify-between gap-3">
+        <button id="delete-btn" onclick="deleteItem()" class="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors hidden flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">delete</span>Delete
+        </button>
+        <div class="flex items-center gap-2 ml-auto">
+          <button onclick="closeModal()" class="px-5 py-2.5 border border-[#c5c6cf] hover:bg-[#e6e8ea] text-xs font-bold rounded-xl transition-colors">Cancel</button>
+          <button onclick="saveItem()" class="px-6 py-2.5 bg-[#031635] hover:bg-[#1a2b4b] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px]">save</span>Save Item
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Produce Modal (Finished Goods) -->
+  <div id="produce-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="produce-modal-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeProduceModal()"></div>
+    <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#c5c6cf] bg-emerald-600 text-white">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-xl font-headline-sm">play_arrow</span>
+          </div>
+          <div>
+            <h2 class="font-headline-sm font-bold text-sm" id="produce-modal-title">Start Production</h2>
+            <p class="text-[10px] text-white/70">Select a finished good to begin production</p>
+          </div>
+        </div>
+        <button onclick="closeProduceModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+          <span class="material-symbols-outlined text-xl font-headline-sm text-white">close</span>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6 space-y-4">
+        <!-- Info banner -->
+        <div class="flex items-start gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+          <span class="material-symbols-outlined text-emerald-600 text-xl font-headline-sm shrink-0">info</span>
+          <div>
+            <p class="text-xs font-bold text-emerald-800">Production requires a recipe</p>
+            <p class="text-[10px] text-emerald-700 mt-0.5">Select the finished good you want to produce. You'll be taken to the recipes page to pick or create a matching recipe, then start the production batch.</p>
+          </div>
+        </div>
+
+        <!-- Finished goods selector -->
+        <div>
+          <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">Finished Good *</label>
+          <select id="produce-fg-select" onchange="onFGSelectChange()" class="w-full rounded-xl border border-[#c5c6cf] text-xs py-2.5 px-3 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-semibold">
+            <option value="">— Select a finished good —</option>
+          </select>
+        </div>
+
+        <!-- Selected item preview -->
+        <div id="produce-fg-preview" class="hidden">
+          <div class="bg-[#f2f4f6] rounded-xl p-4 space-y-2">
+            <div class="flex justify-between">
+              <span class="text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider">Item</span>
+              <span class="text-xs font-bold text-[#031635]" id="produce-fg-name">—</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider">Code</span>
+              <span class="text-xs font-mono font-semibold text-[#44474e]" id="produce-fg-code">—</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider">Current Stock</span>
+              <span class="text-xs font-extrabold text-amber-600" id="produce-fg-stock">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-[#c5c6cf] bg-[#f2f4f6] flex justify-end gap-3">
+        <button onclick="closeProduceModal()" class="px-4 py-2.5 border border-[#c5c6cf] hover:bg-[#e6e8ea] text-xs font-bold rounded-xl transition-colors">Cancel</button>
+        <button onclick="submitProduce()" id="produce-submit-btn" disabled class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+          Go to Recipes &amp; Start Production
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order New Stock Modal -->
+  <div id="order-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="order-modal-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeOrderModal()"></div>
+    <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#c5c6cf] bg-amber-50">
+        <div>
+          <h2 class="text-sm font-bold text-[#92400e]" id="order-modal-title">
+            <span class="material-symbols-outlined align-middle mr-1">shopping_cart</span>
+            Order New Stock
+          </h2>
+          <p class="text-[10px] text-[#92400e] mt-0.5">Select items below reorder point and create a purchase order</p>
+        </div>
+        <button onclick="closeOrderModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-100 transition-colors">
+          <span class="material-symbols-outlined text-xl font-headline-sm text-[#92400e]">close</span>
+        </button>
+      </div>
+
+      <!-- Low-stock info banner (for context when supplier is selected) -->
+      <div id="low-stock-banner" class="mx-6 mt-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 hidden">
+        <span class="material-symbols-outlined text-amber-600 text-xl font-headline-sm shrink-0">warning</span>
+        <div>
+          <p class="text-xs font-bold text-amber-800"><span id="low-stock-count">0</span> quoted item(s) are at or below reorder point</p>
+          <p class="text-[10px] text-amber-700 mt-0.5">These items are pre-checked below.</p>
+        </div>
+      </div>
+
+      <!-- Supplier selector + item selection list -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-4">
+        <!-- Supplier selection -->
+        <div>
+          <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">1. Choose Supplier</label>
+          <select id="order-supplier-select" onchange="onSupplierSelectChange()" class="w-full rounded-xl border border-[#c5c6cf] text-xs py-2.5 px-3 bg-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 font-semibold">
+            <option value="">— Select a supplier —</option>
+          </select>
+        </div>
+
+        <!-- Divider -->
+        <div id="order-supplier-divider" class="hidden flex items-center gap-3">
+          <div class="flex-1 h-px bg-[#eceef0]"></div>
+          <span class="text-[10px] font-bold text-[#75777f] uppercase tracking-wider">Quoted Goods from Supplier</span>
+          <div class="flex-1 h-px bg-[#eceef0]"></div>
+        </div>
+
+        <!-- No supplier chosen state -->
+        <div id="order-no-supplier-msg" class="text-center py-8">
+          <span class="material-symbols-outlined text-[40px] text-[#c5c6cf]">arrow_back</span>
+          <p class="text-xs font-semibold text-[#75777f] mt-2">Select a supplier above to see their quoted goods.</p>
+        </div>
+
+        <!-- Items list (shown after supplier selected) -->
+        <div id="order-item-list" class="space-y-3">
+          <!-- populated by JS -->
+        </div>
+
+        <!-- Empty supplier quotes state -->
+        <div id="order-no-quotes-msg" class="hidden text-center py-8">
+          <span class="material-symbols-outlined text-[40px] text-[#c5c6cf]">receipt_long</span>
+          <p class="text-xs font-semibold text-[#75777f] mt-2">This supplier has no quoted goods yet.</p>
+          <p class="text-[10px] text-[#999] mt-1">Add items in the Supplier Details page.</p>
+        </div>
+
+        <!-- Loading state -->
+        <div id="order-loading" class="hidden text-center py-8">
+          <span class="material-symbols-outlined text-[40px] text-[#c5c6cf] animate-spin">progress_activity</span>
+          <p class="text-xs text-[#75777f] mt-2 font-semibold">Loading supplier and quotes...</p>
+        </div>
+      </div>
+
+      <!-- Order summary & submit -->
+      <div class="border-t border-[#c5c6cf] px-6 py-4 bg-[#f2f4f6]">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <p class="text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider">Selected Items</p>
+            <p class="text-lg font-extrabold text-[#031635]" id="order-selected-count">0</p>
+          </div>
+          <div class="text-right">
+            <p class="text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider">Estimated Total</p>
+            <p class="text-2xl font-headline-md font-extrabold text-[#d97706]" id="order-total">$0.00</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <button onclick="closeOrderModal()" class="px-4 py-2.5 border border-[#c5c6cf] hover:bg-[#e6e8ea] text-xs font-bold rounded-xl transition-colors">Cancel</button>
+          <button onclick="submitOrder()" id="order-submit-btn" class="px-4 py-2.5 bg-[#d97706] hover:bg-[#b45309] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-[16px]">send</span>Submit Purchase Order
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-8 right-8 z-[100] hidden transform translate-y-4 opacity-0 transition-all duration-300">
+    <div class="bg-slate-900 text-white rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
+      <span class="material-symbols-outlined text-emerald-400 text-xl font-headline-sm" id="toast-icon">check_circle</span>
+      <div>
+        <p class="text-xs font-bold" id="toast-title">Success</p>
+        <p class="text-[11px] text-slate-300 mt-0.5" id="toast-msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+
+    let _client = null;
+    async function getClient() {
+      if (_client) return _client;
+      const nativeCreate = window.supabase.__erpNativeCreateClient || window.supabase.createClient;
+      _client = nativeCreate(SB_URL, SB_KEY, { db: { schema: 'public' } });
+      return _client;
+    }
+
+    async function supabaseAPI({ table, operation, row, data, filters, columns, returning }) {
+      const payload = {
+        table, operation,
+        data: data !== undefined ? data : row,
+        filters, columns,
+        returning: returning || '*'
+      };
+      if (typeof window.erpSupabaseAPI === 'function') {
+        return window.erpSupabaseAPI(payload);
+      }
+      const resp = await fetch('/api/supabase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await resp.json();
+      if (result.error && result.data !== undefined) return result.data;
+      if (result.error || !resp.ok) return [];
+      return result.data || [];
+    }
+
+    async function sbClientOp({ table, operation, row, filters, columns }) {
+      return supabaseAPI({ table, operation, data: row, filters, columns });
+    }
+
+    let allItems = [];
+    let currentTab = 'raw_material';
+    let editingItem = null;
+
+    async function loadItems() {
+      document.getElementById('loading-state').classList.remove('hidden');
+      document.getElementById('empty-state').classList.add('hidden');
+      document.getElementById('stock-tbody').innerHTML = '';
+
+      try {
+        const data = await sbClientOp({ table: 'inventory', operation: 'select', columns: '*' });
+        allItems = data || [];
+      } catch (err) {
+        showToast('Failed to load inventory: ' + err.message, 'error');
+        allItems = [];
+      }
+
+      updateItemCodeDatalist();
+      updateKPIs();
+      renderTable();
+      document.getElementById('loading-state').classList.add('hidden');
+    }
+
+    function updateItemCodeDatalist() {
+      const datalist = document.getElementById('item-code-suggestions');
+      if (!datalist) return;
+      datalist.innerHTML = allItems.map(item =>
+        `<option value="${item.item_code || ''}">${item.name || ''}</option>`
+      ).join('');
+    }
+
+    function updateKPIs() {
+      const rmItems = allItems.filter(i => i.category === 'raw_material');
+      const fgItems = allItems.filter(i => i.category === 'finished_good');
+      const allFiltered = currentTab === 'raw_material' ? rmItems : fgItems;
+
+      const inStock = allFiltered.filter(i => (parseFloat(i.current_stock) || 0) > 0).length;
+      const outStock = allFiltered.filter(i => (parseFloat(i.current_stock) || 0) <= 0).length;
+
+      document.getElementById('kpi-total').textContent = allFiltered.length;
+      document.getElementById('kpi-instock').textContent = inStock;
+      document.getElementById('kpi-out').textContent = outStock;
+
+      document.getElementById('count-rm').textContent = rmItems.length;
+      document.getElementById('count-fg').textContent = fgItems.length;
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+
+      const rmTab = document.getElementById('tab-rm');
+      const fgTab = document.getElementById('tab-fg');
+      const rmCount = document.getElementById('count-rm');
+      const fgCount = document.getElementById('count-fg');
+      const produceBtn = document.getElementById('produce-btn');
+
+      if (tab === 'raw_material') {
+        rmTab.className = 'flex-1 px-6 py-4 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 border-[#031635] text-[#031635]';
+        rmCount.className = 'bg-[#031635] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full';
+        fgTab.className = 'flex-1 px-6 py-4 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 border-transparent text-[#44474e] hover:text-[#191c1e] hover:bg-[#f7f9fb]';
+        fgCount.className = 'bg-[#eceef0] text-[#44474e] text-[10px] font-extrabold px-2 py-0.5 rounded-full';
+        if (produceBtn) produceBtn.classList.add('hidden');
+      } else {
+        fgTab.className = 'flex-1 px-6 py-4 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 border-[#031635] text-[#031635]';
+        fgCount.className = 'bg-[#031635] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full';
+        rmTab.className = 'flex-1 px-6 py-4 text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors border-b-2 border-transparent text-[#44474e] hover:text-[#191c1e] hover:bg-[#f7f9fb]';
+        rmCount.className = 'bg-[#eceef0] text-[#44474e] text-[10px] font-extrabold px-2 py-0.5 rounded-full';
+        if (produceBtn) produceBtn.classList.remove('hidden');
+      }
+
+      updateKPIs();
+      renderTable();
+    }
+
+    function getStockStatus(item) {
+      const cur = parseFloat(item.current_stock) || 0;
+      const max = parseFloat(item.maximum_stock) || 100;
+      if (cur <= 0) return { label: 'Out of Stock', cls: 'bg-red-50 text-red-700 border-red-200', icon: 'error' };
+      if (cur < max * 0.2) return { label: 'Low Stock', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'warning' };
+      return { label: 'In Stock', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'check_circle' };
+    }
+
+    function renderTable() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const stockF = document.getElementById('stock-filter').value;
+      const activeF = document.getElementById('active-filter').value;
+
+      let filtered = allItems.filter(i => i.category === currentTab);
+
+      if (search) {
+        filtered = filtered.filter(i =>
+          (i.name || '').toLowerCase().includes(search) ||
+          (i.item_code || '').toLowerCase().includes(search)
+        );
+      }
+
+      if (stockF !== 'all') {
+        filtered = filtered.filter(i => {
+          const cur = parseFloat(i.current_stock) || 0;
+          const max = parseFloat(i.maximum_stock) || 100;
+          if (stockF === 'instock') return cur > 0 && cur >= max * 0.2;
+          if (stockF === 'low') return cur > 0 && cur < max * 0.2;
+          if (stockF === 'out') return cur <= 0;
+        });
+      }
+
+      if (activeF !== 'all') {
+        filtered = filtered.filter(i => activeF === 'active' ? i.is_active : !i.is_active);
+      }
+
+      const tbody = document.getElementById('stock-tbody');
+      const empty = document.getElementById('empty-state');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      tbody.innerHTML = filtered.map(item => {
+        const cur = parseFloat(item.current_stock) || 0;
+        const inactiveCls = item.is_active ? '' : 'opacity-50';
+
+        return `<tr class="hover:bg-[#f7f9fb] transition-colors animate-slide-up ${inactiveCls}">
+          <td class="px-4 py-3">
+            <span class="batch-code bg-[#f2f4f6] px-2 py-1 rounded border border-[#c5c6cf] text-[#031635]">${item.item_code || '—'}</span>
+          </td>
+          <td class="px-4 py-3">
+            <p class="font-semibold text-[#191c1e]">${item.name || '—'}</p>
+          </td>
+          <td class="px-4 py-3 text-right font-extrabold text-[#031635]">${cur > 0 ? cur.toLocaleString('en-SG', { maximumFractionDigits: 3 }) : '<span class="text-red-500">0</span>'}</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center justify-center gap-1">
+              ${item.category === 'raw_material' ? `
+              <button onclick="openOrderModalFor('${item.id}')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-amber-50 transition-colors" title="Order Restock">
+                <span class="material-symbols-outlined text-[16px] text-amber-600">shopping_cart</span>
+              </button>
+              ` : ``}
+              ${item.category === 'finished_good' ? `
+              <button onclick="openProduceForFG('${item.id}')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-50 transition-colors" title="Produce">
+                <span class="material-symbols-outlined text-[16px] text-emerald-600">play_arrow</span>
+              </button>
+              ` : ``}
+              <button onclick="editItem('${item.id}')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#eceef0] transition-colors" title="Edit">
+                <span class="material-symbols-outlined text-[16px] text-[#44474e]">edit</span>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function openAddModal() {
+      editingItem = null;
+      document.getElementById('modal-title').textContent = 'Add Item';
+      document.getElementById('delete-btn').classList.add('hidden');
+      document.getElementById('f-item-code').value = '';
+      document.getElementById('f-item-code').disabled = false;
+      document.getElementById('f-item-code').removeEventListener('input', onItemCodeInput);
+      document.getElementById('f-item-code').addEventListener('input', onItemCodeInput);
+      document.getElementById('f-item-code-hint').classList.add('hidden');
+      document.getElementById('f-category').value = currentTab === 'raw_material' ? 'raw_material' : 'finished_good';
+      onCategoryChange();
+      document.getElementById('f-name').value = '';
+      document.getElementById('f-unit').value = 'units';
+      document.getElementById('f-unit-cost').value = '0';
+      document.getElementById('f-active').checked = true;
+      regenerateItemCode();
+      document.getElementById('item-modal').classList.remove('hidden');
+    }
+
+    function generateRandomItemCode(category) {
+      const prefix = category === 'finished_good' ? 'FG' : 'RM';
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let suffix = '';
+      for (let i = 0; i < 6; i++) {
+        suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const code = `${prefix}-${suffix}`;
+      const exists = (allItems || []).some(i => (i.item_code || '').toUpperCase() === code);
+      return exists ? generateRandomItemCode(category) : code;
+    }
+
+    function regenerateItemCode() {
+      const input = document.getElementById('f-item-code');
+      if (!input) return;
+      if (editingItem) return;
+      const category = document.getElementById('f-category').value;
+      input.value = generateRandomItemCode(category);
+      onItemCodeInput();
+    }
+
+    function onItemCodeInput() {
+      const input = document.getElementById('f-item-code');
+      const hint = document.getElementById('f-item-code-hint');
+      const value = input.value.trim();
+      if (!value) { hint.classList.add('hidden'); return; }
+      const matched = allItems.find(i => (i.item_code || '').toLowerCase() === value.toLowerCase());
+      if (matched) {
+        hint.textContent = `Already exists: "${matched.name}" (${matched.category === 'raw_material' ? 'Raw Material' : 'Finished Good'}) — this will update the existing item.`;
+        hint.className = 'text-[9px] mt-1 text-amber-600 font-semibold';
+        hint.classList.remove('hidden');
+      } else {
+        hint.textContent = 'New code — will create a new item.';
+        hint.className = 'text-[9px] mt-1 text-emerald-600 font-semibold';
+        hint.classList.remove('hidden');
+      }
+    }
+
+    async function editItem(id) {
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+      editingItem = item;
+
+      document.getElementById('modal-title').textContent = 'Edit Item';
+      document.getElementById('delete-btn').classList.remove('hidden');
+      document.getElementById('f-item-code').value = item.item_code || '';
+      document.getElementById('f-item-code').removeEventListener('input', onItemCodeInput);
+      document.getElementById('f-item-code').addEventListener('input', onItemCodeInput);
+      document.getElementById('f-item-code').disabled = true;
+      document.getElementById('f-item-code-hint').classList.add('hidden');
+      document.getElementById('f-category').value = item.category || 'raw_material';
+      document.getElementById('f-name').value = item.name || '';
+      document.getElementById('f-unit').value = item.unit || 'units';
+      document.getElementById('f-unit-cost').value = parseFloat(item.unit_cost) || 0;
+      document.getElementById('f-active').checked = item.is_active !== false;
+      onCategoryChange();
+      document.getElementById('item-modal').classList.remove('hidden');
+    }
+
+    function onCategoryChange() {
+      const isRM = document.getElementById('f-category').value === 'raw_material';
+      document.getElementById('fg-unit-row').classList.toggle('hidden', isRM);
+      document.getElementById('fg-cost-row').classList.toggle('hidden', isRM);
+      if (!editingItem) {
+        const input = document.getElementById('f-item-code');
+        if (input && (!input.value || /^(RM|FG)-/.test(input.value))) {
+          regenerateItemCode();
+        }
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('item-modal').classList.add('hidden');
+      editingItem = null;
+    }
+
+    async function saveItem() {
+      const itemCode = document.getElementById('f-item-code').value.trim();
+      const name = document.getElementById('f-name').value.trim();
+      if (!itemCode) { showToast('Item code is required', 'error'); return; }
+      if (!name) { showToast('Item name is required', 'error'); return; }
+
+        const payload = {
+          item_code: itemCode,
+          name: name,
+          category: document.getElementById('f-category').value,
+          is_active: document.getElementById('f-active').checked,
+        };
+
+        // Only save category-specific fields when that category is active
+        const isRM = payload.category === 'raw_material';
+        if (!isRM) {
+          payload.unit = document.getElementById('f-unit').value.trim() || 'units';
+          payload.unit_cost = parseFloat(document.getElementById('f-unit-cost').value) || 0;
+        }
+
+      try {
+        if (editingItem) {
+          await sbClientOp({ table: 'inventory', operation: 'update', row: payload, filters: { eq: { id: editingItem.id } } });
+          showToast('Item updated successfully!', 'success');
+        } else {
+          // Check if the item code already exists — if so, update instead of inserting
+          const existingItem = allItems.find(i => (i.item_code || '').toLowerCase() === itemCode.toLowerCase());
+          if (existingItem) {
+            await sbClientOp({ table: 'inventory', operation: 'update', row: payload, filters: { eq: { id: existingItem.id } } });
+            showToast(`"${itemCode}" updated successfully!`, 'success');
+          } else {
+            await sbClientOp({ table: 'inventory', operation: 'insert', row: payload });
+            showToast('Item added successfully!', 'success');
+          }
+        }
+        closeModal();
+        await loadItems();
+      } catch (err) {
+        const msg = err.message || '';
+        if (msg.includes('unique') || msg.includes('duplicate') || msg.includes('item_code')) {
+          showToast(`Item code "${itemCode}" already exists. Use a different code or edit the existing item.`, 'error');
+        } else {
+          showToast('Failed to save: ' + err.message, 'error');
+        }
+      }
+    }
+
+    async function deleteItem() {
+      if (!editingItem) return;
+      if (!confirm(`Delete "${editingItem.name}" (${editingItem.item_code})? This cannot be undone.`)) return;
+      try {
+        await sbClientOp({ table: 'inventory', operation: 'delete', filters: { eq: { id: editingItem.id } } });
+        showToast('Item deleted', 'success');
+        closeModal();
+        await loadItems();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    }
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      document.getElementById('toast-title').textContent = type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Info';
+      document.getElementById('toast-msg').textContent = msg;
+      icon.textContent = type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info';
+      icon.className = 'material-symbols-outlined text-xl ' + (type === 'success' ? 'text-emerald-400' : type === 'error' ? 'text-red-400' : 'text-blue-400');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
+      setTimeout(() => { toast.classList.add('translate-y-4', 'opacity-0'); setTimeout(() => toast.classList.add('hidden'), 300); }, 3000);
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (!document.getElementById('produce-modal').classList.contains('hidden')) { closeProduceModal(); return; }
+        if (!document.getElementById('order-modal').classList.contains('hidden')) { closeOrderModal(); return; }
+        closeModal();
+      }
+    });
+    window.addEventListener('DOMContentLoaded', () => { loadItems(); });
+
+    // ─── Produce (Finished Goods) ──────────────────────────────────────
+    function openProduceModal() {
+      const modal = document.getElementById('produce-modal');
+      const select = document.getElementById('produce-fg-select');
+      const preview = document.getElementById('produce-fg-preview');
+      const submitBtn = document.getElementById('produce-submit-btn');
+
+      preview.classList.add('hidden');
+      submitBtn.disabled = true;
+      select.value = '';
+
+      // Populate FG items
+      const fgItems = allItems.filter(i => i.category === 'finished_good');
+      select.innerHTML = '<option value="">— Select a finished good —</option>' +
+        fgItems.map(item =>
+          `<option value="${item.id}">${item.name || '—'} (${item.item_code || 'no code'})</option>`
+        ).join('');
+
+      modal.classList.remove('hidden');
+    }
+
+    function openProduceForFG(id) {
+      openProduceModal();
+      setTimeout(() => {
+        const select = document.getElementById('produce-fg-select');
+        if (select) {
+          select.value = id;
+          onFGSelectChange();
+        }
+      }, 50);
+    }
+
+    function closeProduceModal() {
+      document.getElementById('produce-modal').classList.add('hidden');
+    }
+
+    function onFGSelectChange() {
+      const select = document.getElementById('produce-fg-select');
+      const preview = document.getElementById('produce-fg-preview');
+      const submitBtn = document.getElementById('produce-submit-btn');
+      const item = allItems.find(i => i.id === select.value);
+
+      if (!item) {
+        preview.classList.add('hidden');
+        submitBtn.disabled = true;
+        return;
+      }
+
+      const cur = parseFloat(item.current_stock) || 0;
+      const max = parseFloat(item.maximum_stock) || 100;
+      const stockCls = cur <= 0 ? 'text-red-600' : cur < max * 0.2 ? 'text-amber-600' : 'text-emerald-600';
+      document.getElementById('produce-fg-name').textContent = item.name || '—';
+      document.getElementById('produce-fg-code').textContent = item.item_code || '—';
+      document.getElementById('produce-fg-stock').textContent = `${cur} / ${max} ${item.unit || 'units'}`;
+      document.getElementById('produce-fg-stock').className = 'text-xs font-extrabold ' + stockCls;
+
+      preview.classList.remove('hidden');
+      submitBtn.disabled = false;
+    }
+
+    function submitProduce() {
+      const select = document.getElementById('produce-fg-select');
+      const item = allItems.find(i => i.id === select.value);
+      if (!item) return;
+
+      closeProduceModal();
+      const url = '/warehouse/recipes.html?produce=' + encodeURIComponent(item.name || '')
+        + '&code=' + encodeURIComponent(item.item_code || '');
+      window.location.href = url;
+    }
+
+    // ─── Order New Stock ────────────────────────────────────────────────
+    let orderModalData = {
+      suppliers: [],       // all suppliers
+      quotations: [],      // all quotations
+      inventoryMap: {},    // item_name → inventory item
+      selected: new Map(), // item_id → { qty, quoteId }
+      chosenSupplierId: null
+    };
+
+    async function openOrderModal() {
+      document.getElementById('order-modal').classList.remove('hidden');
+
+      // Reset state
+      orderModalData.suppliers = [];
+      orderModalData.quotations = [];
+      orderModalData.selected = new Map();
+      orderModalData.chosenSupplierId = null;
+      orderModalData.pendingItemId = null; // consumed by openOrderModalFor after data load
+      document.getElementById('order-supplier-select').value = '';
+
+      // Show loading on the supplier selector
+      document.getElementById('order-loading').classList.remove('hidden');
+      document.getElementById('order-no-supplier-msg').classList.add('hidden');
+      document.getElementById('order-supplier-divider').classList.add('hidden');
+      document.getElementById('order-item-list').innerHTML = '';
+
+      try {
+        // Load all data in parallel: suppliers, quotations, inventory
+        const [supplierData, quoteData, invData] = await Promise.all([
+          sbClientOp({ table: 'suppliers', operation: 'select', columns: 'supplier_id,supplier_company,supplier_name' }),
+          sbClientOp({ table: 'supplier_quotations', operation: 'select', columns: '*', filters: { eq: { is_active: true } } }),
+          sbClientOp({ table: 'inventory', operation: 'select', columns: '*' })
+        ]);
+
+        orderModalData.suppliers = supplierData || [];
+        orderModalData.quotations = quoteData || [];
+        orderModalData.inventoryMap = {};
+        (invData || []).forEach(item => {
+          if (item.name) orderModalData.inventoryMap[item.name] = item;
+          if (item.item_code) orderModalData.inventoryMap[item.item_code] = item;
+        });
+
+        // Build a case-insensitive fallback map for item name lookups
+        orderModalData.inventoryMapCI = {};
+        (invData || []).forEach(item => {
+          if (item.name) orderModalData.inventoryMapCI[item.name.toLowerCase()] = item;
+          if (item.item_code) orderModalData.inventoryMapCI[item.item_code.toLowerCase()] = item;
+        });
+
+        // Populate supplier dropdown
+        const select = document.getElementById('order-supplier-select');
+        select.innerHTML = '<option value="">— Select a supplier —</option>' +
+          orderModalData.suppliers.map(s =>
+            `<option value="${s.supplier_id}">${s.supplier_company || s.supplier_name || ('Supplier ' + s.supplier_id)}</option>`
+          ).join('');
+
+        // If openOrderModalFor() was called for a specific inventory item,
+        // auto-select a supplier that quotes it now that data is loaded.
+        applyPendingItemPreselect();
+
+      } catch (err) {
+        showToast('Failed to load supplier data: ' + err.message, 'error');
+      } finally {
+        document.getElementById('order-loading').classList.add('hidden');
+        document.getElementById('order-no-supplier-msg').classList.remove('hidden');
+      }
+    }
+
+    /**
+     * Open the order modal pre-scoped to the given inventory item. Used when
+     * the user clicks the "Order" icon next to a raw material in the table.
+     * The function tries to auto-select a supplier that already quotes this
+     * item, and pre-checks that item once the supplier is chosen.
+     *
+     * Falls back gracefully: if no supplier quotes this item, the modal
+     * still opens — the user just picks a supplier manually.
+     */
+    async function openOrderModalFor(id) {
+      if (!id) {
+        openOrderModal();
+        return;
+      }
+      // Stash the id; openOrderModal() will call applyPendingItemPreselect
+      // once suppliers + quotations are loaded.
+      orderModalData.pendingItemId = id;
+      await openOrderModal();
+    }
+
+    function applyPendingItemPreselect() {
+      const itemId = orderModalData.pendingItemId;
+      if (!itemId) return;
+      orderModalData.pendingItemId = null;
+
+      // Find the inventory row by id.
+      const inv = (orderModalData.inventoryMap
+        && Object.values(orderModalData.inventoryMap).find(it => it.id === itemId))
+        || (orderModalData.inventoryMapCI
+          && Object.values(orderModalData.inventoryMapCI).find(it => it.id === itemId));
+      const invName = inv ? (inv.name || inv.item_code) : null;
+
+      // Find any supplier that has an active quotation matching this item
+      // (by inventory_id, or by item_name / item_code fallback).
+      const candidateSupplierIds = new Set();
+      for (const q of orderModalData.quotations) {
+        const sameInvId = q.inventory_id && String(q.inventory_id) === String(itemId);
+        const sameName  = invName && q.item_name && String(q.item_name).toLowerCase() === String(invName).toLowerCase();
+        const sameCode  = inv && inv.item_code && q.item_code && String(q.item_code).toLowerCase() === String(inv.item_code).toLowerCase();
+        if (sameInvId || sameName || sameCode) {
+          candidateSupplierIds.add(String(q.supplier_id));
+        }
+      }
+
+      let chosen = null;
+      for (const sid of candidateSupplierIds) {
+        if (orderModalData.suppliers.find((s) => String(s.supplier_id) === sid)) {
+          chosen = sid;
+          break;
+        }
+      }
+
+      if (!chosen) {
+        // No supplier quotes this item — open the modal anyway and let the
+        // user pick one, but tell them why.
+        if (typeof showToast === 'function') {
+          showToast(`No active quotation found for this item. Pick a supplier manually.`, 'info');
+        }
+        return;
+      }
+
+      // Preselect supplier + preselect the matching item row.
+      const select = document.getElementById('order-supplier-select');
+      if (select) {
+        select.value = chosen;
+        onSupplierSelectChange();
+        // Pre-check the matching inventory row.
+        if (orderModalData.selected instanceof Map) {
+          orderModalData.selected.set(String(itemId), { qty: Math.max(1, Math.round(parseFloat(inv.maximum_stock || 100) * 0.5)) });
+          updateOrderSummary();
+          const row = document.getElementById(`order-row-${itemId}`);
+          if (row) {
+            const checkbox = document.getElementById(`order-check-${itemId}`);
+            if (checkbox) checkbox.checked = true;
+            row.classList.remove('opacity-60');
+            row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          }
+        }
+      }
+    }
+
+    function closeOrderModal() {
+      document.getElementById('order-modal').classList.add('hidden');
+    }
+
+    function onSupplierSelectChange() {
+      const select = document.getElementById('order-supplier-select');
+      const supplierId = select.value;
+
+      // Reset selections when supplier changes
+      orderModalData.selected = new Map();
+      orderModalData.chosenSupplierId = supplierId || null;
+
+      const divider = document.getElementById('order-supplier-divider');
+      const noSupplierMsg = document.getElementById('order-no-supplier-msg');
+      const noQuotesMsg = document.getElementById('order-no-quotes-msg');
+      const itemList = document.getElementById('order-item-list');
+
+      if (!supplierId) {
+        // No supplier selected — show placeholder
+        divider.classList.add('hidden');
+        noSupplierMsg.classList.remove('hidden');
+        noQuotesMsg.classList.add('hidden');
+        itemList.innerHTML = '';
+        updateOrderSummary();
+        return;
+      }
+
+      // Supplier selected — show divider + items
+      divider.classList.remove('hidden');
+      noSupplierMsg.classList.add('hidden');
+
+      const supplierQuotes = orderModalData.quotations.filter(q =>
+        String(q.supplier_id) === String(supplierId)
+      );
+
+      if (supplierQuotes.length === 0) {
+        noQuotesMsg.classList.remove('hidden');
+        itemList.innerHTML = '';
+      } else {
+        noQuotesMsg.classList.add('hidden');
+        renderOrderItemsBySupplier(supplierQuotes);
+      }
+
+      updateOrderSummary();
+    }
+
+    function renderOrderItemsBySupplier(quotes) {
+      const container = document.getElementById('order-item-list');
+      const supplierId = orderModalData.chosenSupplierId;
+      const supplierName = (orderModalData.suppliers.find(s => String(s.supplier_id) === String(supplierId))?.supplier_company || 'Supplier');
+
+      container.innerHTML = quotes.map(quote => {
+        const itemId = quote.inventory_id || '';
+        const itemName = quote.item_name || '';
+        const itemCode = quote.item_code || '';
+        const invItem = orderModalData.inventoryMap[itemName] || orderModalData.inventoryMap[itemCode] ||
+                        orderModalData.inventoryMapCI[itemName?.toLowerCase()] || orderModalData.inventoryMapCI[itemCode?.toLowerCase()] || {};
+        const invItemId = invItem.id || '';
+        const unit = quote.unit || invItem.unit || 'units';
+        const unitPrice = parseFloat(quote.unit_price || 0);
+        const currentStock = parseFloat(invItem.current_stock) || 0;
+        const maxStock = parseFloat(invItem.maximum_stock) || 100;
+        const isLow = currentStock <= 0 || currentStock < maxStock * 0.2;
+
+        // Preserve existing selection state for this item
+        const sel = orderModalData.selected.get(invItemId);
+        const isChecked = !!sel;
+        const qty = sel?.qty || Math.max(1, Math.round(maxStock * 0.5));
+        const lineTotal = unitPrice * qty;
+
+        const stockBadge = currentStock <= 0
+          ? `<span class="text-[9px] font-extrabold px-2 py-0.5 rounded border bg-red-50 text-red-700 border-red-200">OUT OF STOCK</span>`
+          : isLow
+          ? `<span class="text-[9px] font-extrabold px-2 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">LOW STOCK</span>`
+          : `<span class="text-[9px] font-extrabold px-2 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200">IN STOCK</span>`;
+
+        return `<div class="order-item-row border rounded-xl p-4 ${isLow ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#eceef0]'} transition-all ${isChecked ? '' : 'opacity-60'}" id="order-row-${invItemId}">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" id="order-check-${invItemId}" ${isChecked ? 'checked' : ''} onchange="toggleOrderItemBySupplier('${invItemId}')" class="w-4 h-4 mt-1 rounded border-[#c5c6cf] accent-[#d97706] shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-xs text-[#031635]">${itemName || '—'}</span>
+                  ${itemCode ? `<span class="batch-code bg-[#eceef0] px-1.5 py-0.5 rounded text-[10px] text-[#44474e]">${itemCode}</span>` : ''}
+                  ${stockBadge}
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="text-right shrink-0">
+                    <span class="text-xs font-extrabold ${currentStock <= 0 ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-emerald-600'}">${currentStock > 0 ? currentStock.toLocaleString('en-SG', {maximumFractionDigits:2}) : '0'}</span>
+                    <span class="text-[10px] text-[#75777f]"> / ${maxStock} ${unit}</span>
+                  </div>
+                  <button onclick="deleteSupplierQuote('${quote.id}', '${invItemId}')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors shrink-0" title="Delete Quote">
+                    <span class="material-symbols-outlined text-[16px] text-red-400 hover:text-red-600">delete</span>
+                  </button>
+                </div>
+              </div>
+              <div class="flex items-end gap-3 mt-2 flex-wrap">
+                <div class="flex-1 min-w-[140px]">
+                  <label class="block text-[9px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1">Supplier Quote</label>
+                  <div class="px-3 py-1.5 bg-[#f2f4f6] border border-[#eceef0] rounded-lg text-[11px] font-semibold text-[#44474e]">
+                    ${supplierName} — ${unit} @ $${unitPrice.toFixed(4)}
+                  </div>
+                </div>
+                <div class="w-24">
+                  <label class="block text-[9px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1">Qty (${unit})</label>
+                  <input type="number" id="order-qty-${invItemId}" value="${qty}" min="1" step="1" oninput="onQtyChangeBySupplier('${invItemId}')" class="w-full rounded-lg border border-[#c5c6cf] text-[11px] py-1.5 px-2 bg-white focus:ring-2 focus:ring-amber-400 focus:border-amber-400 font-semibold text-center" ${!isChecked ? 'disabled' : ''} />
+                </div>
+                <div class="w-28">
+                  <label class="block text-[9px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1">Unit Price</label>
+                  <div class="w-full rounded-lg border border-[#eceef0] bg-[#f7f9fb] text-[11px] py-1.5 px-2 font-extrabold text-[#d97706] text-center">$${unitPrice.toFixed(4)}</div>
+                </div>
+                <div class="w-28">
+                  <label class="block text-[9px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1">Line Total</label>
+                  <div class="w-full rounded-lg border border-[#eceef0] bg-[#f7f9fb] text-[11px] py-1.5 px-2 font-extrabold text-[#031635] text-center" id="order-total-${invItemId}">
+                    $${lineTotal.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function toggleOrderItemBySupplier(invItemId) {
+      const checkbox = document.getElementById('order-check-' + invItemId);
+      const qtyInput = document.getElementById('order-qty-' + invItemId);
+      const row = document.getElementById('order-row-' + invItemId);
+
+      if (checkbox.checked) {
+        const invItem = Object.values(orderModalData.inventoryMap).find(i => i.id === invItemId);
+        const maxStock = parseFloat(invItem?.maximum_stock) || 100;
+        orderModalData.selected.set(invItemId, { qty: Math.max(1, Math.round(maxStock * 0.5)), invItemId });
+        if (qtyInput) qtyInput.disabled = false;
+        if (row) row.classList.remove('opacity-60');
+      } else {
+        orderModalData.selected.delete(invItemId);
+        if (qtyInput) qtyInput.disabled = true;
+        if (row) row.classList.add('opacity-60');
+      }
+      recalcLineTotalBySupplier(invItemId);
+      updateOrderSummary();
+    }
+
+    function onQtyChangeBySupplier(invItemId) {
+      const qtyInput = document.getElementById('order-qty-' + invItemId);
+      const sel = orderModalData.selected.get(invItemId);
+      if (!sel) return;
+      sel.qty = Math.max(1, parseInt(qtyInput.value) || 1);
+      recalcLineTotalBySupplier(invItemId);
+      updateOrderSummary();
+    }
+
+    function recalcLineTotalBySupplier(invItemId) {
+      const sel = orderModalData.selected.get(invItemId);
+      if (!sel) return;
+
+      // Find the quote for this item from the chosen supplier
+      const supplierId = orderModalData.chosenSupplierId;
+      const invItem = Object.values(orderModalData.inventoryMap).find(i => i.id === invItemId);
+      const quote = orderModalData.quotations.find(q =>
+        String(q.supplier_id) === String(supplierId) &&
+        (q.item_name?.toLowerCase() === invItem?.name?.toLowerCase() || q.item_code?.toLowerCase() === invItem?.item_code?.toLowerCase())
+      );
+      const unitPrice = quote ? parseFloat(quote.unit_price || 0) : parseFloat(invItem?.unit_cost || 0);
+      const total = unitPrice * (sel.qty || 0);
+
+      const el = document.getElementById('order-total-' + invItemId);
+      if (el) el.textContent = '$' + total.toFixed(2);
+    }
+
+    function updateOrderSummary() {
+      let totalAmount = 0;
+      let count = 0;
+      const supplierId = orderModalData.chosenSupplierId;
+
+      orderModalData.selected.forEach((sel, invItemId) => {
+        const invItem = Object.values(orderModalData.inventoryMap).find(i => i.id === invItemId);
+        if (!invItem) return;
+
+        const quote = supplierId ? orderModalData.quotations.find(q =>
+          String(q.supplier_id) === String(supplierId) &&
+          (q.item_name?.toLowerCase() === invItem.name?.toLowerCase() || q.item_code?.toLowerCase() === invItem.item_code?.toLowerCase())
+        ) : null;
+        const unitPrice = quote ? parseFloat(quote.unit_price || 0) : parseFloat(invItem.unit_cost || 0);
+        totalAmount += unitPrice * (sel.qty || 0);
+        count++;
+      });
+
+      document.getElementById('order-selected-count').textContent = count;
+      document.getElementById('order-total').textContent = '$' + totalAmount.toFixed(2);
+      document.getElementById('order-submit-btn').disabled = count === 0;
+    }
+
+    async function deleteSupplierQuote(quotationId, invItemId) {
+      if (!quotationId) return;
+      if (!confirm('Delete this supplier quote? This cannot be undone.')) return;
+      try {
+        await sbClientOp({
+          table: 'supplier_quotations',
+          operation: 'delete',
+          filters: { eq: { id: quotationId } }
+        });
+        showToast('Quote deleted', 'success');
+        // Remove from local cache
+        orderModalData.quotations = orderModalData.quotations.filter(q => String(q.id) !== String(quotationId));
+        // Re-render the list
+        const supplierId = orderModalData.chosenSupplierId;
+        const supplierQuotes = orderModalData.quotations.filter(q => String(q.supplier_id) === String(supplierId));
+        const noQuotesMsg = document.getElementById('order-no-quotes-msg');
+        const itemList = document.getElementById('order-item-list');
+        if (supplierQuotes.length === 0) {
+          noQuotesMsg.classList.remove('hidden');
+          itemList.innerHTML = '';
+        } else {
+          noQuotesMsg.classList.add('hidden');
+          renderOrderItemsBySupplier(supplierQuotes);
+        }
+        updateOrderSummary();
+      } catch (err) {
+        showToast('Failed to delete quote: ' + err.message, 'error');
+      }
+    }
+
+    async function submitOrder() {
+      const btn = document.getElementById('order-submit-btn');
+      if (orderModalData.selected.size === 0) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> Submitting...';
+
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
+
+      const poNumber = 'PO-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+      const supplierId = orderModalData.chosenSupplierId;
+      const supplierObj = orderModalData.suppliers.find(s => String(s.supplier_id) === String(supplierId));
+      const supplierName = supplierObj?.supplier_company || supplierObj?.supplier_name || ('Supplier ' + supplierId);
+
+      // Build the multi-line items list once — used by both tables.
+      const poLines = [];
+      for (const [invItemId, sel] of orderModalData.selected.entries()) {
+        const invItem = Object.values(orderModalData.inventoryMap).find(i => i.id === invItemId);
+        if (!invItem) continue;
+
+        const itemCode = invItem.item_code || '';
+        const itemName = invItem.name || itemCode || 'Raw material';
+        const qty = sel.qty || 1;
+
+        const quote = supplierId ? orderModalData.quotations.find(q =>
+          String(q.supplier_id) === String(supplierId) &&
+          (q.item_name?.toLowerCase() === invItem.name?.toLowerCase() || q.item_code?.toLowerCase() === invItem.item_code?.toLowerCase())
+        ) : null;
+
+        const unitPrice = quote ? parseFloat(quote.unit_price || 0) : parseFloat(invItem.unit_cost || 0);
+        const lineTotal = unitPrice * qty;
+
+        poLines.push({
+          item_code: itemCode,
+          item_name: itemName,
+          quantity: qty,
+          unit: invItem.unit || 'units',
+          unit_cost: unitPrice,
+          line_total: lineTotal,
+          inventory_id: invItemId,
+          supplier_quote_id: quote?.id || null
+        });
+      }
+
+      const totalAmount = poLines.reduce((s, l) => s + (l.line_total || 0), 0);
+
+      try {
+        // 1) Single combined row in purchase_records — one PO number covers all selected lines.
+        await sbClientOp({
+          table: 'purchase_records',
+          operation: 'insert',
+          row: {
+            record_number: poNumber,
+            po_number: poNumber,
+            supplier_name: supplierName,
+            items: poLines,
+            total_amount: totalAmount,
+            status: 'PO Created',
+            purchase_date: new Date().toISOString().split('T')[0],
+            notes: `Order from supplier selection flow (${poLines.length} item${poLines.length === 1 ? '' : 's'}).`
+          },
+          returning: 'id'
+        });
+
+        // 2) One row per line into raw_material_orders so each item keeps its own
+        //    visibility (FIFO linkage, supplier-side tracking). NOTE: raw_material_orders
+        //    has a UNIQUE constraint on order_number, so we derive a UNIQUE suffix per
+        //    line so 2+ items can share the same PO without tripping the constraint.
+        //    The PO number itself is preserved in `po_number` (which is what purchase-records
+        //    reconciliation queries filter by).
+        for (let lineIndex = 0; lineIndex < poLines.length; lineIndex++) {
+          const line = poLines[lineIndex];
+          // Build a unique-per-line order_number: <po>-L<idx> zero-padded.
+          const lineOrderNumber = `${poNumber}-L${String(lineIndex + 1).padStart(2, '0')}`;
+          try {
+            await sbClientOp({
+              table: 'raw_material_orders',
+              operation: 'insert',
+              row: {
+                supplier_id: supplierId || null,
+                supplier_name: supplierName,
+                items: [{
+                  item_code: line.item_code,
+                  item_name: line.item_name,
+                  quantity: line.quantity,
+                  unit: line.unit,
+                  unit_cost: line.unit_cost
+                }],
+                total_amount: line.line_total,
+                status: 'Pending',
+                order_date: new Date().toISOString().split('T')[0],
+                order_number: lineOrderNumber,
+                po_number: poNumber,
+                notes: 'Supplier order from inventory flow.',
+                inventory_id: line.inventory_id
+              },
+              returning: 'id'
+            });
+            successCount++;
+          } catch (lineErr) {
+            // One bad line should NEVER roll back the whole PO — the canonical
+            // record lives in `purchase_records` already. Log + count, keep going.
+            errorCount++;
+            errors.push(`${line.item_code || line.item_name || `line ${lineIndex + 1}`}: ${lineErr?.message || lineErr}`);
+            console.error('[submitOrder] raw_material_orders line insert failed:', lineErr);
+          }
+        }
+      } catch (err) {
+        // purchase_records insert itself failed — no PO was created at all.
+        // (raw_material_orders per-line failures are already caught inside the loop.)
+        errorCount = poLines.length - successCount;
+        errors.push(err.message);
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">send</span> Submit Purchase Order';
+
+      // Single source of truth: a purchase_records row exists = PO is "created".
+      // raw_material_orders is best-effort per-line bookkeeping for supplier visibility.
+      const poCreated = successCount === poLines.length;
+      const poPartial = successCount > 0 && successCount < poLines.length;
+
+      if (poCreated) {
+        showToast(`PO ${poNumber} created for ${successCount} item(s)!`, 'success');
+        closeOrderModal();
+        await loadItems();
+
+        // Notify the supplier by email. Fire-and-forget: a missing email
+        // or a Brevo failure must NOT roll back the PO that was just
+        // committed — the server records the outcome on
+        // raw_material_orders.email_sent / email_sent_at.
+        sendSupplierPoEmail({
+          supplierId,
+          supplierName,
+          poNumber,
+          items: poLines.map(l => ({
+            item_code: l.item_code,
+            item_name: l.item_name,
+            quantity: l.quantity,
+            unit: l.unit,
+            unit_cost: l.unit_cost,
+            line_total: l.line_total
+          })),
+          totalAmount,
+          currency: 'USD',
+          purchaseDate: new Date().toISOString().split('T')[0],
+          notes: `Order from supplier selection flow (${poLines.length} item${poLines.length === 1 ? '' : 's'}).`
+        });
+      } else if (poPartial) {
+        showToast(`PO ${poNumber} created, but only ${successCount}/${poLines.length} supplier-side line(s) recorded. See console for details.`, 'error', 8000);
+      } else {
+        showToast(`Failed to create PO ${poNumber}: ${errors.join('; ')}`, 'error', 8000);
+      }
+      if (errorCount > 0) {
+        console.warn('[submitOrder] partial failures:', errors);
+      }
+    }
+
+    // Fire-and-forget PO notification to the supplier. The endpoint flips
+    // raw_material_orders.email_sent / email_sent_at so the supplier PO list
+    // reflects the outcome; a missing email or send failure must NOT roll
+    // back the PO that was just created.
+    async function sendSupplierPoEmail(payload) {
+      try {
+        const res = await fetch('/api/supplier/send-po-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (json && json.ok) return;
+        if (json && json.skipped && json.reason === 'no_supplier_email') {
+          console.info('[PO email] supplier has no email on file; PO was created but no notification sent.');
+          return;
+        }
+        console.warn('[PO email] non-OK response:', json?.error || json);
+      } catch (err) {
+        console.warn('[PO email] dispatch failed:', err);
+      }
+    }
+
+    // Idempotently ensure the optional audit columns exist on
+    // raw_material_orders so the email_recipient / email_error fields stick.
+    // Safe to call on every page load — the endpoint runs IF NOT EXISTS DDL.
+    (function ensurePoEmailColumns() {
+      try {
+        fetch('/api/supplier/po-email/bootstrap', { method: 'POST' })
+          .catch(() => {});
+      } catch (_) {}
+    })();
+  </script>
+</body>
+</html>

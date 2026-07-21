@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Production Recipes | EspressGo</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet"/>
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="/public/js/rbac.js"></script>
+    <script src="/components/sidebar.js?v=20260705a"></script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.recipe-card:hover { transform: translateY(-2px); }
+        .recipe-card { transition: all 0.2s ease; }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+<body class="bg-surface-bright text-on-surface font-body-md selection:bg-secondary-container antialiased flex min-h-screen">
+    <!-- SideNavBar Shell -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Main Content Area -->
+    <main class="ml-64 flex-1 min-h-screen flex flex-col transition-all duration-300">
+        <!-- TopAppBar -->
+        <header class="flex justify-between items-center w-full px-8 h-16 sticky top-0 z-40 bg-white border-b border-outline-variant">
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-headline-md font-bold text-on-surface tracking-tight mobile-show">Production Recipe</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="refreshRecipes()" class="px-4 py-2.5 bg-white border border-outline-variant hover:bg-slate-50 text-on-surface font-bold rounded-xl shadow-sm transition-all text-xs flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">sync</span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Page Body -->
+        <div class="flex-1 p-8 space-y-6 bg-surface-bright">
+
+            <!-- Search & Filter Bar -->
+            <div class="flex items-center justify-between gap-4">
+                <div class="relative flex-1 max-w-md">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl font-headline-sm">search</span>
+                    <input type="text" id="search-input" oninput="filterRecipes()" placeholder="Search recipes by name or code..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-outline-variant rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+                </div>
+                <div class="flex items-center gap-3">
+                    <select id="status-filter" onchange="filterRecipes()" class="px-4 py-2.5 bg-white border border-outline-variant rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                    <select id="sort-order" onchange="filterRecipes()" class="px-4 py-2.5 bg-white border border-outline-variant rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="name-asc">Name A-Z</option>
+                        <option value="name-desc">Name Z-A</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Recipes Grid -->
+            <div id="recipes-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <!-- Cards injected by JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-center">
+                <span class="material-symbols-outlined text-6xl text-slate-300 mb-4">menu_book</span>
+                <h3 class="text-lg font-bold text-slate-500 mb-2">No Recipes Found</h3>
+                <p class="text-sm text-slate-400 mb-6">Create your first production recipe to get started.</p>
+                <button onclick="openCreateModal()" class="px-6 py-3 bg-primary hover:bg-opacity-90 text-on-primary font-bold rounded-xl shadow-md transition-all text-sm flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">add</span>
+                    Create First Recipe
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="flex flex-col items-center justify-center py-20">
+                <span class="material-symbols-outlined text-5xl font-headline-lg text-slate-300 animate-spin">progress_activity</span>
+                <p class="text-sm text-slate-400 mt-3 font-semibold">Loading recipes from database...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create / Edit Recipe Modal -->
+    <div id="recipe-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low">
+                <div>
+                    <h2 class="text-base font-bold header-font text-on-surface" id="modal-title">New Production Recipe</h2>
+                    <p class="text-[11px] text-on-surface-variant mt-0.5">Define ingredients, output quantity and production parameters</p>
+                </div>
+                <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high transition-colors">
+                    <span class="material-symbols-outlined text-xl font-headline-sm text-on-surface-variant">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <!-- Basic Info -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-wider">Recipe Name *</label>
+                        <input type="text" id="rec-name" placeholder="e.g. Espresso Blend 250g" class="w-full px-3 py-2.5 border border-outline-variant rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-wider">Recipe Code *</label>
+                        <input type="text" id="rec-code" placeholder="REC-001" class="w-full px-3 py-2.5 border border-outline-variant rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-wider">Status</label>
+                        <select id="rec-status" class="w-full px-3 py-2.5 border border-outline-variant rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer bg-white">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="archived">Archived</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-wider">Description</label>
+                        <textarea id="rec-desc" rows="2" placeholder="Brief description of this recipe..." class="w-full px-3 py-2.5 border border-outline-variant rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- Production Parameters -->
+                <div class="bg-surface-container-low rounded-xl p-4 space-y-4">
+                    <h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Production Parameters</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1.5">Output Qty <span class="text-[10px] font-normal text-on-surface-variant/60">(per 1 unit, cost auto-calculated)</span></label>
+                            <input type="number" id="rec-output-qty" value="1" min="1" step="1" class="w-32 px-3 py-2.5 border border-outline-variant rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-100 cursor-not-allowed" readonly title="Output quantity is fixed at 1 - cost is calculated per unit">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ingredients Section -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Ingredients</h3>
+                        <button onclick="addIngredientRow()" class="flex items-center gap-1 text-xs font-bold text-primary hover:text-primary/80 transition-colors">
+                            <span class="material-symbols-outlined text-[16px]">add</span>
+                            Add Ingredient
+                        </button>
+                    </div>
+                    <div id="ingredients-list" class="space-y-2">
+                        <!-- Ingredient rows injected by JS -->
+                    </div>
+                    <div id="no-ingredients-msg" class="text-center py-6 text-xs text-slate-400 font-semibold">
+                        No ingredients added yet. Click "Add Ingredient" to start.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-between px-6 py-4 border-t border-outline-variant bg-surface-container-low">
+                <button id="delete-btn" onclick="deleteRecipe()" class="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors hidden flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                    Delete Recipe
+                </button>
+                <div class="flex items-center gap-3 ml-auto">
+                    <button onclick="closeModal()" class="px-5 py-2.5 border border-outline-variant hover:bg-surface-container-low text-xs font-bold rounded-xl transition-colors">Cancel</button>
+                    <button onclick="saveRecipe()" class="px-6 py-2.5 bg-primary hover:bg-opacity-90 text-on-primary text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]">save</span>
+                        <span id="save-btn-label">Save Recipe</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Production Modal -->
+    <div id="produce-modal" class="fixed inset-0 z-[60] hidden" aria-labelledby="produce-modal-title" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeProduceModal()"></div>
+        <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-emerald-600 text-white">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-xl font-headline-sm">play_arrow</span>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold header-font" id="produce-modal-title">Start Production</h2>
+                        <p class="text-[10px] text-white/70">Creates a batch picklist from recipe</p>
+                    </div>
+                </div>
+                <button onclick="closeProduceModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+                    <span class="material-symbols-outlined text-xl font-headline-sm text-white">close</span>
+                </button>
+            </div>
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-5">
+                <!-- Recipe Info -->
+                <div class="bg-surface-container-low rounded-xl p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Recipe</span>
+                        <span id="produce-recipe-name" class="text-xs font-extrabold text-on-surface">—</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Recipe Code</span>
+                        <span id="produce-recipe-code" class="text-xs font-mono font-semibold text-on-surface">—</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Est. Cost / Batch</span>
+                        <span id="produce-recipe-cost" class="text-xs font-extrabold text-emerald-600">—</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Ingredients</span>
+                        <span id="produce-ingredient-count" class="text-xs font-semibold text-on-surface">—</span>
+                    </div>
+                </div>
+                <!-- Production Quantity -->
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-wider">Batch Output Qty <span class="text-red-500">*</span></label>
+                    <input type="number" id="produce-qty" value="1" min="1" step="1"
+                        class="w-full px-3 py-2.5 border border-outline-variant rounded-xl text-sm font-extrabold text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <p class="text-[10px] text-on-surface-variant/60 mt-1">This becomes the <em>qty_produced</em> for this production run.</p>
+                </div>
+                <!-- Operator -->
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+                        Operator Name <span class="text-red-500">*</span>
+                        <span class="material-symbols-outlined text-[12px] text-on-surface-variant/60" title="Recorded as the logged-in staff member — cannot be changed">lock</span>
+                    </label>
+                    <input type="text" id="produce-operator" readonly tabindex="-1" aria-readonly="true"
+                        class="w-full px-3 py-2.5 border border-outline-variant rounded-xl text-sm bg-slate-100 cursor-not-allowed text-on-surface-variant focus:outline-none">
+                    <p class="text-[10px] text-on-surface-variant/60 mt-1">Auto-recorded from your logged-in session.</p>
+                </div>
+                <!-- Notes -->
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-wider">Notes (optional)</label>
+                    <textarea id="produce-notes" rows="2" placeholder="Any production notes..."
+                        class="w-full px-3 py-2.5 border border-outline-variant rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"></textarea>
+                </div>
+            </div>
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-outline-variant bg-surface-container-low flex justify-end gap-3">
+                <button onclick="closeProduceModal()" class="px-5 py-2.5 border border-outline-variant hover:bg-surface-container-low text-xs font-bold rounded-xl transition-colors">Cancel</button>
+                <button onclick="submitProduction()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">play_arrow</span>
+                    Start Production
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 z-[60] hidden" aria-labelledby="del-modal-title" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-6 text-center">
+                <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span class="material-symbols-outlined text-3xl font-headline-lg text-red-600">warning</span>
+                </div>
+                <h3 class="text-base font-bold header-font text-on-surface mb-2" id="del-modal-title">Delete Recipe?</h3>
+                <p class="text-sm text-on-surface-variant mb-6">This action cannot be undone. All recipe data will be permanently removed from the database.</p>
+                <div class="flex gap-3">
+                    <button onclick="closeDeleteModal()" class="flex-1 px-4 py-2.5 border border-outline-variant hover:bg-surface-container-low text-xs font-bold rounded-xl transition-colors">Cancel</button>
+                    <button onclick="confirmDelete()" class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition-all">Delete Permanently</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-[100] hidden transform translate-y-4 opacity-0 transition-all duration-300">
+        <div class="bg-slate-900 text-white rounded-xl px-5 py-3 shadow-2xl flex items-center gap-3 max-w-sm">
+            <span class="material-symbols-outlined text-[20px]" id="toast-icon">check_circle</span>
+            <div>
+                <p class="text-xs font-bold" id="toast-title">Success</p>
+                <p class="text-[11px] text-slate-300 mt-0.5" id="toast-msg"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // ============================================================
+        // Supabase Client
+        // ============================================================
+        const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const DOLLAR = '$'; // avoids $$ escaping issues in template literals
+
+        let _supabaseClient = null;
+        window.__recipesInventoryReady = false;
+        window.__recipesInventoryItems = [];
+
+        async function supabaseAPI({ table, operation, row, data, filters, columns, returning, noCache }) {
+            const payload = {
+                table,
+                operation,
+                data: data !== undefined ? data : row,
+                filters,
+                columns,
+                returning: returning || '*',
+                noCache: noCache || false
+            };
+
+            if (typeof window.erpSupabaseAPI === 'function') {
+                return window.erpSupabaseAPI(payload);
+            }
+
+            const resp = await fetch('/api/supabase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+            if (result.error && result.data !== undefined) return result.data;
+            if (result.error || !resp.ok) return [];
+            return result.data || [];
+        }
+
+        async function getClient() {
+            if (_supabaseClient) return _supabaseClient;
+            if (window.supabase && window.supabase._client) {
+                _supabaseClient = window.supabase._client;
+                return _supabaseClient;
+            }
+            if (typeof window.initSupabaseClient === 'function') {
+                _supabaseClient = await window.initSupabaseClient();
+                if (_supabaseClient) return _supabaseClient;
+            }
+            if (!window.supabase) {
+                await new Promise(r => setTimeout(r, 100));
+                return getClient();
+            }
+            _supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+            return _supabaseClient;
+        }
+
+        async function ensureSession() {
+            const client = await getClient();
+            if (client) {
+                try {
+                    const { data: { session } } = await client.auth.getSession();
+                    if (session) return;
+                } catch(e) { /* ignore */ }
+            }
+        }
+
+        async function getAccessToken() {
+            const client = await getClient();
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+        async function sbClientOp({ table, operation, row, filters, columns, noCache }) {
+            return supabaseAPI({ table, operation, data: row, filters, columns, noCache });
+        }
+
+        // ============================================================
+        // State
+        // ============================================================
+        let recipes = [];
+        let inventoryItems = [];
+        let filteredRecipes = [];
+        let editingId = null;
+        let deleteTargetId = null;
+        let pendingRecipes = [];
+
+        // ============================================================
+        // Data Loading
+        // ============================================================
+        async function loadRecipes() {
+            window.__recipesInventoryReady = false;
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('recipes-grid').classList.add('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+
+            try {
+                const data = await sbClientOp({
+                    table: 'production_recipes',
+                    operation: 'select',
+                    columns: '*'
+                });
+
+                const serverRecipes = data || [];
+                recipes = [
+                    ...pendingRecipes.filter(pending =>
+                        !serverRecipes.some(recipe => recipe.recipe_code === pending.recipe_code || recipe.id === pending.id)
+                    ),
+                    ...serverRecipes
+                ];
+            } catch (err) {
+                console.warn('Error loading recipes:', err);
+                showToast('Error loading recipes: ' + err.message, 'error');
+                document.getElementById('loading-state').classList.add('hidden');
+                return;
+            }
+
+            try {
+                const invData = await sbClientOp({
+                    table: 'inventory',
+                    operation: 'select',
+                    columns: 'id, item_code, name, unit, unit_cost, category'
+                });
+                inventoryItems = (invData || []).filter(i => i.category === 'raw_material' || i.category === 'raw');
+            } catch (err) {
+                console.warn('Error loading raw materials for ingredients:', err);
+                inventoryItems = [];
+            } finally {
+                window.__recipesInventoryItems = inventoryItems;
+                window.__recipesInventoryReady = true;
+                window.dispatchEvent(new CustomEvent('recipes:inventory-ready', {
+                    detail: { count: inventoryItems.length }
+                }));
+            }
+
+            filterRecipes();
+            document.getElementById('loading-state').classList.add('hidden');
+            window.dispatchEvent(new CustomEvent('recipes:loaded'));
+        }
+
+        async function refreshRecipes() {
+            await loadRecipes();
+        }
+
+        // ============================================================
+        // Filtering & Sorting
+        // ============================================================
+        function filterRecipes() {
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const status = document.getElementById('status-filter').value;
+            const sort = document.getElementById('sort-order').value;
+
+            filteredRecipes = recipes.filter(r => {
+                const name = (r.name || '').toLowerCase();
+                const code = (r.recipe_code || '').toLowerCase();
+                const matchSearch = !search || name.includes(search) || code.includes(search);
+                const matchStatus = status === 'all' || (status === 'active' && r.is_active) || (status === 'inactive' && !r.is_active);
+                return matchSearch && matchStatus;
+            });
+
+            filteredRecipes.sort((a, b) => {
+                if (sort === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+                if (sort === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+                if (sort === 'name-asc') return (a.name || '').localeCompare(b.name || '');
+                if (sort === 'name-desc') return (b.name || '').localeCompare(a.name || '');
+                return 0;
+            });
+
+            renderRecipes();
+        }
+
+        // ============================================================
+        // Rendering
+        // ============================================================
+        function renderRecipes() {
+            const grid = document.getElementById('recipes-grid');
+            const empty = document.getElementById('empty-state');
+
+            if (filteredRecipes.length === 0) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            grid.classList.remove('hidden');
+
+            grid.innerHTML = filteredRecipes.map(recipe => {
+                const ings = parseIngredients(recipe.ingredients);
+                const statusClass = recipe.is_active
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200';
+                const statusLabel = recipe.is_active ? 'Active' : 'Inactive';
+
+                return `
+                <div class="recipe-card bg-white rounded-2xl border border-outline-variant shadow-sm hover:shadow-md cursor-pointer" onclick="openEditModal('${recipe.id}')" data-recipe-id="${recipe.id}">
+                    <!-- Card Header -->
+                    <div class="p-5 border-b border-outline-variant/50">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-bold text-on-surface truncate">${recipe.name || 'Unnamed Recipe'}</h3>
+                                <p class="text-[10px] font-mono text-on-surface-variant mt-0.5">${recipe.recipe_code || 'NO-CODE'}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${statusClass} shrink-0">${statusLabel}</span>
+                        </div>
+                        <p class="text-[11px] text-on-surface-variant line-clamp-2 leading-relaxed">${recipe.description || 'No description provided.'}</p>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="p-5 space-y-3">
+                        <!-- Ingredients Preview -->
+                        <div>
+                            <p class="text-[9px] font-extrabold text-on-surface-variant uppercase tracking-wider mb-2">Ingredients (${ings.length})</p>
+                            <div class="space-y-1.5">
+                                ${ings.length === 0
+                                    ? '<p class="text-[10px] text-slate-400 italic">No ingredients defined</p>'
+                                    : ings.slice(0, 3).map(ing => `
+                                        <div class="flex items-center justify-between text-[11px]">
+                                            <span class="text-on-surface font-semibold truncate flex-1">${ing.name || 'Unknown'}</span>
+                                            <span class="text-on-surface-variant font-mono ml-2 shrink-0">${ing.quantity} ${ing.unit || 'pcs'}</span>
+                                        </div>
+                                    `).join('')
+                                    + (ings.length > 3 ? `<p class="text-[10px] text-primary font-bold">+${ings.length - 3} more...</p>` : '')
+                                }
+                            </div>
+                        </div>
+                        <!-- Estimated Material Cost -->
+                        ${recipe.estimated_cost ? `
+                        <div class="flex items-center justify-between text-[11px] border-t border-outline-variant/50 pt-2.5">
+                            <span class="text-on-surface-variant font-semibold flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px] text-emerald-600">payments</span>
+                                Est. Cost / Batch
+                            </span>
+                            <span class="font-extrabold text-emerald-700">$${Number(recipe.estimated_cost).toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Card Footer -->
+                    <div class="px-5 py-3 border-t border-outline-variant/50 flex items-center justify-between">
+                        <span class="text-[9px] text-on-surface-variant font-semibold">${recipe.created_at ? formatDate(recipe.created_at) : 'Unknown date'}</span>
+                        <div class="flex items-center gap-1">
+                            ${recipe.is_active ? `
+                            <button onclick="event.stopPropagation(); openProduceModal('${recipe.id}')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-emerald-50 transition-colors" title="Start Production">
+                                <span class="material-symbols-outlined text-[16px] text-emerald-600">play_arrow</span>
+                            </button>
+                            ` : ''}
+                            <button onclick="event.stopPropagation(); openEditModal('${recipe.id}')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-surface-container-high transition-colors" title="Edit">
+                                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">edit</span>
+                            </button>
+                            <button onclick="event.stopPropagation(); promptDelete('${recipe.id}')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                                <span class="material-symbols-outlined text-[16px] text-red-400">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ============================================================
+        // Modal Management
+        // ============================================================
+        function openCreateModal() {
+            editingId = null;
+            document.getElementById('modal-title').textContent = 'New Production Recipe';
+            document.getElementById('save-btn-label').textContent = 'Save Recipe';
+            document.getElementById('delete-btn').classList.add('hidden');
+
+            // Reset form
+            document.getElementById('rec-name').value = '';
+            document.getElementById('rec-code').value = 'REC-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+            document.getElementById('rec-status').value = 'active';
+            document.getElementById('rec-desc').value = '';
+            document.getElementById('rec-output-qty').value = '1';
+
+            // Clear ingredients
+            document.getElementById('ingredients-list').innerHTML = '';
+            document.getElementById('no-ingredients-msg').classList.remove('hidden');
+
+            openModal();
+        }
+
+        async function openEditModal(id) {
+            const recipe = recipes.find(r => r.id === id);
+            if (!recipe) return;
+
+            editingId = id;
+            document.getElementById('modal-title').textContent = 'Edit Production Recipe';
+            document.getElementById('save-btn-label').textContent = 'Update Recipe';
+            document.getElementById('delete-btn').classList.remove('hidden');
+
+            document.getElementById('rec-name').value = recipe.name || '';
+            document.getElementById('rec-code').value = recipe.recipe_code || '';
+            document.getElementById('rec-status').value = recipe.is_active ? 'active' : 'inactive';
+
+            // Load ingredients
+            const ings = parseIngredients(recipe.ingredients);
+            const list = document.getElementById('ingredients-list');
+            list.innerHTML = '';
+            ings.forEach(ing => addIngredientRow(ing));
+
+            openModal();
+        }
+
+        function openModal() {
+            const modal = document.getElementById('recipe-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.querySelector('.bg-white').classList.remove('scale-95'), 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('recipe-modal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // ============================================================
+        // Ingredient Row Management
+        // ============================================================
+        function addIngredientRow(existing = null) {
+            const list = document.getElementById('ingredients-list');
+            document.getElementById('no-ingredients-msg').classList.add('hidden');
+
+            const row = document.createElement('div');
+            row.className = 'ingredient-row flex items-center gap-2 p-3 bg-surface-container-low rounded-xl';
+            row.innerHTML = `
+                <select class="ing-select flex-1 px-3 py-2 border border-outline-variant rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-primary/30" onchange="updateIngredientUnit(this.closest('.ingredient-row'))">
+                    <option value="">-- Select Item --</option>
+                    ${inventoryItems.map(item => `<option value="${item.item_code}" data-name="${item.name}" data-unit="${item.unit || 'pcs'}" data-cost="${item.unit_cost || 0}" data-item-id="${item.item_code}">${item.name} (${item.item_code})</option>`).join('')}
+                </select>
+                <input type="number" class="ing-qty w-20 px-3 py-2 border border-outline-variant rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Qty" value="${existing ? existing.quantity : ''}" min="0" step="0.1" oninput="updateIngredientUnit(this.closest('.ingredient-row'))">
+                <span class="ing-unit-label text-xs text-on-surface-variant w-12 text-center">${existing ? existing.unit || 'pcs' : ''}</span>
+                <button type="button" onclick="this.closest('.ingredient-row').remove(); updateIngredientUnit(this.closest('.ingredient-row')); checkNoIngredients()" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors shrink-0">
+                    <span class="material-symbols-outlined text-[16px] text-red-400">remove</span>
+                </button>
+            `;
+
+            if (existing && existing.name) {
+                // Try to match by name
+                const select = row.querySelector('.ing-select');
+                const options = Array.from(select.options);
+                const match = options.find(opt => opt.dataset.name === existing.name);
+                if (match) {
+                    select.value = match.value;
+                    row.querySelector('.ing-unit-label').textContent = match.dataset.unit;
+                }
+                row.querySelector('.ing-qty').value = existing.quantity || '';
+            }
+
+            list.appendChild(row);
+        }
+
+        function updateIngredientUnit(row) {
+            const select = row.querySelector('.ing-select');
+            const unit = select.selectedOptions[0]?.dataset?.unit || 'pcs';
+            row.querySelector('.ing-unit-label').textContent = unit;
+        }
+
+        function checkNoIngredients() {
+            const list = document.getElementById('ingredients-list');
+            if (list.children.length === 0) {
+                document.getElementById('no-ingredients-msg').classList.remove('hidden');
+            }
+        }
+
+        // ============================================================
+        // CRUD Operations
+        // ============================================================
+        function parseIngredients(ingData) {
+            if (!ingData) return [];
+            if (Array.isArray(ingData)) return ingData;
+            try {
+                const parsed = JSON.parse(ingData);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }
+
+        async function saveRecipe() {
+            const name = document.getElementById('rec-name').value.trim();
+            const code = document.getElementById('rec-code').value.trim();
+            const status = document.getElementById('rec-status').value;
+            const desc = document.getElementById('rec-desc').value.trim();
+            const outputQty = parseInt(document.getElementById('rec-output-qty').value) || 1;
+
+            if (!name) { showToast('Recipe name is required', 'error'); return; }
+            if (!code) { showToast('Recipe code is required', 'error'); return; }
+
+            // Collect ingredients from rows
+            const ingredientRows = document.querySelectorAll('.ingredient-row');
+            const ingredients = [];
+            ingredientRows.forEach(row => {
+                const select = row.querySelector('.ing-select');
+                const qty = parseFloat(row.querySelector('.ing-qty').value) || 0;
+                if (select.value && qty > 0) {
+                    const opt = select.selectedOptions[0];
+                    ingredients.push({
+                        name: opt.dataset.name || '',
+                        quantity: qty,
+                        unit: opt.dataset.unit || 'pcs',
+                        inventory_id: select.value,   // stable item FK
+                        unit_cost: parseFloat(opt.dataset.cost || 0)
+                    });
+                }
+            });
+
+            // Auto-calculate estimated cost from raw material unit costs
+            const autoCost = ingredients.reduce((sum, ing) => {
+                return sum + (parseFloat(ing.unit_cost) || 0) * (parseFloat(ing.quantity) || 0);
+            }, 0);
+
+            const payload = {
+                recipe_code: code,
+                name: name,
+                // Phase 4.2: include item_id FK for stable recipe binding
+                ingredients: ingredients.map(ing => ({
+                    name: ing.name,
+                    quantity: ing.quantity,
+                    unit: ing.unit,
+                    item_id: ing.inventory_id || null,
+                    unit_cost: ing.unit_cost || null
+                })),
+                is_active: status === 'active',
+                // Auto-calculate and persist material cost per batch
+                estimated_cost: autoCost
+            };
+
+            if (editingId) {
+                // Update existing
+                try {
+                    await sbClientOp({ table: 'production_recipes', operation: 'update', row: payload, filters: { eq: { id: editingId } } });
+                    showToast('Recipe updated successfully!', 'success');
+                } catch (err) {
+                    showToast('Failed to update recipe: ' + err.message, 'error');
+                    return;
+                }
+            } else {
+                // Create new
+                const optimisticId = `local-${Date.now()}`;
+                const optimisticRecipe = {
+                    id: optimisticId,
+                    ...payload,
+                    created_at: new Date().toISOString()
+                };
+                recipes = [optimisticRecipe, ...recipes.filter(recipe => recipe.recipe_code !== payload.recipe_code)];
+                pendingRecipes = [optimisticRecipe, ...pendingRecipes.filter(recipe => recipe.recipe_code !== payload.recipe_code)];
+                filterRecipes();
+                closeModal();
+
+                try {
+                    const insertedRows = await sbClientOp({ table: 'production_recipes', operation: 'insert', row: payload, columns: '*' });
+                    if (Array.isArray(insertedRows) && insertedRows[0]) {
+                        pendingRecipes = pendingRecipes.filter(recipe => recipe.id !== optimisticId && recipe.recipe_code !== payload.recipe_code);
+                        recipes = [insertedRows[0], ...recipes.filter(recipe => recipe.id !== insertedRows[0].id && recipe.id !== optimisticId)];
+                        filterRecipes();
+                    }
+                    showToast('Recipe created successfully!', 'success');
+                } catch (err) {
+                    pendingRecipes = pendingRecipes.filter(recipe => recipe.id !== optimisticId);
+                    recipes = recipes.filter(recipe => recipe.id !== optimisticId);
+                    filterRecipes();
+                    showToast('Failed to create recipe: ' + err.message, 'error');
+                    return;
+                }
+            }
+
+            if (editingId) closeModal();
+            loadRecipes().catch(err => console.warn('Recipe refresh failed after save:', err));
+        }
+
+        function promptDelete(id) {
+            deleteTargetId = id;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            deleteTargetId = null;
+            document.getElementById('delete-modal').classList.add('hidden');
+        }
+
+        async function confirmDelete() {
+            if (!deleteTargetId) return;
+            const removedId = deleteTargetId;
+
+            try {
+                await sbClientOp({ table: 'production_recipes', operation: 'delete', filters: { eq: { id: removedId } } });
+                recipes = recipes.filter(recipe => recipe.id !== removedId);
+                filterRecipes();
+                showToast('Recipe deleted successfully', 'success');
+            } catch (err) {
+                showToast('Failed to delete recipe: ' + err.message, 'error');
+                return;
+            }
+
+            closeDeleteModal();
+            await loadRecipes();
+        }
+
+        function deleteRecipe() {
+            if (editingId) {
+                promptDelete(editingId);
+            }
+        }
+
+        // ============================================================
+        // Production: Start a batch from a recipe
+        // ============================================================
+        let produceTargetRecipe = null;
+
+        function openProduceModal(recipeId) {
+            const recipe = recipes.find(r => r.id === recipeId);
+            if (!recipe) return;
+            produceTargetRecipe = recipe;
+
+            const ings = parseIngredients(recipe.ingredients);
+
+            document.getElementById('produce-modal-title').textContent = 'Start Production';
+            document.getElementById('produce-recipe-name').textContent = recipe.name || '—';
+            document.getElementById('produce-recipe-code').textContent = recipe.recipe_code || '—';
+            document.getElementById('produce-recipe-cost').textContent = recipe.estimated_cost
+                ? '$' + Number(recipe.estimated_cost).toFixed(2)
+                : '—';
+            document.getElementById('produce-ingredient-count').textContent = ings.length + ' item(s)';
+            document.getElementById('produce-qty').value = 1;
+            document.getElementById('produce-notes').value = '';
+            // Operator is locked to the logged-in staff session. Auto-fill and lock the field.
+            const operatorInput = document.getElementById('produce-operator');
+            operatorInput.value = '';
+            const applyLoggedInName = () => {
+                try {
+                    const ident = (window.RBAC && typeof window.RBAC.getCurrentIdentity === 'function')
+                        ? window.RBAC.getCurrentIdentity()
+                        : (window.__staffIdentity || null);
+                    const loggedInName = (ident && (ident.name || ident.email)) || '';
+                    operatorInput.value = loggedInName;
+                    if (!loggedInName) {
+                        // Fallback — use a stored login email from cookie payload if available
+                        operatorInput.placeholder = 'Session not detected — refresh page';
+                    }
+                } catch (_) {
+                    operatorInput.placeholder = 'Session not detected — refresh page';
+                }
+            };
+            // Open modal first so the user sees something immediately, then resolve identity.
+            document.getElementById('produce-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            if (window.RBAC && typeof window.RBAC.identityReady === 'function') {
+                window.RBAC.identityReady().then(applyLoggedInName);
+            } else {
+                applyLoggedInName();
+            }
+        }
+
+        function closeProduceModal() {
+            document.getElementById('produce-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+            produceTargetRecipe = null;
+        }
+
+        // ============================================================
+        // FIFO Raw Material Batch Allocation
+        // ============================================================
+
+        /**
+         * For each ingredient, allocate from the oldest available inventory_batches first (FIFO).
+         * Returns { allocated: [...], insufficient: [{name, qtyNeeded, qtyAvailable}] }
+         */
+        async function allocateFIFOBatches(ings, qty) {
+            const results = []; // one entry per ingredient
+            const shortfalls = [];
+
+            for (const ing of ings) {
+                console.log('[allocateFIFO] ingredient:', JSON.stringify(ing));
+                const qtyNeeded = (parseFloat(ing.quantity) || 0) * qty;
+                console.log('[allocateFIFO] qtyNeeded:', qtyNeeded, 'item_id:', ing.item_id);
+                if (qtyNeeded <= 0) {
+                    results.push({ name: ing.name, item_code: ing.item_id || '', qtyNeeded, qtyPicked: 0, category: 'raw_material', consumedBatches: [] });
+                    continue;
+                }
+
+                // FIX: inventory_batches has NO item_code column — only inventory_id (UUID FK).
+                // So we must resolve the inventory row first, then filter batches by inventory_id UUID.
+                // noCache: true to avoid stale data from the 30s server-side query cache.
+                let batches = [];
+                let resolvedInventoryId = null;
+                let resolvedItemCode = ing.item_id || '';
+                let resolvedItemName = ing.name || '';
+
+                if (ing.item_id) {
+                    // Step 1: Look up the inventory row by item_code to get the UUID.
+                    // (item_id from the recipe ingredient IS the inventory.item_code value)
+                    let invRow = (await sbClientOp({
+                        table: 'inventory',
+                        operation: 'select',
+                        columns: 'id, item_code, name',
+                        filters: {
+                            // Use ilike for case-insensitive match (recipe item_ids may be lowercase
+                            // like "rm-sugar" while inventory.item_code may be "RM-sugar")
+                            ilike: { item_code: ing.item_id }
+                        },
+                        noCache: true
+                    }) || [])[0];
+                    if (!invRow && ing.name) {
+                        // Fallback: try matching by name (case-insensitive via ilike)
+                        const invByName = await sbClientOp({
+                            table: 'inventory',
+                            operation: 'select',
+                            columns: 'id, item_code, name',
+                            filters: { ilike: { name: ing.name } },
+                            noCache: true
+                        });
+                        invRow = (invByName || [])[0];
+                    }
+                    if (invRow) {
+                        resolvedInventoryId = invRow.id;
+                        resolvedItemCode = invRow.item_code || resolvedItemCode;
+                        resolvedItemName = invRow.name || resolvedItemName;
+                        console.log('[allocateFIFO] resolved inventory row:', JSON.stringify(invRow));
+
+                        // Step 2: Fetch batches for THIS inventory row only
+                        const byInvId = await sbClientOp({
+                            table: 'inventory_batches',
+                            operation: 'select',
+                            columns: 'id, batch_code, inventory_id, current_qty, unit_cost, received_date, created_at',
+                            filters: {
+                                eq: { inventory_id: invRow.id },
+                                gte: { current_qty: 0.001 }
+                            },
+                            noCache: true
+                        });
+                        batches = byInvId || [];
+                        console.log('[allocateFIFO] byInventoryId (', ing.item_id, '->', invRow.id, '):', JSON.stringify(byInvId));
+                    } else {
+                        console.warn('[allocateFIFO] no inventory row found for', ing.item_id, '/', ing.name);
+                    }
+                }
+
+                // Filter to only batches with positive stock and active states
+                batches = batches.filter(b => (parseFloat(b.current_qty) || 0) > 0.001);
+
+                // Sort FIFO by received_date (oldest first), fall back to created_at
+                batches.sort((a, b) => {
+                    const dateA = new Date(a.received_date || a.created_at || 0);
+                    const dateB = new Date(b.received_date || b.created_at || 0);
+                    return dateA - dateB;
+                });
+
+                const allocated = [];
+                let remaining = qtyNeeded;
+
+                // If no batch records exist, fall back to inventory.current_stock
+                if (batches.length === 0 && ing.item_id) {
+                    console.log('[allocateFIFO] no batches found — falling back to inventory.current_stock for', ing.item_id);
+                    const invRows = await sbClientOp({
+                        table: 'inventory',
+                        operation: 'select',
+                        columns: 'id, current_stock, unit_cost',
+                        filters: { eq: { item_code: ing.item_id } },
+                        noCache: true
+                    });
+                    const invRow = invRows && invRows[0];
+                    if (invRow && (parseFloat(invRow.current_stock) || 0) >= qtyNeeded) {
+                        console.log('[allocateFIFO] inventory fallback: current_stock =', invRow.current_stock, '>= qtyNeeded =', qtyNeeded);
+                        // Treat the inventory row as a single virtual batch covering the full need
+                        remaining = 0;
+                        allocated.push({
+                            batchCode: `INV-${ing.item_id}`,
+                            batchId: null,
+                            itemCode: ing.item_id,
+                            itemName: ing.name,
+                            inventoryId: invRow.id || null,
+                            qtyAllocated: qtyNeeded,
+                            qtyRemaining: (parseFloat(invRow.current_stock) || 0) - qtyNeeded,
+                            unitCost: invRow.unit_cost || null,
+                            arrivalDate: null
+                        });
+                    } else if (invRow) {
+                        console.log('[allocateFIFO] inventory fallback: current_stock =', invRow.current_stock, '< qtyNeeded =', qtyNeeded);
+                        remaining = qtyNeeded - (parseFloat(invRow.current_stock) || 0);
+                        if (remaining < qtyNeeded) {
+                            // Partial allocation from inventory row
+                            const partial = parseFloat(invRow.current_stock) || 0;
+                            allocated.push({
+                                batchCode: `INV-${ing.item_id}`,
+                                batchId: null,
+                                itemCode: ing.item_id,
+                                itemName: ing.name,
+                                inventoryId: invRow.id || null,
+                                qtyAllocated: partial,
+                                qtyRemaining: 0,
+                                unitCost: invRow.unit_cost || null,
+                                arrivalDate: null
+                            });
+                        }
+                    } else {
+                        console.warn('[allocateFIFO] no inventory row found for item_code:', ing.item_id);
+                    }
+                }
+
+                for (const batch of (batches || [])) {
+                    if (remaining <= 0) break;
+                    const take = Math.min(parseFloat(batch.current_qty) || 0, remaining);
+                    if (take > 0) {
+                        allocated.push({
+                            batchCode: batch.batch_code,
+                            batchId: batch.id,
+                            itemCode: resolvedItemCode,
+                            itemName: resolvedItemName,
+                            inventoryId: batch.inventory_id || resolvedInventoryId || null,
+                            qtyAllocated: take,
+                            qtyRemaining: (parseFloat(batch.current_qty) || 0) - take,
+                            unitCost: batch.unit_cost || null,
+                            arrivalDate: batch.received_date || batch.created_at || null
+                        });
+                        remaining = Math.max(0, remaining - take);
+                    }
+                }
+
+                const qtyAllocated = qtyNeeded - remaining;
+                if (remaining > 0.001) {
+                    shortfalls.push({ name: ing.name, qtyNeeded, qtyAvailable: qtyAllocated });
+                }
+
+                results.push({
+                    name: ing.name,
+                    item_code: ing.item_id || (allocated[0] ? allocated[0].itemCode : ''),
+                    qtyNeeded,
+                    qtyPicked: qtyAllocated,
+                    category: 'raw_material',
+                    consumedBatches: allocated
+                });
+            }
+
+            return { results, shortfalls };
+        }
+
+        // ============================================================
+        // Production Submit
+        // ============================================================
+
+        async function submitProduction() {
+            if (!produceTargetRecipe) return;
+            const qty = parseInt(document.getElementById('produce-qty').value) || 1;
+            const operator = document.getElementById('produce-operator').value.trim();
+            const notes = document.getElementById('produce-notes').value.trim();
+
+            if (!operator) {
+                showToast('Operator name is required', 'error');
+                return;
+            }
+
+            const recipe = produceTargetRecipe;
+            const ings = parseIngredients(recipe.ingredients);
+            const batchCode = 'PRD-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+
+            // Allocate FIFO raw material batches before inserting anything
+            showToast('Checking stock…', 'info');
+            const { results: picklistItems, shortfalls } = await allocateFIFOBatches(ings, qty);
+
+            if (shortfalls.length > 0) {
+                const lines = shortfalls.map(s =>
+                    `${s.name}: need ${s.qtyNeeded.toFixed(2)}, only ${s.qtyAvailable.toFixed(2)} available`
+                ).join('\n');
+                showToast('Insufficient Stock', `Not enough raw materials:\n${lines}`, 'error');
+                return;
+            }
+
+            // Use atomic SQL RPC to deduct stock safely (avoids read-modify-write race conditions)
+            async function atomicDeduct(table, id, amount) {
+                // First try RPC for atomic update
+                try {
+                    const result = await sbClientOp({
+                        table: 'inventory',
+                        operation: 'rpc',
+                        row: {
+                            fn: 'deduct_stock',
+                            args: { p_id: id, p_amount: amount }
+                        }
+                    });
+                    return result;
+                } catch (_) {
+                    // RPC not available — fall back to read-modify-write with invalidation
+                    const rows = await sbClientOp({
+                        table,
+                        operation: 'select',
+                        columns: 'id, current_stock',
+                        filters: { eq: { id } }
+                    });
+                    if (rows && rows[0]) {
+                        const updated = Math.max(0, (parseFloat(rows[0].current_stock) || 0) - amount);
+                        await sbClientOp({
+                            table,
+                            operation: 'update',
+                            row: { current_stock: updated },
+                            filters: { eq: { id: rows[0].id } }
+                        });
+                        return updated;
+                    }
+                    return null;
+                }
+            }
+
+            // 1. Deduct raw material stock atomically — first deduct from batches, then update inventory totals
+            // Aggregate deductions per inventory row ID so multiple batches sharing one inventory row
+            // accumulate correctly without race conditions or stale cache issues.
+            for (const item of picklistItems) {
+                // Map of inventoryId -> { totalDeduct, itemCode, itemName, batches: [] }
+                const deductByInventory = new Map();
+
+                // PASS 1: deduct from inventory_batches and aggregate per-inventory totals
+                for (const batch of item.consumedBatches || []) {
+                    const deductAmount = batch.qtyAllocated || 0;
+                    console.log('[Production] Deduction:', {
+                        batchId: batch.batchId, inventoryId: batch.inventoryId,
+                        itemCode: batch.itemCode, itemName: batch.itemName,
+                        qtyAllocated: deductAmount
+                    });
+
+                    // Deduct from inventory_batches (per-batch, no race)
+                    if (batch.batchId) {
+                        const batchRows = await sbClientOp({
+                            table: 'inventory_batches',
+                            operation: 'select',
+                            columns: 'id, current_qty',
+                            filters: { eq: { id: batch.batchId } },
+                            noCache: true
+                        });
+                        console.log('[Production] Batch rows for', batch.batchId + ':', batchRows);
+                        if (batchRows && batchRows[0]) {
+                            const newBatchQty = Math.max(0, (parseFloat(batchRows[0].current_qty) || 0) - deductAmount);
+                            console.log('[Production] Updating batch', batch.batchId, 'from', batchRows[0].current_qty, 'to', newBatchQty);
+                            await sbClientOp({
+                                table: 'inventory_batches',
+                                operation: 'update',
+                                row: { current_qty: newBatchQty },
+                                filters: { eq: { id: batch.batchId } }
+                            });
+                        }
+                    }
+
+                    // Aggregate deduction amount per inventory row ID
+                    const invKey = batch.inventoryId || `__name__:${(batch.itemName || '').toLowerCase()}:${(batch.itemCode || '').toLowerCase()}`;
+                    if (!deductByInventory.has(invKey)) {
+                        deductByInventory.set(invKey, {
+                            inventoryId: batch.inventoryId || null,
+                            itemCode: batch.itemCode || '',
+                            itemName: batch.itemName || '',
+                            totalQty: 0,
+                            batches: []
+                        });
+                    }
+                    const entry = deductByInventory.get(invKey);
+                    entry.totalQty += deductAmount;
+                    entry.batches.push(batch);
+
+                    // Record consumption for traceability
+                    await sbClientOp({
+                        table: 'production_rm_consumption',
+                        operation: 'insert',
+                        row: {
+                            production_batch_code: batchCode,
+                            rm_batch_code: batch.batchCode || null,
+                            rm_item_code: batch.itemCode || null,
+                            rm_item_name: batch.itemName || null,
+                            quantity_consumed: deductAmount,
+                            unit_cost_at_time: batch.unitCost || null,
+                            inventory_id: batch.inventoryId || null
+                        }
+                    });
+                }
+
+                // PASS 2: deduct accumulated total from inventory.current_stock ONCE per row
+                for (const [invKey, entry] of deductByInventory) {
+                    const totalDeduct = entry.totalQty;
+                    if (totalDeduct <= 0) continue;
+
+                    // Strategy A: directly by UUID (preferred — precise)
+                    if (entry.inventoryId) {
+                        // Re-read with noCache to bypass client-side cache and get fresh stock
+                        const fresh = await sbClientOp({
+                            table: 'inventory',
+                            operation: 'select',
+                            columns: 'id, current_stock',
+                            filters: { eq: { id: entry.inventoryId } },
+                            noCache: true
+                        });
+                        console.log('[Production] Strategy A (UUID', entry.inventoryId, ') fresh read:', fresh);
+                        if (fresh && fresh[0]) {
+                            const updated = Math.max(0, (parseFloat(fresh[0].current_stock) || 0) - totalDeduct);
+                            await sbClientOp({
+                                table: 'inventory',
+                                operation: 'update',
+                                row: { current_stock: updated },
+                                filters: { eq: { id: fresh[0].id } }
+                            });
+                            console.log('[Production] ✓ Deducted', totalDeduct, '(', entry.batches.length, 'batches aggregated) from inventory UUID', entry.inventoryId, '→ new stock', updated);
+                            continue;
+                        }
+                    }
+
+                    // Strategy B fallback: by item_code
+                    if (entry.itemCode) {
+                        const byCode = await sbClientOp({
+                            table: 'inventory',
+                            operation: 'select',
+                            columns: 'id, current_stock',
+                            filters: { eq: { item_code: entry.itemCode } },
+                            noCache: true
+                        });
+                        if (byCode && byCode[0]) {
+                            const updated = Math.max(0, (parseFloat(byCode[0].current_stock) || 0) - totalDeduct);
+                            await sbClientOp({
+                                table: 'inventory',
+                                operation: 'update',
+                                row: { current_stock: updated },
+                                filters: { eq: { id: byCode[0].id } }
+                            });
+                            console.log('[Production] ✓ Deducted', totalDeduct, 'from inventory by item_code', entry.itemCode, '→ new stock', updated);
+                            continue;
+                        }
+                    }
+
+                    // Strategy C fallback: by name + raw_material
+                    if (entry.itemName) {
+                        const byName = await sbClientOp({
+                            table: 'inventory',
+                            operation: 'select',
+                            columns: 'id, current_stock',
+                            filters: { eq: { name: entry.itemName, category: 'raw_material' } },
+                            noCache: true
+                        });
+                        if (byName && byName[0]) {
+                            const updated = Math.max(0, (parseFloat(byName[0].current_stock) || 0) - totalDeduct);
+                            await sbClientOp({
+                                table: 'inventory',
+                                operation: 'update',
+                                row: { current_stock: updated },
+                                filters: { eq: { id: byName[0].id } }
+                            });
+                            console.log('[Production] ✓ Deducted', totalDeduct, 'from inventory by name', entry.itemName, '→ new stock', updated);
+                            continue;
+                        }
+                    }
+
+                    console.warn('[Production] ⚠️ Could not find inventory row for', entry.itemName, '/', entry.itemCode, '/', entry.inventoryId);
+                }
+            }
+
+            // Invalidate client-side cache so inventory page sees fresh stock after production
+            if (window.invalidateSupabaseCache) {
+                window.invalidateSupabaseCache('inventory');
+                window.invalidateSupabaseCache('inventory_batches');
+            }
+
+            // 2. Create dispatch_picklists entry (pending state → production team picks RM).
+            //    If this fails, rollback stock deductions and stop.
+            try {
+                const picklistResult = await sbClientOp({
+                    table: 'dispatch_picklists',
+                    operation: 'insert',
+                    row: {
+                        batch_code: batchCode,
+                        product_name: recipe.name || '',
+                        qty: qty,
+                        items: picklistItems,
+                        status: 'pending'
+                    }
+                });
+                if (!picklistResult || (Array.isArray(picklistResult) && picklistResult.length === 0)) {
+                    showToast('Picklist creation failed', 'Could not create picklist. Stock has been restored.', 'error');
+                    // Rollback: restore deducted stock
+                    for (const item of picklistItems) {
+                        for (const batch of item.consumedBatches || []) {
+                            const addAmount = batch.qtyAllocated || 0;
+                            if (batch.batchId) {
+                                const batchRows = await sbClientOp({ table: 'inventory_batches', operation: 'select', columns: 'id, current_qty', filters: { eq: { id: batch.batchId } } });
+                                if (batchRows && batchRows[0]) {
+                                    await sbClientOp({ table: 'inventory_batches', operation: 'update', row: { current_qty: (parseFloat(batchRows[0].current_qty) || 0) + addAmount }, filters: { eq: { id: batch.batchId } } });
+                                }
+                            }
+                            if (batch.inventoryId) {
+                                const invRows = await sbClientOp({ table: 'inventory', operation: 'select', columns: 'id, current_stock', filters: { eq: { id: batch.inventoryId } } });
+                                if (invRows && invRows[0]) {
+                                    await sbClientOp({ table: 'inventory', operation: 'update', row: { current_stock: (parseFloat(invRows[0].current_stock) || 0) + addAmount }, filters: { eq: { id: invRows[0].id } } });
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
+            } catch (err) {
+                showToast('Picklist error', 'Failed to create picklist: ' + err.message + '. Stock has been restored.', 'error');
+                // Rollback: restore deducted stock
+                for (const item of picklistItems) {
+                    for (const batch of item.consumedBatches || []) {
+                        const addAmount = batch.qtyAllocated || 0;
+                        if (batch.batchId) {
+                            const batchRows = await sbClientOp({ table: 'inventory_batches', operation: 'select', columns: 'id, current_qty', filters: { eq: { id: batch.batchId } } });
+                            if (batchRows && batchRows[0]) {
+                                await sbClientOp({ table: 'inventory_batches', operation: 'update', row: { current_qty: (parseFloat(batchRows[0].current_qty) || 0) + addAmount }, filters: { eq: { id: batch.batchId } } });
+                            }
+                        }
+                        if (batch.inventoryId) {
+                            const invRows = await sbClientOp({ table: 'inventory', operation: 'select', columns: 'id, current_stock', filters: { eq: { id: batch.inventoryId } } });
+                            if (invRows && invRows[0]) {
+                                await sbClientOp({ table: 'inventory', operation: 'update', row: { current_stock: (parseFloat(invRows[0].current_stock) || 0) + addAmount }, filters: { eq: { id: invRows[0].id } } });
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+
+            // 3. Create production_batches entry so the pipeline kanban shows the batch
+            //    Pre-save consumed_rm_batches so confirmBatch() knows stock was already deducted
+            let productCode = null;
+            try {
+                const fgRows = await sbClientOp({
+                    table: 'inventory',
+                    operation: 'select',
+                    columns: 'item_code',
+                    filters: { eq: { name: recipe.name, category: 'finished_good' } }
+                });
+                productCode = (fgRows && fgRows[0] && fgRows[0].item_code) ? fgRows[0].item_code : (recipe.recipe_code || batchCode);
+            } catch (_) {
+                productCode = recipe.recipe_code || batchCode;
+            }
+
+            const consumedBatchesFlat = [];
+            let totalRmCost = 0;
+            for (const item of picklistItems) {
+                for (const batch of item.consumedBatches || []) {
+                    const batchCost = (parseFloat(batch.qtyAllocated) || 0) * (parseFloat(batch.unitCost) || 0);
+                    totalRmCost += batchCost;
+                    consumedBatchesFlat.push({
+                        rm_batch_code: batch.batchCode || null,
+                        rm_item_code: batch.itemCode || null,
+                        rm_item_name: batch.itemName || null,
+                        quantity_consumed: parseFloat(batch.qtyAllocated) || 0,
+                        unit_cost_at_time: parseFloat(batch.unitCost) || 0,
+                        inventory_id: batch.inventoryId || null
+                    });
+                }
+            }
+
+            // 3. Create production_batches entry so the pipeline kanban shows the batch.
+            //    Wrap in try/catch with rollback so stock is never lost if insert silently fails.
+            let batchInsertFailed = false;
+            try {
+                const insertResult = await sbClientOp({
+                    table: 'production_batches',
+                    operation: 'insert',
+                    row: {
+                        batch_number: batchCode,
+                        batch_code: batchCode,
+                        recipe_id: recipe.id || null,
+                        recipe_code: recipe.recipe_code || null,
+                        product_name: recipe.name || '',
+                        product_code: productCode,
+                        qty_produced: qty,
+                        unit: 'units',
+                        status: 'In Progress',
+                        produced_by: operator || null,
+                        notes: notes || null,
+                        consumed_rm_batches: consumedBatchesFlat,
+                        total_rm_cost: Math.round(totalRmCost * 10000) / 10000,
+                        started_at: new Date().toISOString()
+                    }
+                });
+
+                if (!insertResult || (Array.isArray(insertResult) && insertResult.length === 0)) {
+                    batchInsertFailed = true;
+                    showToast('Batch creation failed', 'Could not create production batch. Stock has been restored.', 'error');
+                }
+
+                if (batchInsertFailed) {
+                    // Rollback: restore deducted stock to inventory_batches and inventory
+                    for (const item of picklistItems) {
+                        for (const batch of item.consumedBatches || []) {
+                            const addAmount = batch.qtyAllocated || 0;
+                            if (batch.batchId) {
+                                const batchRows = await sbClientOp({ table: 'inventory_batches', operation: 'select', columns: 'id, current_qty', filters: { eq: { id: batch.batchId } } });
+                                if (batchRows && batchRows[0]) {
+                                    await sbClientOp({ table: 'inventory_batches', operation: 'update', row: { current_qty: (parseFloat(batchRows[0].current_qty) || 0) + addAmount }, filters: { eq: { id: batch.batchId } } });
+                                }
+                            }
+                            if (batch.inventoryId) {
+                                const invRows = await sbClientOp({ table: 'inventory', operation: 'select', columns: 'id, current_stock', filters: { eq: { id: batch.inventoryId } } });
+                                if (invRows && invRows[0]) {
+                                    await sbClientOp({ table: 'inventory', operation: 'update', row: { current_stock: (parseFloat(invRows[0].current_stock) || 0) + addAmount }, filters: { eq: { id: invRows[0].id } } });
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
+            } catch (err) {
+                batchInsertFailed = true;
+                showToast('Batch creation error', 'Failed: ' + err.message + '. Stock has been restored.', 'error');
+                // Rollback: restore deducted stock
+                for (const item of picklistItems) {
+                    for (const batch of item.consumedBatches || []) {
+                        const addAmount = batch.qtyAllocated || 0;
+                        if (batch.batchId) {
+                            const batchRows = await sbClientOp({ table: 'inventory_batches', operation: 'select', columns: 'id, current_qty', filters: { eq: { id: batch.batchId } } });
+                            if (batchRows && batchRows[0]) {
+                                await sbClientOp({ table: 'inventory_batches', operation: 'update', row: { current_qty: (parseFloat(batchRows[0].current_qty) || 0) + addAmount }, filters: { eq: { id: batch.batchId } } });
+                            }
+                        }
+                        if (batch.inventoryId) {
+                            const invRows = await sbClientOp({ table: 'inventory', operation: 'select', columns: 'id, current_stock', filters: { eq: { id: batch.inventoryId } } });
+                            if (invRows && invRows[0]) {
+                                await sbClientOp({ table: 'inventory', operation: 'update', row: { current_stock: (parseFloat(invRows[0].current_stock) || 0) + addAmount }, filters: { eq: { id: invRows[0].id } } });
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+
+            // 4. Invalidate client-side caches and open the production pipeline
+            if (window.invalidateSupabaseCache) {
+                window.invalidateSupabaseCache('production_batches');
+                window.invalidateSupabaseCache('dispatch_picklists');
+            }
+            try {
+                closeProduceModal();
+                const url = '/production/index.html?new_batch=' + encodeURIComponent(batchCode)
+                    + '&recipe=' + encodeURIComponent(recipe.name || recipe.recipe_code || '')
+                    + '&qty=' + encodeURIComponent(qty)
+                    + '&operator=' + encodeURIComponent(operator)
+                    + '&notes=' + encodeURIComponent(notes)
+                    + '&fifo_preallocated=1';
+                window.open(url, '_blank');
+                showToast('Production batch ' + batchCode + ' created!', 'success');
+            } catch (err) {
+                showToast('Production batch ' + batchCode + ' created!', 'Please refresh the production pipeline page.', 'success');
+            }
+        }
+
+        // ============================================================
+        // Utilities
+        // ============================================================
+        function formatDate(dateStr) {
+            if (!dateStr) return 'Unknown';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-SG', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const title = document.getElementById('toast-title');
+            const body = document.getElementById('toast-msg');
+
+            title.textContent = type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Info';
+            body.textContent = msg;
+            icon.textContent = type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info';
+            icon.className = 'material-symbols-outlined text-[20px] ' + (type === 'success' ? 'text-emerald-400' : type === 'error' ? 'text-red-400' : 'text-blue-400');
+
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        // ============================================================
+        // Boot
+        // ============================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            loadRecipes();
+        });
+
+        // Auto-open produce modal when navigated from Finished Goods tab
+        window.addEventListener('recipes:loaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const produceName = params.get('produce') || '';
+            const recipeCode = params.get('code') || '';
+
+            if (!produceName && !recipeCode) return;
+
+            // Find the first recipe that matches the finished good name or recipe code
+            const match = recipes.find(r => {
+                const nameMatch = produceName && (r.name || '').toLowerCase() === produceName.toLowerCase();
+                const codeMatch = recipeCode && (r.recipe_code || '').toLowerCase() === recipeCode.toLowerCase();
+                // Also try: recipe output name (stored as recipe name in DB)
+                return nameMatch || codeMatch;
+            });
+
+            if (match && match.is_active) {
+                // Scroll to and highlight the recipe card
+                setTimeout(() => {
+                    const card = document.querySelector(`[data-recipe-id="${match.id}"]`);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        card.classList.add('ring-2', 'ring-emerald-500', 'ring-offset-2');
+                    }
+                    openProduceModal(match.id);
+                }, 300);
+            } else if (produceName) {
+                // No matching recipe found — open create modal pre-filled with FG name
+                setTimeout(() => {
+                    openCreateModal();
+                    const nameInput = document.getElementById('rec-name');
+                    const codeInput = document.getElementById('rec-code');
+                    if (nameInput) nameInput.value = produceName;
+                    if (codeInput) codeInput.value = 'REC-' + (recipeCode || produceName.replace(/\s+/g, '-').toUpperCase().slice(0, 8));
+                    showToast('No recipe found for "' + produceName + '". Please create one first.', 'info');
+                }, 300);
+            }
+        });
+    </script>
+</body>
+</html>
