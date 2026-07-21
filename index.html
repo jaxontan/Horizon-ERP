@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EspressGo - Login</title>
+    <!-- Google Fonts: Inter & Manrope -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet">
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <!-- Material Symbols -->
+<!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <style>
+.material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+        }
+
+
+
+        /* Focus styles for inputs to ensure they look good on the colored background */
+        input::placeholder {
+            color: rgba(74, 46, 21, 0.4);
+        }
+        /* ===== RESPONSIVE: login page ===== */
+        @media (max-width: 1024px) {
+            .fixed.inset-0 { position: relative !important; width: 100% !important; height: auto !important; }
+            .w-\[500px\] { width: 100% !important; max-width: 100% !important; }
+            .h-\[580px\] { height: auto !important; min-height: 500px !important; }
+        }
+        @media (max-width: 768px) {
+            .fixed.inset-0 { position: relative !important; width: 100% !important; min-height: 100vh !important; height: auto !important; }
+            .w-\[500px\] { width: 100% !important; max-width: 100% !important; border-radius: 1.5rem !important; box-shadow: none !important; }
+            .h-\[580px\] { height: auto !important; min-height: auto !important; padding: 2rem !important; }
+        }
+        @media (max-width: 480px) {
+            .w-\[500px\] { padding: 1.5rem !important; border-radius: 1rem !important; }
+        }
+    </style>
+    </style>
+</head>
+
+<body
+    class="font-body-md bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen flex flex-col items-center justify-center p-6 gap-8">
+
+    <!-- Flex Wrapper for Packet and Dev Panel -->
+    <div class="flex flex-col lg:flex-row items-center justify-center gap-12 w-full max-w-5xl">
+
+        <!-- Main Packet Container -->
+        <div id="packet-container"
+            class="relative w-[400px] h-[600px] transition-transform duration-500 hover:scale-[1.02] flex-shrink-0">
+
+            <!-- SVG background -->
+            <svg viewBox="0 0 400 600" class="absolute inset-0 w-full h-full drop-shadow-2xl z-0">
+                <defs>
+                    <pattern id="stripes" width="12" height="12" patternTransform="rotate(45)"
+                        patternUnits="userSpaceOnUse">
+                        <rect width="6" height="12" fill="#e45e14" />
+                        <rect x="6" width="6" height="12" fill="#f47424" />
+                    </pattern>
+                </defs>
+                <!-- Outer striped shape -->
+                <polygon points="120,10 280,10 280,80 380,130 380,590 20,590 20,130 120,80" fill="url(#stripes)" />
+                <!-- Inner solid orange shape -->
+                <polygon points="130,20 270,20 270,85 365,135 365,580 35,580 35,135 130,85" fill="#f47424" />
+                <!-- Neck shadow/crease -->
+                <line x1="130" y1="85" x2="270" y2="85" stroke="#d34e0a" stroke-width="2" opacity="0.5" />
+            </svg>
+
+            <!-- Tear / Zipper Area (Neck) -->
+            <div class="absolute top-[40px] left-[120px] w-[160px] h-[30px] z-20">
+                <!-- Tear notches -->
+                <div
+                    class="absolute -left-2 top-2 text-[#6e2b0b] text-[10px] font-extrabold select-none pointer-events-none drop-shadow-sm">
+                    ▶</div>
+                <div
+                    class="absolute -right-2 top-2 text-[#6e2b0b] text-[10px] font-extrabold select-none pointer-events-none drop-shadow-sm">
+                    ◀</div>
+
+                <div
+                    class="absolute -top-5 left-1/2 -translate-x-1/2 text-[#3a1d0f] text-[9px] font-extrabold tracking-widest opacity-70 w-full text-center">
+                    TEAR TO UNLOCK</div>
+
+                <!-- Tear Line -->
+                <div
+                    class="absolute top-1/2 left-0 w-full h-[3px] -translate-y-1/2 pointer-events-none overflow-hidden rounded-full">
+                    <div class="absolute inset-0 border-t-[3px] border-dotted border-[#6e2b0b]/60"></div>
+                    <!-- Open gap -->
+                    <div id="gap" class="absolute inset-y-0 left-0 bg-[#2a1409] rounded-r-full"
+                        style="width: 0%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);"></div>
+                </div>
+
+                <!-- Slider -->
+                <input type="range" id="zipper" min="0" max="100" value="0"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" />
+
+                <!-- Custom Thumb/Pull -->
+                <div id="zipper-pull"
+                    class="absolute top-1/2 left-0 w-8 h-8 bg-[#3a1d0f] rounded-full shadow-[0_3px_10px_rgba(0,0,0,0.6)] -translate-y-1/2 -ml-[16px] flex items-center justify-center pointer-events-none transition-transform duration-75 z-20 border-[3px] border-[#6e2b0b] group-hover:scale-110">
+                    <span class="material-symbols-outlined text-[#f7eedc] text-[18px]">drag_indicator</span>
+                </div>
+            </div>
+
+            <!-- Content / Label Area -->
+            <div
+                class="absolute top-[160px] left-[45px] w-[310px] h-[400px] bg-[#f7eedc] rounded-2xl p-6 flex flex-col text-[#4a2e15] shadow-[inset_0_2px_15px_rgba(0,0,0,0.05),0_4px_10px_rgba(0,0,0,0.1)] z-10">
+                <!-- Header -->
+                <div class="text-center relative">
+                    <h1 class="font-headline-lg text-[40px] leading-none font-extrabold tracking-tighter text-[#3a1d0f]"
+                        style="transform: scaleY(1.1);">ESPRESSGO</h1>
+                    <p class="text-[8px] uppercase font-bold tracking-widest mt-2 text-[#5a3a22]">Coffee takes time,
+                        Espressgo doesn't.</p>
+                </div>
+
+                <!-- Form -->
+                <form id="login-form" class="flex-1 flex flex-col justify-center gap-4 mt-2 relative z-20">
+
+
+                    <div
+                        class="relative z-10 group bg-white/40 p-2 rounded-xl border border-[#4a2e15]/10 backdrop-blur-sm">
+                        <label class="text-[9px] font-extrabold mb-1 ml-1 block tracking-widest text-[#5a3a22]">OPERATOR
+                            ID</label>
+                        <div class="relative">
+                            <span
+                                class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-[#4a2e15]/60 text-lg">person</span>
+                            <input type="text" id="username"
+                                class="w-full bg-transparent border-b-[2px] border-[#4a2e15]/20 p-1.5 pl-9 focus:outline-none focus:border-[#d34e0a] transition-colors font-bold text-base placeholder-[#4a2e15]/40"
+                                placeholder="admin" required />
+                        </div>
+                    </div>
+
+                    <div
+                        class="relative z-10 group bg-white/40 p-2 rounded-xl border border-[#4a2e15]/10 backdrop-blur-sm">
+                        <label
+                            class="text-[9px] font-extrabold mb-1 ml-1 block tracking-widest text-[#5a3a22]">PASSCODE</label>
+                        <div class="relative">
+                            <span
+                                class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-[#4a2e15]/60 text-lg">lock</span>
+                            <input type="password" id="password"
+                                class="w-full bg-transparent border-b-[2px] border-[#4a2e15]/20 p-1.5 pl-9 focus:outline-none focus:border-[#d34e0a] transition-colors font-bold text-base tracking-widest placeholder-[#4a2e15]/40"
+                                placeholder="••••••••" required />
+                        </div>
+                    </div>
+
+                    <div id="status-msg"
+                        class="text-[11px] font-extrabold text-center text-[#d34e0a] h-4 mt-1 opacity-0 transition-opacity tracking-wide uppercase">
+                        Unzip to authenticate</div>
+
+                    <!-- Hidden submit button to allow Enter key to work -->
+                    <button type="submit" class="hidden" aria-hidden="true"></button>
+                </form>
+
+                <!-- Footer -->
+                <div class="mt-4 border-t-[3px] border-[#3a1d0f] pt-3 flex justify-between items-end relative z-10">
+                    <div class="w-[45%]">
+                        <div class="font-extrabold text-sm tracking-wide text-[#3a1d0f]">NO SUGAR</div>
+                        <div class="text-[7.5px] leading-tight font-semibold mt-1 text-[#5a3a22]">Sweetened
+                            with<br />Monk
+                            Fruit & Erythritol</div>
+                    </div>
+                    <div class="w-[55%] pl-3 border-l-[3px] border-[#3a1d0f]">
+                        <div class="font-extrabold text-[10px] leading-tight text-[#3a1d0f] tracking-tight">ESPRESSO COFFEE
+                            JELLY<br /><span
+                                class="font-bold font-serif italic text-[9px] capitalize tracking-normal">(Thạch cà phê
+                                Espresso)</span></div>
+                        <div
+                            class="text-[7px] leading-tight font-semibold mt-1 text-right text-[#5a3a22] uppercase tracking-wider">
+                            Made in Singapore<br />Net weight 30g</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        // Initialize Supabase (REPLACE THESE WITH YOUR ACTUAL PROJECT URL AND PUBLIC KEY)
+        const supabaseUrl = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        
+        // Wait for Supabase SDK to be ready
+        let supabaseClient = null;
+        function getSupabaseClient() {
+            if (supabaseClient) return supabaseClient;
+            if (window.supabase && window.supabase.createClient) {
+                supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            }
+            return supabaseClient;
+        }
+
+        const zipper = document.getElementById('zipper');
+        const zipperPull = document.getElementById('zipper-pull');
+        const gap = document.getElementById('gap');
+        const statusMsg = document.getElementById('status-msg');
+        const packetContainer = document.getElementById('packet-container');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginForm = document.getElementById('login-form');
+
+        // Staff role mapping (loaded from profiles table on login)
+        let userProfiles = [];
+
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        async function loadProfiles() {
+            try {
+                const resp = await fetch('/api/supabase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ table: 'profiles', operation: 'select' })
+                });
+                const result = await resp.json();
+                if (result.data) userProfiles = result.data;
+            } catch (e) { /* use email fallback */ }
+        }
+        loadProfiles();
+
+        // Listen for "Enter" key submission on the form
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault(); // Prevent standard page reload
+
+            // Programmatically "unzip" the packet instantly
+            zipper.value = 100;
+            zipperPull.style.left = '100%';
+            gap.style.width = '100%';
+
+            // Trigger the existing success and animation logic
+            zipper.dispatchEvent(new Event('change'));
+        });
+
+        zipper.addEventListener('input', (e) => {
+            const val = e.target.value;
+
+            zipperPull.style.left = `${val}%`;
+            gap.style.width = `${val}%`;
+
+            if (val > 0 && val < 100) {
+                statusMsg.style.opacity = 1;
+                if (!usernameInput.value || !passwordInput.value) {
+                    statusMsg.textContent = "Credentials Required!";
+                    statusMsg.className = "text-[11px] font-extrabold text-center text-red-600 h-4 mt-1 transition-opacity opacity-100 tracking-wide uppercase";
+                } else {
+                    statusMsg.textContent = "Opening Packet...";
+                    statusMsg.className = "text-[11px] font-extrabold text-center text-[#d34e0a] h-4 mt-1 transition-opacity opacity-100 tracking-wide uppercase";
+                }
+            } else if (val == 0) {
+                statusMsg.style.opacity = 0;
+            }
+        });
+
+        zipper.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val == 100) {
+                if (!usernameInput.value || !passwordInput.value) {
+                    // Snap back if empty
+                    zipper.value = 0;
+                    zipperPull.style.left = '0%';
+                    gap.style.width = '0%';
+                    statusMsg.textContent = "Enter ID & Passcode";
+                    setTimeout(() => statusMsg.style.opacity = 0, 2000);
+                    return;
+                }
+
+                // Start Authentication
+                zipper.disabled = true;
+                zipperPull.style.cursor = 'default';
+                statusMsg.textContent = "Authenticating...";
+                statusMsg.className = "text-[11px] font-extrabold text-center text-[#d34e0a] h-4 mt-1 transition-opacity opacity-100 tracking-widest uppercase";
+
+                async function performLogin() {
+                    let loggedIn = false;
+                    let userRole = 'sales';
+
+                    // Server-side login: the server verifies the password with
+                    // Supabase Auth, looks up staff_profiles, signs the
+                    // espressgo_staff_session cookie, and returns the role.
+                    // No Supabase JS, no localStorage identity writes — the
+                    // cookie alone is the source of truth.
+                    try {
+                        const resp = await fetch('/api/staff-session/login', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                email: usernameInput.value,
+                                password: passwordInput.value,
+                            }),
+                        });
+                        const data = await resp.json().catch(() => ({}));
+
+                        if (resp.ok && data && data.session && data.session.role) {
+                            loggedIn = true;
+                            userRole = data.session.role;
+                        } else if (resp.status === 403) {
+                            // Authenticated with Supabase but no staff_profiles
+                            // row. Fail closed — admin must provision the account.
+                            statusMsg.textContent = "Account Not Provisioned";
+                            statusMsg.className = "text-[11px] font-extrabold text-center text-red-600 h-4 mt-1 transition-opacity opacity-100 tracking-wide uppercase";
+                            setTimeout(() => statusMsg.style.opacity = 0, 4000);
+                            zipper.disabled = false;
+                            zipperPull.style.cursor = 'pointer';
+                            zipper.value = 0;
+                            zipperPull.style.left = '0%';
+                            gap.style.width = '0%';
+                            return;
+                        } else {
+                            console.warn('Staff login failed:', data && data.error);
+                        }
+                    } catch (e) {
+                        console.warn('Staff login request errored:', e);
+                    }
+
+                    if (!loggedIn) {
+                        zipper.disabled = false;
+                        zipperPull.style.cursor = 'pointer';
+                        zipper.value = 0;
+                        zipperPull.style.left = '0%';
+                        gap.style.width = '0%';
+
+                        statusMsg.textContent = "Invalid Credentials!";
+                        statusMsg.className = "text-[11px] font-extrabold text-center text-red-600 h-4 mt-1 transition-opacity opacity-100 tracking-wide uppercase";
+                        setTimeout(() => statusMsg.style.opacity = 0, 3000);
+                        return;
+                    }
+
+                    // Success! Proceed with animation
+                    statusMsg.textContent = "Access Granted";
+                    statusMsg.className = "text-[11px] font-extrabold text-center text-green-700 h-4 mt-1 transition-opacity opacity-100 tracking-widest uppercase";
+
+                    packetContainer.style.transform = 'scale(1.05) translateY(-20px)';
+                    gap.style.background = '#1a0d06';
+
+                    setTimeout(() => {
+                        const redirects = {
+                            admin: 'business-management/finances/opertation.html',
+                            accountant: 'business-management/finances/opertation.html',
+                            procurement: 'business-management/Supplier-management/index.html',
+                            production: 'warehouse/inventory.html',
+                            logistic: 'logistic/fulfillment.html',
+                            sales: 'business-management/customer-management/customer-order/index.html',
+                            client: 'customer-page/index.html'
+                        };
+                        window.location.href = redirects[userRole] || 'business-management/finances/opertation.html';
+                    }, 1200);
+                }
+
+                performLogin();
+            } else {
+                // Snap back
+                zipper.value = 0;
+                zipperPull.style.left = '0%';
+                gap.style.width = '0%';
+                statusMsg.style.opacity = 0;
+            }
+        });
+    </script>
+</body>
+
+</html>

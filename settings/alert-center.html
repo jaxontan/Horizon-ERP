@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Alert & Action Center | Operational Audit Ledger</title>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="/public/js/rbac.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet"/>
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<script src="/components/sidebar.js?v=20260705a"></script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+/* Event Feed Micro-animations */
+        .event-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .slide-in {
+            animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-secondary-container antialiased flex">
+    <app-sidebar layout="fixed"></app-sidebar>
+    
+    <main class="ml-64 flex-1 min-h-screen transition-all duration-300">
+        <!-- TopAppBar (Functional Header) -->
+        <header class="flex justify-between items-center w-full px-8 h-16 sticky top-0 z-40 bg-surface-container-lowest border-b border-outline-variant">
+            <h2 class="text-lg font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px]">shield_lock</span>
+                Alert & Action Center
+            </h2>
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-outline pointer-events-none">
+                        <span class="material-symbols-outlined text-[18px]">search</span>
+                    </span>
+                    <input type="text" id="audit-search" oninput="searchLogs()" 
+                           class="pl-9 pr-4 py-1.5 bg-surface-container-low border-none rounded-lg text-xs font-semibold w-64 focus:ring-1 focus:ring-primary focus:outline-none" 
+                           placeholder="Search logs by actor, item, or text..."/>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="p-8 space-y-6 w-full">
+            
+            <!-- Page Header + Live Refresh & Security Badging -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold font-headline-lg text-primary tracking-tight mb-1 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[32px] text-primary">shield_lock</span>
+                        <span>Alert & Action Center</span>
+                    </h2>
+                    <p class="font-body-md text-on-surface-variant opacity-80 text-sm">Strictly read-only, non-repudiation database audit ledger and security firewall monitoring.</p>
+                </div>
+                
+                <!-- Secure Compliance Badging & Refresh Controller -->
+                <div class="flex items-center gap-3 shrink-0">
+                    <div class="bg-red-50 border border-red-100 rounded-xl px-4 py-2 flex items-center gap-2 text-red-800 text-xs font-bold shadow-sm">
+                        <span class="material-symbols-outlined text-[18px] text-red-600 animate-pulse">lock</span>
+                        <span>SECURE READ-ONLY LEDGER</span>
+                    </div>
+                    <button onclick="refreshLiveLedger(this)" class="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl shadow-md hover:bg-opacity-95 transition-all flex items-center gap-1.5 active:scale-95">
+                        <span id="refresh-icon" class="material-symbols-outlined text-[16px]">sync</span>
+                        <span id="refresh-text">Refresh Database</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Gateway Status -->
+            <div class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 w-fit">
+                <span class="material-symbols-outlined text-[15px] animate-spin" style="animation-duration: 4s;">sync</span>
+                <span>Live Gateway Connected</span>
+            </div>
+
+            <!-- Ledger Feed -->
+            <div class="space-y-4" id="ledger-container">
+                <!-- Log Rows are rendered dynamically here -->
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Global Operational Script -->
+    <script>
+    // --- Edge Function API helper ---
+    async function getAccessToken() {
+        const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+        if (client) {
+            const { data: { session } } = await client.auth.getSession();
+            return session ? session.access_token : null;
+        }
+        return null;
+    }
+
+
+    async function supabaseAPI({ table, operation, data, filters, columns, returning }) {
+        const resp = await fetch('/api/supabase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table, operation, data, filters, columns, returning })
+        });
+        const result = await resp.json();
+        if (result.error && result.data !== undefined) return result.data;
+        if (result.error) return [];
+        return result.data || [];
+    }
+
+        let logs = [];
+        let searchQuery = '';
+
+        function formatTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (isNaN(seconds) || seconds < 0) return "Just now";
+            let interval = Math.floor(seconds / 31536000);
+            if (interval >= 1) return interval + " year" + (interval > 1 ? "s" : "") + " ago";
+            interval = Math.floor(seconds / 2592000);
+            if (interval >= 1) return interval + " month" + (interval > 1 ? "s" : "") + " ago";
+            interval = Math.floor(seconds / 86400);
+            if (interval >= 1) return interval + " day" + (interval > 1 ? "s" : "") + " ago";
+            interval = Math.floor(seconds / 3600);
+            if (interval >= 1) return interval + " hour" + (interval > 1 ? "s" : "") + " ago";
+            interval = Math.floor(seconds / 60);
+            if (interval >= 1) return interval + " min" + (interval > 1 ? "s" : "") + " ago";
+            return "Just now";
+        }
+
+        // Load logs initially
+        async function initPage() {
+            let liveLogs = null;
+            try {
+                const data = await supabaseAPI({
+                    table: 'audit_logs',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { sort: { column: 'created_at', ascending: false } }
+                });
+                liveLogs = (data || []).map(log => ({
+                    id: log.id || `DB_LOG_${Math.random()}`,
+                    actor_name: log.user_email || 'Anonymous',
+                    actor_role: log.user_role || 'Visitor',
+                    action_type: log.action || 'UNKNOWN_ACTION',
+                    entity_type: log.table_affected || 'unknown',
+                    entity_id: log.record_id || 'N/A',
+                    description: log.description || '',
+                    time_ago: formatTimeAgo(new Date(log.created_at)),
+                    timestamp: log.created_at,
+                    severity: 'info',
+                    diff: log.new_value || {}
+                }));
+            } catch (err) {
+                console.warn('Real-time database fetch for audit_logs table failed.', err);
+            }
+
+            logs = liveLogs || [];
+            renderLogs();
+        }
+
+        // Live Database Refresh / Synchronization
+        function refreshLiveLedger(button) {
+            const icon = document.getElementById('refresh-icon');
+            const text = document.getElementById('refresh-text');
+            
+            if (icon && text && button) {
+                // Prevent duplicate click
+                button.disabled = true;
+                button.classList.add('opacity-75', 'cursor-not-allowed');
+                icon.classList.add('animate-spin');
+                text.innerText = "Synchronizing...";
+                
+                setTimeout(async () => {
+                    // Load new database events from Supabase Engine
+                    await initPage();
+                    
+                    // Reset styling
+                    icon.classList.remove('animate-spin');
+                    text.innerText = "Database Synchronized!";
+                    button.classList.remove('bg-primary');
+                    button.classList.add('bg-emerald-600');
+                    
+                    // Create floating toast
+                    const toast = document.createElement('div');
+                    toast.className = "fixed bottom-8 right-8 bg-slate-900 text-white font-bold text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 slide-in";
+                    toast.innerHTML = `
+                        <span class="material-symbols-outlined text-emerald-400 text-[18px]">verified</span>
+                        <span>Audit ledger synced successfully with live PostgreSQL database events.</span>
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                        setTimeout(() => toast.remove(), 500);
+                        
+                        // Restore button state
+                        text.innerText = "Refresh Database";
+                        button.classList.remove('bg-emerald-600');
+                        button.classList.add('bg-primary');
+                        button.disabled = false;
+                        button.classList.remove('opacity-75', 'cursor-not-allowed');
+                    }, 2500);
+                }, 1200);
+            }
+        }
+
+        // ─── Action type → visual config ─────────────────────────────────────────────
+        function getActionConfig(action_type) {
+            const configs = {
+                'STOCK_UPDATE':       { badge: 'bg-emerald-50 text-emerald-800 border-emerald-200', icon: 'inventory_2',      severity: 'info',    color: 'text-emerald-500' },
+                'STOCK_ADJUST':       { badge: 'bg-amber-50 text-amber-800 border-amber-200',      icon: 'tune',             severity: 'warning', color: 'text-amber-500' },
+                'STOCK_MOVE':         { badge: 'bg-teal-50 text-teal-800 border-teal-200',          icon: 'sync_alt',         severity: 'info',    color: 'text-teal-500' },
+                'ORDER_CREATE':       { badge: 'bg-blue-50 text-blue-800 border-blue-200',           icon: 'shopping_bag',     severity: 'info',    color: 'text-blue-500' },
+                'JOURNAL_CREATE':     { badge: 'bg-indigo-50 text-indigo-800 border-indigo-200',   icon: 'menu_book',       severity: 'info',    color: 'text-indigo-500' },
+                'ACCOUNT_UPDATE':     { badge: 'bg-purple-50 text-purple-800 border-purple-200',    icon: 'account_balance',  severity: 'info',    color: 'text-purple-500' },
+                'STAFF_UPDATE':       { badge: 'bg-cyan-50 text-cyan-800 border-cyan-200',          icon: 'person',           severity: 'info',    color: 'text-cyan-500' },
+                'PRODUCTION_CREATE':  { badge: 'bg-orange-50 text-orange-800 border-orange-200',   icon: 'factory',          severity: 'info',    color: 'text-orange-500' },
+                'PAYMENT_RECORD':     { badge: 'bg-green-50 text-green-800 border-green-200',       icon: 'payments',         severity: 'info',    color: 'text-green-500' },
+                'BOOKING_CREATE':     { badge: 'bg-violet-50 text-violet-800 border-violet-200',   icon: 'event',            severity: 'info',    color: 'text-violet-500' },
+                'SHIPMENT_CREATE':    { badge: 'bg-sky-50 text-sky-800 border-sky-200',            icon: 'local_shipping',   severity: 'info',    color: 'text-sky-500' },
+                'PO_CREATE':          { badge: 'bg-rose-50 text-rose-800 border-rose-200',          icon: 'receipt_long',     severity: 'info',    color: 'text-rose-500' },
+                'SUPPLIER_UPDATE':    { badge: 'bg-lime-50 text-lime-800 border-lime-200',         icon: 'store',            severity: 'info',    color: 'text-lime-500' },
+                'WARNING_ALERT':      { badge: 'bg-amber-50 text-amber-800 border-amber-200',       icon: 'warning',          severity: 'warning', color: 'text-amber-500' },
+                'SECURITY_BLOCK':     { badge: 'bg-red-50 text-red-800 border-red-200',            icon: 'gpp_bad',          severity: 'error',   color: 'text-red-500' },
+                'DELETE_OPERATION':   { badge: 'bg-red-50 text-red-800 border-red-200',            icon: 'delete',           severity: 'error',   color: 'text-red-500' },
+                'CREATE_OPERATION':   { badge: 'bg-blue-50 text-blue-800 border-blue-200',         icon: 'add_circle',       severity: 'info',    color: 'text-blue-500' },
+                'UPDATE_OPERATION':   { badge: 'bg-slate-50 text-slate-700 border-slate-200',     icon: 'edit',            severity: 'info',    color: 'text-slate-400' },
+                'SYSTEM_INTERNAL':    { badge: 'bg-slate-100 text-slate-500 border-slate-200',    icon: 'settings',         severity: 'info',    color: 'text-slate-400' },
+            };
+            return configs[action_type] || configs['UPDATE_OPERATION'];
+        }
+
+        // ─── Live polling ─────────────────────────────────────────────────────────────
+        let pollIntervalId = null;
+        let lastSeenTimestamp = null;
+
+        async function pollForNewLogs() {
+            try {
+                const data = await supabaseAPI({
+                    table: 'audit_logs',
+                    operation: 'select',
+                    columns: 'id, user_email, user_role, action, table_affected, record_id, description, new_value, created_at',
+                    filters: {
+                        sort: { column: 'created_at', ascending: false },
+                        limit: 20,
+                    }
+                });
+
+                const newLogs = (data || []).map(log => ({
+                    id: log.id || `DB_LOG_${Math.random()}`,
+                    actor_name: log.user_email || 'Anonymous',
+                    actor_role: log.user_role || 'Visitor',
+                    action_type: log.action || 'UNKNOWN_ACTION',
+                    entity_type: log.table_affected || 'unknown',
+                    entity_id: log.record_id || 'N/A',
+                    description: log.description || '',
+                    time_ago: formatTimeAgo(new Date(log.created_at)),
+                    timestamp: log.created_at,
+                    severity: 'info',
+                    diff: log.new_value || {},
+                }));
+
+                if (newLogs.length > 0) {
+                    const latestTs = newLogs[0].timestamp;
+                    if (lastSeenTimestamp && latestTs !== lastSeenTimestamp) {
+                        // New events arrived — show toast
+                        const count = newLogs.length;
+                        showNewEventsToast(count);
+                    }
+                    lastSeenTimestamp = latestTs;
+                }
+
+                logs = newLogs;
+                renderLogs();
+            } catch (err) {
+                console.warn('Poll failed:', err);
+            }
+        }
+
+        function showNewEventsToast(count) {
+            const toast = document.createElement('div');
+            toast.className = "fixed top-6 right-6 bg-slate-900 text-white font-bold text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 slide-in";
+            toast.innerHTML = `
+                <span class="material-symbols-outlined text-emerald-400 text-[18px]">add_circle</span>
+                <span>${count} new event${count > 1 ? 's' : ''} logged</span>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        function startLivePolling() {
+            // Poll every 10 seconds
+            pollIntervalId = setInterval(pollForNewLogs, 10000);
+        }
+
+        function stopLivePolling() {
+            if (pollIntervalId) {
+                clearInterval(pollIntervalId);
+                pollIntervalId = null;
+            }
+        }
+
+        // ─── Render ───────────────────────────────────────────────────────────────────
+        function renderLogs() {
+            const container = document.getElementById('ledger-container');
+            container.innerHTML = '';
+
+            const filtered = logs.filter(log => {
+                let matchesSearch = true;
+                if (searchQuery) {
+                    const term = searchQuery.toLowerCase();
+                    matchesSearch = (
+                        log.actor_name.toLowerCase().includes(term) ||
+                        log.actor_role.toLowerCase().includes(term) ||
+                        log.description.toLowerCase().includes(term) ||
+                        (log.entity_id || '').toLowerCase().includes(term) ||
+                        (log.entity_type || '').toLowerCase().includes(term)
+                    );
+                }
+
+                return matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-12 text-center">
+                        <span class="material-symbols-outlined text-[48px] text-slate-300">search_off</span>
+                        <h4 class="font-extrabold text-sm text-primary mt-3">No Audit Logs Found</h4>
+                        <p class="text-xs text-on-surface-variant mt-1">Perform an action (add journal entry, update inventory, etc.) and it will appear here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(log => {
+                const cfg = getActionConfig(log.action_type);
+
+                const logCard = document.createElement('div');
+                logCard.className = "bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm event-card slide-in";
+                logCard.innerHTML = `
+                    <div class="p-5 flex items-start justify-between gap-4 cursor-pointer hover:bg-slate-50/50 transition-colors" onclick="toggleExpander('${log.id}')">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl border ${cfg.badge.split(' ').join(' border-')} flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-[20px]">${cfg.icon}</span>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-xs font-extrabold text-primary">${log.actor_name}</span>
+                                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${log.actor_role}</span>
+                                    <span class="text-[9px] font-extrabold uppercase tracking-wider ${cfg.badge} border px-1.5 py-0.5 rounded">${log.action_type}</span>
+                                </div>
+                                <p class="text-xs font-semibold text-on-surface leading-normal">${log.description}</p>
+                                <div class="flex items-center gap-3 text-[10px] text-slate-400 font-semibold pt-1">
+                                    <span class="flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[13px]">schedule</span>
+                                        ${log.time_ago}
+                                    </span>
+                                    <span>•</span>
+                                    <span class="flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[13px]">database</span>
+                                        ${log.entity_type}
+                                    </span>
+                                    ${log.entity_id && log.entity_id !== 'N/A' ? `<span>•</span><span>Ref: ${log.entity_id}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="shrink-0 flex items-center h-10">
+                            <span id="chevron-${log.id}" class="material-symbols-outlined text-slate-400 transition-transform duration-200">expand_more</span>
+                        </div>
+                    </div>
+
+                    <!-- Expanded Inspector Panel -->
+                    <div id="inspector-${log.id}" class="hidden border-t border-outline-variant/60 bg-slate-50/40 p-5 space-y-4">
+                        <h5 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[15px]">code</span>
+                            Database Diff Object (JSON)
+                        </h5>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Before Change (Old State)</span>
+                                <pre class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 overflow-x-auto text-[11px] font-mono text-slate-600 font-medium max-h-48 leading-relaxed shadow-inner">${log.diff.old_value ? JSON.stringify(log.diff.old_value, null, 2) : 'null (New Row Added)'}</pre>
+                            </div>
+                            <div class="space-y-1">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">After Change (New State / Query Context)</span>
+                                <pre class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 overflow-x-auto text-[11px] font-mono text-slate-800 font-medium max-h-48 leading-relaxed shadow-inner">${JSON.stringify(log.diff.new_value || log.diff, null, 2)}</pre>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(logCard);
+            });
+        }
+
+        // ─── Toggle JSON inspect view ─────────────────────────────────────────────────
+        function toggleExpander(id) {
+            const panel = document.getElementById(`inspector-${id}`);
+            const chev = document.getElementById(`chevron-${id}`);
+            if (panel && chev) {
+                panel.classList.toggle('hidden');
+                chev.classList.toggle('rotate-180');
+            }
+        }
+
+        // ─── Search ──────────────────────────────────────────────────────────────────
+        function searchLogs() {
+            searchQuery = document.getElementById('audit-search').value;
+            renderLogs();
+        }
+
+        // ─── Simulate operations (dev demo) ──────────────────────────────────────────
+        async function simulateOperation(type) {
+            // Read role/email from window.__staffIdentity (cookie-backed).
+            const ident = (typeof window !== 'undefined' && window.__staffIdentity) || {};
+            const currentRole = ident.role || 'unknown';
+            const currentEmail = ident.email || 'anonymous@espressgo.local';
+            const userCaps = currentRole.charAt(0).toUpperCase() + currentRole.slice(1);
+            const idNumber = logs.length + 1;
+
+            let newLog = {};
+            if (type === 'stock') {
+                const stockAdded = Math.floor(Math.random() * 80) + 10;
+                newLog = {
+                    actor_name: currentEmail,
+                    actor_role: currentRole,
+                    action_type: "STOCK_UPDATE",
+                    entity_type: "warehouse.ingredients",
+                    entity_id: `ING-${Math.floor(Math.random() * 900) + 100}`,
+                    description: `${userCaps} User added ${stockAdded} kg of Premium Coffee Beans to warehouse stock`,
+                    timestamp: new Date().toISOString(),
+                    severity: "info",
+                    diff: {
+                        old_value: { product: "Premium Coffee Beans", quantity: "180kg", state: "Optimal" },
+                        new_value: { product: "Premium Coffee Beans", quantity: `${180 + stockAdded}kg`, state: "Optimal" }
+                    }
+                };
+            } else if (type === 'security') {
+                newLog = {
+                    actor_name: "Supabase Firewall",
+                    actor_role: "Security Guard",
+                    action_type: "SECURITY_BLOCK",
+                    entity_type: "public.audit_logs",
+                    entity_id: "GRC-9942",
+                    description: `Row-Level Security (RLS) triggered: Blocked unauthorized UPDATE operation on 'businesses' by simulated user [${currentRole}]`,
+                    timestamp: new Date().toISOString(),
+                    severity: "error",
+                    diff: {
+                        query: `UPDATE businesses SET status = 'Verified' WHERE id = 'a0eebc99-9c0b-4eb8-bb6d-6bb9bd380a11'`,
+                        attempted_by: currentRole,
+                        origin: "REST Client Core Gateway",
+                        rejection_reason: "Row-Level Security (RLS) policy rule 'RESTRICTED_MUTATION' rejected transaction: user lacks write privileges."
+                    }
+                };
+            }
+
+            try {
+                await supabaseAPI({
+                    table: 'audit_logs',
+                    operation: 'insert',
+                    data: [newLog],
+                    returning: 'representation'
+                });
+            } catch (err) {
+                console.warn('Could not write simulation to Supabase:', err);
+            }
+
+            newLog.id = `SIM_LOG_${idNumber}`;
+            newLog.time_ago = "Just now";
+            logs.unshift(newLog);
+            renderLogs();
+
+            const feed = document.getElementById('ledger-container');
+            if (feed && feed.children[0]) {
+                feed.children[0].classList.add('ring-2', 'ring-primary/20', 'bg-primary/5');
+                setTimeout(() => {
+                    feed.children[0].classList.remove('ring-2', 'ring-primary/20', 'bg-primary/5');
+                }, 2000);
+            }
+        }
+
+        // ─── Page init ───────────────────────────────────────────────────────────────
+        async function initPage() {
+            await pollForNewLogs();
+        }
+
+        // ─── Lifecycle ───────────────────────────────────────────────────────────────
+        window.addEventListener('DOMContentLoaded', () => {
+            initPage();
+            startLivePolling();
+        });
+        window.addEventListener('beforeunload', stopLivePolling);
+    </script>
+</body>
+</html>

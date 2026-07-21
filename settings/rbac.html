@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>RBAC Admin | EsspressGO</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="/public/js/rbac.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet"/>
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .badge-auto   { background:#e0f2fe; color:#075985; }
+        .badge-manual { background:#fef3c7; color:#92400e; }
+        .badge-deep-link { background:#ede9fe; color:#5b21b6; }
+        .badge-overridden { background:#fef9c3; color:#854d0e; }
+        .badge-removed    { background:#fee2e2; color:#991b1b; }
+        .badge-default    { background:#dcfce7; color:#166534; }
+        .badge-always     { background:#1e293b; color:#f1f5f9; }
+        .badge-locked     { background:#f1f5f9; color:#475569; border:1px dashed #94a3b8; }
+        .locked-row td { color:#64748b; }
+        .cell-locked { background:#f8fafc; opacity:0.6; }
+        .check-cell { display:flex; justify-content:center; align-items:center; width:100%; height:100%; }
+        .check-cell input[type=checkbox] { width:18px; height:18px; cursor:pointer; accent-color:#031635; }
+        .check-cell input[type=checkbox]:disabled { cursor:not-allowed; opacity:0.55; }
+        .tab-active { color:#031635; border-bottom-color:#031635; }
+        .tab-inactive { color:#44474e; border-bottom-color:transparent; }
+        .perm-row:hover { background:#f8fafc; }
+        .dot { display:inline-block; width:8px; height:8px; border-radius:50%; }
+        .dot-default    { background:#22c55e; }
+        .dot-overridden { background:#eab308; }
+        .dot-removed    { background:#ef4444; }
+        .sticky-col { position:sticky; left:0; background:inherit; z-index:1; }
+        .save-dirty { box-shadow: 0 0 0 2px #f59e0b; }
+        /* Toast */
+        #toast { position:fixed; right:24px; bottom:24px; padding:12px 18px; border-radius:10px; font-size:13px; font-weight: 600; /* font-semibold */ opacity:0; transform:translateY(8px); transition:all .25s; pointer-events:none; z-index:100; }
+        #toast.show { opacity:1; transform:translateY(0); }
+        #toast.ok    { background:#16a34a; color:white; }
+        #toast.warn  { background:#d97706; color:white; }
+        #toast.err   { background:#dc2626; color:white; }
+        /* Confirm modal */
+        #confirm-overlay { background:rgba(0,0,0,0.5); }
+        .modal-panel { background:white; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); }
+        /* Scrollable table */
+        .matrix-wrap { max-height: calc(100vh - 260px); overflow:auto; }
+        /* Locked admin column */
+        .admin-locked { background:#f1f5f9; }
+
+        /* Folder grouping on Page Access tab */
+        .folder-row { background:#e2e8f0; }
+        .folder-row > td { padding-top:0.75rem; padding-bottom:0.75rem; }
+        .folder-toggle { cursor:pointer; user-select:none; }
+        .folder-toggle:hover { background:#cbd5e1; }
+        .folder-chevron { transition:transform .15s ease; display:inline-block; }
+        .folder-row[data-collapsed] .folder-chevron { transform:rotate(-90deg); }
+        .folder-count { background:#ffffff; color:#1e293b; border:1px solid #94a3b8; }
+
+        @media (max-width:1024px) {
+            main { margin-left:0 !important; width:100% !important; padding:1.5rem !important; }
+            .matrix-wrap { max-height: none; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-secondary-container antialiased flex">
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <main class="ml-64 flex-1 min-h-screen transition-all duration-300">
+        <!-- Top bar -->
+        <header class="flex justify-between items-center w-full px-8 h-16 sticky top-0 z-40 bg-surface-container-lowest border-b border-outline-variant">
+            <h2 class="text-lg font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px]">admin_panel_settings</span>
+                RBAC Admin
+            </h2>
+            <div class="flex items-center gap-3">
+                <span id="source-pill" class="text-[10px] font-bold px-2 py-1 rounded-full bg-surface-container text-on-surface-variant">source: …</span>
+                <span id="dirty-pill" class="hidden text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800">UNSAVED CHANGES</span>
+                <button id="btn-discard" onclick="discardChanges()" class="hidden px-3 py-1.5 text-xs font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high">Discard</button>
+                <button id="btn-save" onclick="openSaveConfirm()" class="px-4 py-1.5 text-xs font-bold text-white bg-primary rounded-lg hover:opacity-95 active:scale-95 transition-all">Save changes</button>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-6 w-full">
+
+            <!-- Banner -->
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3 text-amber-900">
+                <span class="material-symbols-outlined text-[22px] mt-0.5">warning</span>
+                <div class="text-sm leading-relaxed">
+                    <strong>Be careful.</strong> Locking out roles can break the system. The <strong>admin</strong> column is always on and cannot be edited — the database itself rejects any change to it. Every save is recorded in history and can be reverted.
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="border-b border-outline-variant flex gap-1">
+                <button data-tab="permissions" onclick="switchTab('permissions')" class="px-4 py-2 text-sm font-bold border-b-2 tab-active">Permissions</button>
+                <button data-tab="pages"       onclick="switchTab('pages')"       class="px-4 py-2 text-sm font-bold border-b-2 tab-inactive">Page Access</button>
+                <button data-tab="history"     onclick="switchTab('history')"     class="px-4 py-2 text-sm font-bold border-b-2 tab-inactive">History</button>
+            </div>
+
+            <!-- ── Tab: Permissions ────────────────────────────────────────────── -->
+            <section id="tab-permissions" class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-on-surface-variant">
+                        Toggle which roles can perform each action. Admin is always on.
+                        <span class="ml-3 inline-flex items-center gap-1"><span class="dot dot-default"></span> default</span>
+                        <span class="ml-2 inline-flex items-center gap-1"><span class="dot dot-overridden"></span> overridden</span>
+                        <span class="ml-2 inline-flex items-center gap-1"><span class="dot dot-removed"></span> removed</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-toggle-perm-folders" onclick="toggleAllPermGroups()" class="px-3 py-1.5 text-xs font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high" title="Expand or collapse all permission groups">Collapse all</button>
+                        <button onclick="resetPermissionsToDefaults()" class="px-3 py-1.5 text-xs font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high">Reset to defaults</button>
+                    </div>
+                </div>
+                <div class="bg-surface-container-lowest rounded-xl border border-outline-variant matrix-wrap">
+                    <table class="w-full text-sm" id="permissions-table">
+                        <thead class="bg-surface-container text-on-surface-variant text-[11px] uppercase tracking-wider sticky top-0 z-10">
+                            <tr>
+                                <th class="text-left px-4 py-3 sticky-col bg-surface-container">Permission</th>
+                                <th class="px-3 py-3 admin-locked">admin</th>
+                                <th class="px-3 py-3">accountant</th>
+                                <th class="px-3 py-3">procurement</th>
+                                <th class="px-3 py-3">production</th>
+                                <th class="px-3 py-3">logistic</th>
+                                <th class="px-3 py-3">sales</th>
+                            </tr>
+                        </thead>
+                        <tbody id="permissions-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ── Tab: Page Access ────────────────────────────────────────────── -->
+            <section id="tab-pages" class="space-y-3 hidden">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-on-surface-variant">
+                        Toggle which roles can open each page. Rows marked
+                        <span class="badge-auto px-1.5 py-0.5 rounded text-[10px] font-bold ml-1">auto</span>
+                        are derived from the sidebar. Rows marked
+                        <span class="badge-manual px-1.5 py-0.5 rounded text-[10px] font-bold ml-1">manual</span>
+                        are declared in <code>public/js/rbac.js</code> (<code>EXTRA_STAFF_PAGES</code>). Rows marked
+                        <span class="badge-deep-link px-1.5 py-0.5 rounded text-[10px] font-bold ml-1">deep-link</span>
+                        are staff pages reachable via buttons/links from other pages (<code>DEEP_LINK_STAFF_PAGES</code>). Rows with a
+                        <span class="badge-locked px-1.5 py-0.5 rounded text-[10px] font-bold ml-1">required: &lt;role&gt;</span>
+                        badge are locked: their checkboxes for non-matching roles are disabled and cannot be toggled on. Rows with a
+                        <span class="badge-locked px-1.5 py-0.5 rounded text-[10px] font-bold ml-1">view only</span>
+                        badge are public/customer/login pages that RBAC does not gate — all checkboxes are always checked and disabled.
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-toggle-folders" onclick="toggleAllFolders()" class="px-3 py-1.5 text-xs font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high" title="Expand or collapse all folder groups">Collapse all</button>
+                        <button onclick="resetPagesToDefaults()" class="px-3 py-1.5 text-xs font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high">Reset to defaults</button>
+                    </div>
+                </div>
+                <div class="bg-surface-container-lowest rounded-xl border border-outline-variant matrix-wrap">
+                    <table class="w-full text-sm" id="pages-table">
+                        <thead class="bg-surface-container text-on-surface-variant text-[11px] uppercase tracking-wider sticky top-0 z-10">
+                            <tr>
+                                <th class="text-left px-4 py-3 sticky-col bg-surface-container">Page</th>
+                                <th class="text-left px-4 py-3 sticky-col bg-surface-container">Path</th>
+                                <th class="text-left px-4 py-3 sticky-col bg-surface-container">Source</th>
+                                <th class="px-3 py-3 admin-locked">admin</th>
+                                <th class="px-3 py-3">accountant</th>
+                                <th class="px-3 py-3">procurement</th>
+                                <th class="px-3 py-3">production</th>
+                                <th class="px-3 py-3">logistic</th>
+                                <th class="px-3 py-3">sales</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pages-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- ── Tab: History ───────────────────────────────────────────────── -->
+            <section id="tab-history" class="space-y-3 hidden">
+                <div class="text-sm text-on-surface-variant">
+                    Past saves, newest first. Click <strong>Restore</strong> to roll back the matrix to that snapshot.
+                </div>
+                <div id="history-list" class="space-y-2"></div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Confirm modal -->
+    <div id="confirm-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="modal-panel max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-primary mb-2">Save changes?</h3>
+            <p id="confirm-summary" class="text-sm text-on-surface-variant mb-5"></p>
+            <div class="mb-5">
+                <label class="text-xs font-bold text-on-surface-variant">Reason (optional, shown in history)</label>
+                <input id="confirm-reason" type="text" maxlength="120" class="mt-1 w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="e.g. allow accountants to log production notes"/>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeSaveConfirm()" class="px-4 py-2 text-sm font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high">Cancel</button>
+                <button onclick="doSave()" class="px-4 py-2 text-sm font-bold text-white bg-primary rounded-lg hover:opacity-95">Confirm save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restore confirm modal -->
+    <div id="restore-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="modal-panel max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-primary mb-2">Restore this snapshot?</h3>
+            <p id="restore-summary" class="text-sm text-on-surface-variant mb-5"></p>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeRestoreConfirm()" class="px-4 py-2 text-sm font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high">Cancel</button>
+                <button onclick="doRestore()" class="px-4 py-2 text-sm font-bold text-white bg-amber-600 rounded-lg hover:opacity-95">Restore</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script src="/components/sidebar.js?v=20260705a"></script>
+    <script>
+    // ─── State ───────────────────────────────────────────────────────────────
+    // serverMatrix      = {permKey: [roles]}  fetched from /api/rbac/effective
+    // serverPageAccess  = {pageId: {role:true|false}} fetched from /api/rbac/permissions (and a future pages endpoint if needed)
+    // pendingChanges    = Set of "permKey|role=true|false" for the permissions tab
+    // pendingPageAccess = Set of "pageId|role=true|false" for the page-access tab
+    // localDefaults     = server's defaults (extracted from a flag set by the
+    //                     initial effective fetch — see loadServerDefaults).
+    const EDITABLE_ROLES = window.RBAC.STAFF_ROLES.filter(r => r !== 'admin');
+
+    let serverMatrix = {};     // permKey -> Set(role)
+    let localDefaults = {};    // permKey -> Set(role)  (the effective matrix at load time, before any UI edit)
+    let serverPages = {};      // pageId -> { path, label, source: 'auto'|'manual', defaults: {role:true|false} }
+    let pendingChanges = new Map();    // key = permKey|role, value = true|false
+    let pendingPageChanges = new Map();// key = pageId|role, value = true|false
+    let pendingRestore = null; // { historyId, summary }
+
+    // ─── Boot ────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', boot);
+
+    async function boot() {
+        // Guard: only admin can be on this page
+        await RBAC.loadEffective({ force: true });
+        if (!RBAC.isAdmin()) {
+            RBAC.showAccessDenied({
+                pageName: 'the RBAC Admin Console',
+                allowedRoles: ['Administrators'],
+                replaceScope: 'main',
+                permission: 'staff:write',
+            });
+        }
+        await Promise.all([loadPermissions(), loadPages()]);
+        renderPermissions();
+        renderPages();
+        await loadHistory();
+        updateSourcePill();
+    }
+
+    // ─── Tabs ────────────────────────────────────────────────────────────────
+    function switchTab(name) {
+        for (const tab of ['permissions', 'pages', 'history']) {
+            document.getElementById(`tab-${tab}`).classList.toggle('hidden', tab !== name);
+        }
+        for (const btn of document.querySelectorAll('[data-tab]')) {
+            btn.classList.toggle('tab-active', btn.dataset.tab === name);
+            btn.classList.toggle('tab-inactive', btn.dataset.tab !== name);
+        }
+        if (name === 'history') loadHistory();
+    }
+
+    // ─── Load data ───────────────────────────────────────────────────────────
+    async function loadPermissions() {
+        const resp = await fetch('/api/rbac/effective', { credentials: 'same-origin' });
+        if (!resp.ok) throw new Error(`effective ${resp.status}`);
+        const json = await resp.json();
+        serverMatrix = {};
+        localDefaults = {};
+        for (const k of Object.keys(json.matrix || {})) {
+            const set = new Set(json.matrix[k]);
+            serverMatrix[k] = set;
+        }
+        // Derive original defaults by subtracting current overrides from the
+        // effective matrix. That way "Reset to defaults" knows the true
+        // baseline even if the matrix has drifted.
+        const raw = await fetch('/api/rbac/permissions', { credentials: 'same-origin' });
+        const rawJson = await raw.json();
+        const overrideMap = new Map();
+        for (const o of (rawJson.overrides || [])) {
+            overrideMap.set(`${o.permission_key}|${o.role}`, !!o.value);
+        }
+        for (const k of Object.keys(serverMatrix)) {
+            const def = new Set(serverMatrix[k]);
+            for (const role of EDITABLE_ROLES) {
+                const ov = overrideMap.get(`${k}|${role}`);
+                if (ov === true) def.delete(role);    // default did NOT include it
+                else if (ov === false) def.add(role); // default DID include it
+            }
+            def.add('admin'); // admin is always in defaults
+            localDefaults[k] = def;
+        }
+        // Stash the raw overrides on each cell for the dot indicator.
+        window.__rbacOverrides = overrideMap;
+    }
+
+    async function loadPages() {
+        // Build the page list from three sources:
+        //   - NAV_PERMISSIONS  (auto   = from sidebar.js + rbac.js's perm mapping)
+        //   - EXTRA_STAFF_PAGES (manual = from rbac.js, admin-only deep links)
+        //   - DEEP_LINK_STAFF_PAGES (deep-link = from rbac.js, non-sidebar staff pages)
+        // For each, default access = "every STAFF_ROLES member can open it" unless
+        // the page's perm gates it (then default = perm default roles).
+        serverPages = {};
+        const nav = (window.RBAC && window.RBAC.NAV_PERMISSIONS) || {};
+        const roleById = invertNavPermissions(nav);
+        for (const pageId of Object.keys(nav)) {
+            // For pages gated by a permission, default = whoever has that perm.
+            // For pages without a perm (rare), default = all staff.
+            const perm = nav[pageId];
+            const def = new Set(window.RBAC.STAFF_ROLES);
+            if (perm && localDefaults[perm]) {
+                def.clear();
+                for (const r of localDefaults[perm]) def.add(r);
+            }
+            serverPages[pageId] = {
+                path: pagePathById(pageId) || `?${pageId}`,
+                label: pageLabelById(pageId),
+                source: 'auto',
+                defaults: def,
+            };
+        }
+        const extras = (window.RBAC && window.RBAC.EXTRA_STAFF_PAGES) || [];
+        for (const p of extras) {
+            // Default access for manual pages:
+            //   - `requiredRole` → lock to {requiredRole, admin} (e.g. protected
+            //     account*.html pages). Renders with locked checkboxes for the
+            //     other roles.
+            //   - `viewOnly`     → public/customer/login pages. Listed in the
+            //     catalog so admins can see them, but no role is ever restricted:
+            //     defaults = all roles, all checkboxes render checked+disabled.
+            //   - neither        → default-open to every staff role (tunable via
+            //     rbac_page_access overrides).
+            const def = new Set(window.RBAC.STAFF_ROLES);
+            if (p.requiredRole) {
+                def.clear();
+                def.add(p.requiredRole);
+                def.add('admin');
+            }
+            serverPages[p.id] = {
+                path: p.path,
+                label: p.label,
+                source: 'manual',
+                defaults: def,
+                requiredRole: p.requiredRole || null,
+                locked: !!p.requiredRole,
+                viewOnly: !!p.viewOnly,
+            };
+        }
+        const deepLinks = (window.RBAC && window.RBAC.DEEP_LINK_STAFF_PAGES) || [];
+        for (const p of deepLinks) {
+            // Don't overwrite an existing entry (auto/manual wins over deep-link).
+            if (serverPages[p.id]) continue;
+            serverPages[p.id] = {
+                path: p.path,
+                label: p.label,
+                source: 'deep-link',
+                defaults: new Set(window.RBAC.STAFF_ROLES),
+            };
+        }
+        // Try to fetch per-page overrides if the endpoint exists; if it
+        // doesn't, treat as empty (phase-4 fallback).
+        try {
+            const r = await fetch('/api/rbac/page-access', { credentials: 'same-origin' });
+            if (r.ok) {
+                const j = await r.json();
+                window.__rbacPageAccess = j.rows || [];
+            } else {
+                window.__rbacPageAccess = [];
+            }
+        } catch {
+            window.__rbacPageAccess = [];
+        }
+    }
+
+    // Re-uses the server's role-permission knowledge. NAV_PERMISSIONS maps
+    // pageId -> permissionKey. We can't reverse it client-side without also
+    // knowing the inverse; for now we keep both lookups.
+    function invertNavPermissions(nav) { return nav; }
+    function pagePathById(id) {
+        // Hardcoded fallback — covers everything currently in NAV_PERMISSIONS
+        // and EXTRA_STAFF_PAGES. If you add a new page, the label & path can
+        // be added here too (or, ideally, in a new RBAC_PAGES manifest).
+        const map = {
+            'supplier-management':   '/business-management/Supplier-management/index.html',
+            'customer-master':       '/business-management/customer-management/index.html',
+            'sales-dashboard':       '/business-management/customer-management/customer-order/index.html',
+            'sales-dashboard-b2c':   '/business-management/customer-management/customer-order/b2c.html',
+            'customer-timeline':     '/business-management/customer-management/customer-timeline.html',
+            'customer-verification': '/business-management/customer-management/big-business/customer-verification.html',
+            'supplier-details':      '/business-management/Supplier-management/details.html',
+            'supplier-onboard':      '/business-management/Supplier-management/onboard.html',
+            'supplier-timeline':     '/business-management/Supplier-management/timeline.html',
+            'outreach':              '/business-management/outreach/email-outreach.html',
+            'support-hub':           '/business-management/customer-management/support.html',
+            'finance-dashboard':     '/business-management/finances/opertation.html',
+            'traceability':          '/document/traceability.html',
+            'purchase-record':       '/document/purchase-record.html',
+            'fulfillment':           '/logistic/fulfillment.html',
+            'warehouse-stock':       '/warehouse/inventory.html',
+            'production':            '/production/index.html',
+            'production-recipes':    '/warehouse/recipes.html',
+            'factory-booking':       '/factory-booking/index.html',
+            'staff-management':      '/staff-management/clock-in.html',
+            'create-staff':          '/staff-management/create-staff.html',
+            'staff-salaries':        '/staff-management/salaries.html',
+            'rbac-admin':            '/settings/rbac.html',
+            'alert-center':          '/settings/alert-center.html',
+        };
+        return map[id] || '';
+    }
+    function pageLabelById(id) {
+        return id.split('-').map(s => s[0].toUpperCase() + s.slice(1)).join(' ');
+    }
+
+    async function loadHistory() {
+        const resp = await fetch('/api/rbac/history', { credentials: 'same-origin' });
+        if (!resp.ok) {
+            document.getElementById('history-list').innerHTML =
+                `<div class="text-sm text-on-surface-variant">History unavailable.</div>`;
+            return;
+        }
+        const json = await resp.json();
+        const rows = json.rows || [];
+        const list = document.getElementById('history-list');
+        if (rows.length === 0) {
+            list.innerHTML = `<div class="text-sm text-on-surface-variant italic">No saves yet. The first time you click "Save changes", a baseline snapshot will be recorded.</div>`;
+            return;
+        }
+        list.innerHTML = rows.map(r => {
+            const when = new Date(r.saved_at).toLocaleString();
+            const snap = r.snapshot_after || { rows: [] };
+            const rowCount = (snap.rows || []).length;
+            return `
+                <div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-4 flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-bold text-primary">${escapeHtml(r.summary || '(no summary)')}</div>
+                        <div class="text-xs text-on-surface-variant mt-0.5">${when} — by ${escapeHtml(r.saved_by || '?')} — ${rowCount} override row${rowCount === 1 ? '' : 's'}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick='viewSnapshot(${JSON.stringify(r).replace(/'/g, "&apos;")})' class="px-3 py-1.5 text-xs font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high">View</button>
+                        <button onclick='openRestoreConfirm(${r.id}, ${JSON.stringify(r.summary || "").replace(/'/g, "&apos;")})' class="px-3 py-1.5 text-xs font-bold text-white bg-amber-600 rounded-lg hover:opacity-95">Restore</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ─── Render ──────────────────────────────────────────────────────────────
+    // Permission grouping: derives the namespace from `permKey` (everything
+    // before the first `:`) and maps it to a human label. Permissions without
+    // a `:` get their own "(uncategorized)" group.
+    const PERM_GROUP_LABELS = {
+        'staff':           'Staff management',
+        'salary':          'Salaries',
+        'inventory':       'Inventory',
+        'raw_materials':   'Raw materials',
+        'recipes':         'Recipes',
+        'production':      'Production',
+        'finance':         'Finance',
+        'journal':         'Journal',
+        'orders':          'Orders',
+        'support':         'Support',
+        'supplier':        'Suppliers',
+        'outreach':        'Outreach',
+        'factory':         'Factory booking',
+        'warehouse_map':   'Warehouse map',
+        'alerts':          'Alerts',
+        'settings':        'Settings',
+    };
+    function getPermGroup(key) {
+        const colon = key.indexOf(':');
+        return colon > 0 ? key.slice(0, colon) : '(uncategorized)';
+    }
+    function getPermGroupLabel(group) {
+        return PERM_GROUP_LABELS[group] || group;
+    }
+    function getCollapsedPermGroups() {
+        try {
+            const raw = localStorage.getItem('rbac.perms.collapsedGroups');
+            const arr = raw ? JSON.parse(raw) : [];
+            return new Set(Array.isArray(arr) ? arr : []);
+        } catch { return new Set(); }
+    }
+    function persistCollapsedPermGroups(set) {
+        try {
+            localStorage.setItem('rbac.perms.collapsedGroups', JSON.stringify(Array.from(set)));
+        } catch { /* localStorage disabled — non-fatal */ }
+    }
+
+    function renderPermissions() {
+        const body = document.getElementById('permissions-body');
+        const html = [];
+        // ── Group permKeys by namespace ─────────────────────────────────────────
+        const groups = new Map();      // groupName -> [permKey, ...]
+        const sortedKeys = Object.keys(serverMatrix).sort();
+        for (const key of sortedKeys) {
+            const g = getPermGroup(key);
+            if (!groups.has(g)) groups.set(g, []);
+            groups.get(g).push(key);
+        }
+        const groupNames = Array.from(groups.keys()).sort((a, b) => {
+            const la = getPermGroupLabel(a);
+            const lb = getPermGroupLabel(b);
+            return la.localeCompare(lb);
+        });
+        const collapsedGroups = getCollapsedPermGroups();
+        const colSpan = 1 + window.RBAC.STAFF_ROLES.length; // 1 perm key column + per-role columns
+
+        for (const group of groupNames) {
+            const keys = groups.get(group);
+            const isCollapsed = collapsedGroups.has(group);
+            // ── Group header row ─────────────────────────────────────────────
+            html.push(`<tr class="folder-row folder-toggle${isCollapsed ? ' collapsed' : ''}" data-perm-group-row="${escapeHtml(group)}" data-collapsed="${isCollapsed ? 'true' : 'false'}" onclick="togglePermGroup('${escapeHtml(group).replace(/'/g, "\\'")}')">`);
+            html.push(`<td colspan="${colSpan}" class="px-4 folder-toggle">`);
+            html.push(`<div class="flex items-center gap-2">`);
+            html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant folder-chevron">expand_more</span>`);
+            html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant">layers</span>`);
+            html.push(`<span class="font-mono text-[12px] font-bold text-primary">${escapeHtml(getPermGroupLabel(group))}</span>`);
+            html.push(`<span class="text-[10px] font-mono text-on-surface-variant">${escapeHtml(group)}</span>`);
+            html.push(`<span class="folder-count text-[10px] font-bold px-1.5 py-0.5 rounded-full">${keys.length} permission${keys.length === 1 ? '' : 's'}</span>`);
+            html.push(`<span class="text-[10px] text-on-surface-variant ml-auto" data-perm-group-hint="${escapeHtml(group)}">${isCollapsed ? 'click to expand' : 'click to collapse'}</span>`);
+            html.push(`</div>`);
+            html.push(`</td>`);
+            html.push(`</tr>`);
+
+            for (const key of keys) {
+                const eff = serverMatrix[key];        // Set of roles currently allowed
+                const def = localDefaults[key] || eff; // Set of default-allowed roles
+                const overrides = window.__rbacOverrides || new Map();
+                const rowClass = `perm-row border-b border-outline-variant last:border-0 perm-row-grouped${isCollapsed ? ' hidden' : ''}`;
+                html.push(`<tr class="${rowClass}" data-perm-group="${escapeHtml(group)}">`);
+                html.push(`<td class="px-4 py-2 sticky-col bg-surface-container-lowest font-mono text-[12px]">${escapeHtml(key)}</td>`);
+                for (const role of window.RBAC.STAFF_ROLES) {
+                    const isAdmin = role === 'admin';
+                    // Effective value = server truth unless UI has a pending change
+                    const pendKey = `${key}|${role}`;
+                    const pending = pendingChanges.get(pendKey);
+                    const currentAllowed = pending !== undefined ? pending : eff.has(role);
+                    const defaultAllowed = def.has(role);
+                    // Dot indicates deviation from default
+                    let dotClass = 'dot-default';
+                    if (currentAllowed !== defaultAllowed) {
+                        dotClass = currentAllowed ? 'dot-overridden' : 'dot-removed';
+                    }
+                    const hasOverride = overrides.has(pendKey);
+                    if (hasOverride) dotClass = 'dot-overridden';
+                    if (isAdmin) {
+                        html.push(`<td class="px-3 py-2 admin-locked"><div class="check-cell"><input type="checkbox" checked disabled/><span class="badge-always ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded">ALWAYS</span></div></td>`);
+                    } else {
+                        html.push(`<td class="px-3 py-2"><div class="check-cell"><input type="checkbox" data-perm-key="${escapeHtml(key)}" data-role="${role}" ${currentAllowed ? 'checked' : ''} onchange="onPermCellChange(this)"/><span class="dot ${dotClass} ml-2" title="${currentAllowed !== defaultAllowed ? 'overridden' : 'default'}"></span></div></td>`);
+                    }
+                }
+                html.push(`</tr>`);
+            }
+        }
+        body.innerHTML = html.join('');
+        updateDirtyIndicator();
+        updateToggleAllPermGroupsLabel();
+    }
+
+    function togglePermGroup(group) {
+        const collapsed = getCollapsedPermGroups();
+        const headerRow = document.querySelector(`tr[data-perm-group-row="${cssEscape(group)}"]`);
+        if (!headerRow) return;
+        const wasCollapsed = headerRow.getAttribute('data-collapsed') === 'true';
+        const nextCollapsed = !wasCollapsed;
+        if (nextCollapsed) collapsed.add(group);
+        else collapsed.delete(group);
+        persistCollapsedPermGroups(collapsed);
+        headerRow.setAttribute('data-collapsed', nextCollapsed ? 'true' : 'false');
+        headerRow.classList.toggle('collapsed', nextCollapsed);
+        const hint = headerRow.querySelector(`[data-perm-group-hint="${cssEscape(group)}"]`);
+        if (hint) hint.textContent = nextCollapsed ? 'click to expand' : 'click to collapse';
+        const rows = document.querySelectorAll(`tr.perm-row-grouped[data-perm-group="${cssEscape(group)}"]`);
+        rows.forEach(r => r.classList.toggle('hidden', nextCollapsed));
+        updateToggleAllPermGroupsLabel();
+    }
+
+    function toggleAllPermGroups() {
+        const collapsed = getCollapsedPermGroups();
+        const groupNames = Array.from(document.querySelectorAll('tr[data-perm-group-row]'))
+            .map(r => r.getAttribute('data-perm-group-row'));
+        const allCollapsed = groupNames.length > 0 && groupNames.every(f => collapsed.has(f));
+        const target = !allCollapsed;
+        const next = new Set(target ? collapsed : []);
+        if (target) for (const g of groupNames) next.add(g);
+        persistCollapsedPermGroups(next);
+        renderPermissions();
+    }
+
+    function updateToggleAllPermGroupsLabel() {
+        const btn = document.getElementById('btn-toggle-perm-folders');
+        if (!btn) return;
+        const groupNames = Array.from(document.querySelectorAll('tr[data-perm-group-row]'))
+            .map(r => r.getAttribute('data-perm-group-row'));
+        const collapsed = getCollapsedPermGroups();
+        const allCollapsed = groupNames.length > 0 && groupNames.every(g => collapsed.has(g));
+        btn.textContent = allCollapsed ? 'Expand all' : 'Collapse all';
+    }
+
+    // ─── Page Access: folder grouping ─────────────────────────────────────────
+    // Derives a folder path (e.g. "business-management / Supplier-management")
+    // from a page's URL. Root-level pages (e.g. "/index.html") go into "(root)".
+    function getFolderOfPath(path) {
+        if (!path || typeof path !== 'string') return '(root)';
+        // Strip leading slash + any trailing .html
+        let p = path.replace(/^\/+/, '');
+        const q = p.indexOf('?');
+        if (q >= 0) p = p.slice(0, q);
+        p = p.replace(/\.html?$/i, '');
+        if (!p) return '(root)';
+        const slash = p.lastIndexOf('/');
+        if (slash < 0) return '(root)';
+        const folder = p.slice(0, slash);
+        return folder || '(root)';
+    }
+    function getCollapsedFolders() {
+        try {
+            const raw = localStorage.getItem('rbac.pages.collapsedFolders');
+            const arr = raw ? JSON.parse(raw) : [];
+            return new Set(Array.isArray(arr) ? arr : []);
+        } catch {
+            return new Set();
+        }
+    }
+    function persistCollapsedFolders(set) {
+        try {
+            localStorage.setItem('rbac.pages.collapsedFolders', JSON.stringify(Array.from(set)));
+        } catch { /* localStorage disabled — non-fatal */ }
+    }
+
+    function renderPages() {
+        const body = document.getElementById('pages-body');
+        const html = [];
+        const pageAccessMap = new Map();
+        for (const o of (window.__rbacPageAccess || [])) {
+            pageAccessMap.set(`${o.page_id}|${o.role}`, !!o.granted);
+        }
+        // ── Group rows by folder path ─────────────────────────────────────────
+        const folders = new Map();      // folderPath -> [{id, p}]
+        for (const id of Object.keys(serverPages)) {
+            const p = serverPages[id];
+            const folder = getFolderOfPath(p.path);
+            if (!folders.has(folder)) folders.set(folder, []);
+            folders.get(folder).push({ id, p });
+        }
+        const folderNames = Array.from(folders.keys()).sort();
+        const collapsedFolders = getCollapsedFolders();
+        const colSpan = 3 + window.RBAC.STAFF_ROLES.length; // page + path + source + per-role columns
+
+        for (const folder of folderNames) {
+            const rows = folders.get(folder).sort((a, b) => a.id.localeCompare(b.id));
+            const isCollapsed = collapsedFolders.has(folder);
+            // ── Folder header row ──────────────────────────────────────────────
+            html.push(`<tr class="folder-row folder-toggle${isCollapsed ? ' collapsed' : ''}" data-folder-row="${escapeHtml(folder)}" data-collapsed="${isCollapsed ? 'true' : 'false'}" onclick="toggleFolder('${escapeHtml(folder).replace(/'/g, "\\'")}')">`);
+            html.push(`<td colspan="${colSpan}" class="px-4 folder-toggle">`);
+            html.push(`<div class="flex items-center gap-2">`);
+            html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant folder-chevron">expand_more</span>`);
+            html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant">folder</span>`);
+            html.push(`<span class="font-mono text-[12px] font-bold text-primary">${escapeHtml(folder)}</span>`);
+            html.push(`<span class="folder-count text-[10px] font-bold px-1.5 py-0.5 rounded-full">${rows.length} page${rows.length === 1 ? '' : 's'}</span>`);
+            html.push(`<span class="text-[10px] text-on-surface-variant ml-auto" data-folder-hint="${escapeHtml(folder)}">${isCollapsed ? 'click to expand' : 'click to collapse'}</span>`);
+            html.push(`</div>`);
+            html.push(`</td>`);
+            html.push(`</tr>`);
+
+            // ── Page rows in this folder ───────────────────────────────────────
+            for (const { id, p } of rows) {
+                const isViewOnly = !!p.viewOnly;
+                const isLocked = !!p.locked;
+                const rowClass = (isLocked || isViewOnly)
+                    ? `perm-row border-b border-outline-variant last:border-0 bg-surface-container-lowest/50 locked-row page-row${isCollapsed ? ' hidden' : ''}`
+                    : `perm-row border-b border-outline-variant last:border-0 page-row${isCollapsed ? ' hidden' : ''}`;
+                html.push(`<tr class="${rowClass}" data-folder="${escapeHtml(folder)}"${(isLocked || isViewOnly) ? ` data-locked="${isLocked ? 'true' : 'view'}"` : ''}>`);
+                const lockIcon = isLocked
+                    ? '<span class="material-symbols-outlined text-[14px] text-on-surface-variant">lock</span>'
+                    : '<span class="material-symbols-outlined text-[14px] text-on-surface-variant">visibility</span>';
+                const labelCell = (isLocked || isViewOnly)
+                    ? `<td class="px-4 py-2 sticky-col bg-surface-container-lowest/50 font-medium"><div class="flex items-center gap-1.5">${lockIcon}<span>${escapeHtml(p.label)}</span></div><div class="text-[10px] text-on-surface-variant mt-0.5">${escapeHtml(id)}</div></td>`
+                    : `<td class="px-4 py-2 sticky-col bg-surface-container-lowest font-medium">${escapeHtml(p.label)}<div class="text-[10px] text-on-surface-variant mt-0.5">${escapeHtml(id)}</div></td>`;
+                html.push(labelCell);
+                html.push(`<td class="px-4 py-2 sticky-col bg-surface-container-lowest text-[11px] font-mono text-on-surface-variant">${escapeHtml(p.path)}</td>`);
+                let sourceBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold badge-${p.source}">${p.source}</span>`;
+                if (isLocked) {
+                    sourceBadge += `<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold badge-locked" title="This page is locked to ${escapeHtml(p.requiredRole)}+admin and cannot be granted to other roles">required: ${escapeHtml(p.requiredRole)}</span>`;
+                } else if (isViewOnly) {
+                    sourceBadge += `<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold badge-locked" title="Public/customer page — not gated by RBAC. Listed for visibility only.">view only</span>`;
+                }
+                html.push(`<td class="px-4 py-2 sticky-col bg-surface-container-lowest">${sourceBadge}</td>`);
+                for (const role of window.RBAC.STAFF_ROLES) {
+                    const isAdmin = role === 'admin';
+                    const pendKey = `${id}|${role}`;
+                    const pending = pendingPageChanges.get(pendKey);
+                    const override = pageAccessMap.get(pendKey);
+                    // If server has an override row, use that; else use default
+                    const currentAllowed = pending !== undefined ? pending : (override !== undefined ? override : p.defaults.has(role));
+                    const defaultAllowed = p.defaults.has(role);
+                    let dotClass = 'dot-default';
+                    if (currentAllowed !== defaultAllowed) {
+                        dotClass = currentAllowed ? 'dot-overridden' : 'dot-removed';
+                    }
+                    if (isAdmin) {
+                        html.push(`<td class="px-3 py-2 admin-locked"><div class="check-cell"><input type="checkbox" checked disabled/><span class="badge-always ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded">ALWAYS</span></div></td>`);
+                    } else if (isViewOnly) {
+                        // View-only: always checked, always disabled. Not gated at all.
+                        html.push(`<td class="px-3 py-2 cell-locked"><div class="check-cell"><input type="checkbox" data-page-id="${escapeHtml(id)}" data-role="${role}" checked disabled title="Public/customer page — RBAC does not gate this URL"/><span class="dot ${dotClass} ml-2"></span></div></td>`);
+                    } else if (isLocked && !defaultAllowed) {
+                        // Locked row, role not in {requiredRole, admin}: always-off, disabled
+                        html.push(`<td class="px-3 py-2 cell-locked"><div class="check-cell"><input type="checkbox" data-page-id="${escapeHtml(id)}" data-role="${role}" disabled title="Locked to ${escapeHtml(p.requiredRole)}+admin"/><span class="dot ${dotClass} ml-2"></span></div></td>`);
+                    } else {
+                        html.push(`<td class="px-3 py-2"><div class="check-cell"><input type="checkbox" data-page-id="${escapeHtml(id)}" data-role="${role}" ${currentAllowed ? 'checked' : ''} onchange="onPageCellChange(this)"/><span class="dot ${dotClass} ml-2"></span></div></td>`);
+                    }
+                }
+                html.push(`</tr>`);
+            }
+        }
+        body.innerHTML = html.join('');
+        updateDirtyIndicator();
+        updateToggleAllFoldersLabel();
+    }
+
+    function toggleFolder(folder) {
+        const collapsed = getCollapsedFolders();
+        const headerRow = document.querySelector(`tr[data-folder-row="${cssEscape(folder)}"]`);
+        if (!headerRow) return;
+        const wasCollapsed = headerRow.getAttribute('data-collapsed') === 'true';
+        const nextCollapsed = !wasCollapsed;
+        if (nextCollapsed) collapsed.add(folder);
+        else collapsed.delete(folder);
+        persistCollapsedFolders(collapsed);
+        // Update header row state
+        headerRow.setAttribute('data-collapsed', nextCollapsed ? 'true' : 'false');
+        headerRow.classList.toggle('collapsed', nextCollapsed);
+        const hint = headerRow.querySelector(`[data-folder-hint="${cssEscape(folder)}"]`);
+        if (hint) hint.textContent = nextCollapsed ? 'click to expand' : 'click to collapse';
+        // Show/hide the page rows in that folder
+        const rows = document.querySelectorAll(`tr.page-row[data-folder="${cssEscape(folder)}"]`);
+        rows.forEach(r => r.classList.toggle('hidden', nextCollapsed));
+        updateToggleAllFoldersLabel();
+    }
+
+    function toggleAllFolders() {
+        const collapsed = getCollapsedFolders();
+        const folderNames = Array.from(document.querySelectorAll('tr[data-folder-row]'))
+            .map(r => r.getAttribute('data-folder-row'));
+        const allCollapsed = folderNames.length > 0 && folderNames.every(f => collapsed.has(f));
+        const target = !allCollapsed;       // if everything is already collapsed → expand all; else collapse all
+        const next = new Set(target ? collapsed : []); // start with current
+        if (target) {
+            // collapse remaining
+            for (const f of folderNames) next.add(f);
+        } else {
+            next.clear();
+        }
+        persistCollapsedFolders(next);
+        // Re-render to apply consistent state
+        renderPages();
+    }
+
+    function updateToggleAllFoldersLabel() {
+        const btn = document.getElementById('btn-toggle-folders');
+        if (!btn) return;
+        const folderNames = Array.from(document.querySelectorAll('tr[data-folder-row]'))
+            .map(r => r.getAttribute('data-folder-row'));
+        const collapsed = getCollapsedFolders();
+        const allCollapsed = folderNames.length > 0 && folderNames.every(f => collapsed.has(f));
+        btn.textContent = allCollapsed ? 'Expand all' : 'Collapse all';
+    }
+
+    // Minimal CSS.escape fallback (browsers that lack it would already throw elsewhere, but this
+    // keeps folder names containing unusual chars from breaking attribute selectors).
+    function cssEscape(s) {
+        if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(s);
+        return String(s).replace(/[^a-zA-Z0-9_-]/g, ch => `\\${ch}`);
+    }
+
+    // ─── Cell change handlers ────────────────────────────────────────────────
+    function onPermCellChange(input) {
+        const key = input.dataset.permKey;
+        const role = input.dataset.role;
+        if (role === 'admin') return; // safety
+        const newVal = input.checked;
+        const eff = serverMatrix[key];
+        const def = localDefaults[key] || eff;
+        if (newVal === def.has(role)) {
+            // matches default → no override needed
+            pendingChanges.delete(`${key}|${role}`);
+        } else {
+            pendingChanges.set(`${key}|${role}`, newVal);
+        }
+        updateDirtyIndicator();
+        updateRowDot(input.closest('tr'), key, role, newVal, def.has(role));
+    }
+    function onPageCellChange(input) {
+        const id = input.dataset.pageId;
+        const role = input.dataset.role;
+        if (role === 'admin') return;
+        const newVal = input.checked;
+        const p = serverPages[id];
+        if (p && p.viewOnly) {
+            // View-only rows are always checked; a click can't change anything.
+            input.checked = true;
+            toast(`"${p.label}" is a public/customer page — RBAC does not gate it.`, 'warn');
+            return;
+        }
+        if (p && p.locked && newVal && !p.defaults.has(role)) {
+            // Refuse to grant a locked page to a role outside {requiredRole, admin}
+            input.checked = false;
+            toast(`"${p.label}" is locked to ${p.requiredRole}+admin and cannot be granted to ${role}.`, 'warn');
+            return;
+        }
+        if (newVal === p.defaults.has(role)) {
+            pendingPageChanges.delete(`${id}|${role}`);
+        } else {
+            pendingPageChanges.set(`${id}|${role}`, newVal);
+        }
+        updateDirtyIndicator();
+        updateRowDot(input.closest('tr'), id, role, newVal, p.defaults.has(role));
+    }
+    function updateRowDot(tr, key, role, currentAllowed, defaultAllowed) {
+        const dot = tr.querySelector(`.check-cell input[data-role="${role}"] + .dot`);
+        if (!dot) return;
+        dot.className = 'dot ' + (currentAllowed === defaultAllowed ? 'dot-default' : (currentAllowed ? 'dot-overridden' : 'dot-removed')) + ' ml-2';
+    }
+
+    // ─── Save flow ───────────────────────────────────────────────────────────
+    function openSaveConfirm() {
+        const permCount = pendingChanges.size;
+        const pageCount = pendingPageChanges.size;
+        if (permCount + pageCount === 0) {
+            toast('Nothing to save', 'warn');
+            return;
+        }
+        const parts = [];
+        if (permCount) parts.push(`${permCount} permission override${permCount === 1 ? '' : 's'}`);
+        if (pageCount) parts.push(`${pageCount} page-access override${pageCount === 1 ? '' : 's'}`);
+        document.getElementById('confirm-summary').textContent =
+            `This will save ${parts.join(' and ')} and append a snapshot to the history log.`;
+        document.getElementById('confirm-reason').value = '';
+        document.getElementById('confirm-overlay').classList.remove('hidden');
+    }
+    function closeSaveConfirm() { document.getElementById('confirm-overlay').classList.add('hidden'); }
+
+    async function doSave() {
+        const reason = document.getElementById('confirm-reason').value.trim();
+        closeSaveConfirm();
+        const btn = document.getElementById('btn-save');
+        btn.disabled = true; btn.textContent = 'Saving…';
+        try {
+            // Save permissions
+            if (pendingChanges.size > 0) {
+                const allOverrides = await getCurrentEffectiveOverrides();   // existing rows
+                for (const [k, v] of pendingChanges.entries()) {
+                    const [perm, role] = k.split('|');
+                    const idx = allOverrides.findIndex(o => o.permission_key === perm && o.role === role);
+                    if (idx >= 0) allOverrides[idx].value = v;
+                    else allOverrides.push({ permission_key: perm, role, value: v });
+                }
+                const r = await fetch('/api/rbac/permissions', {
+                    method: 'PUT',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ changes: allOverrides, reason }),
+                });
+                if (!r.ok) throw new Error(`permissions ${r.status}: ${(await r.text()).slice(0,200)}`);
+            }
+            // Save page access (if the endpoint exists)
+            if (pendingPageChanges.size > 0) {
+                const rows = await getCurrentEffectivePageAccess();
+                for (const [k, v] of pendingPageChanges.entries()) {
+                    const [page, role] = k.split('|');
+                    const idx = rows.findIndex(o => o.page_id === page && o.role === role);
+                    if (idx >= 0) rows[idx].granted = v;
+                    else rows.push({ page_id: page, role, granted: v });
+                }
+                const r = await fetch('/api/rbac/page-access', {
+                    method: 'PUT',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ changes: rows, reason }),
+                });
+                // 404 = endpoint not yet wired (server-side enforcement is
+                // permission-only in this build). Show a soft warning.
+                if (!r.ok && r.status !== 404) throw new Error(`pages ${r.status}`);
+            }
+            toast('Saved', 'ok');
+            pendingChanges.clear();
+            pendingPageChanges.clear();
+            // Re-fetch server state to refresh defaults + dots
+            await loadPermissions();
+            await loadPages();
+            RBAC.clearEffective();
+            await RBAC.loadEffective({ force: true });
+            renderPermissions();
+            renderPages();
+            loadHistory();
+        } catch (e) {
+            toast(`Save failed: ${e.message || e}`, 'err');
+        } finally {
+            btn.disabled = false; btn.textContent = 'Save changes';
+            updateDirtyIndicator();
+        }
+    }
+
+    async function getCurrentEffectiveOverrides() {
+        // Returns the full set of overrides (including any pending changes).
+        // We pull the existing set from the server first, then layer pending.
+        const r = await fetch('/api/rbac/permissions', { credentials: 'same-origin' });
+        const j = await r.json();
+        const existing = (j.overrides || []).map(o => ({
+            permission_key: o.permission_key,
+            role: o.role,
+            value: !!o.value,
+        }));
+        // Pending: replace existing rows for the same (perm, role)
+        const map = new Map(existing.map(o => [`${o.permission_key}|${o.role}`, o]));
+        for (const [k, v] of pendingChanges.entries()) {
+            const [perm, role] = k.split('|');
+            if (map.has(k)) map.get(k).value = v;
+            else map.set(k, { permission_key: perm, role, value: v });
+        }
+        return Array.from(map.values());
+    }
+    async function getCurrentEffectivePageAccess() {
+        try {
+            const r = await fetch('/api/rbac/page-access', { credentials: 'same-origin' });
+            if (!r.ok) return [];
+            const j = await r.json();
+            return (j.rows || []).map(o => ({ page_id: o.page_id, role: o.role, granted: !!o.granted }));
+        } catch { return []; }
+    }
+
+    function discardChanges() {
+        if (pendingChanges.size + pendingPageChanges.size === 0) return;
+        pendingChanges.clear();
+        pendingPageChanges.clear();
+        renderPermissions();
+        renderPages();
+        toast('Discarded', 'ok');
+    }
+
+    function resetPermissionsToDefaults() {
+        // Add explicit false for every "default-true but currently true" pair
+        // across every cell, to ensure save wipes overrides. Easier: just
+        // re-render from defaults (the user is still editing the live state).
+        // We treat "reset" as "clear all overrides" by sending empty changes.
+        if (!confirm('This will delete ALL permission overrides and return to the default matrix. Continue?')) return;
+        pendingChanges.clear();
+        for (const key of Object.keys(serverMatrix)) {
+            const def = localDefaults[key];
+            for (const role of EDITABLE_ROLES) {
+                if (def.has(role) !== serverMatrix[key].has(role)) {
+                    // There's a mismatch between current and default → mark
+                    // a "no-op" toggle in pendingChanges so doSave() sends a
+                    // full replace. We use the actual default value.
+                    pendingChanges.set(`${key}|${role}`, def.has(role));
+                }
+            }
+        }
+        openSaveConfirm();
+    }
+    function resetPagesToDefaults() {
+        if (!confirm('This will delete ALL page-access overrides. Continue?')) return;
+        pendingPageChanges.clear();
+        for (const id of Object.keys(serverPages)) {
+            const def = serverPages[id].defaults;
+            for (const role of EDITABLE_ROLES) {
+                // We don't know the current page access from the UI side
+                // without an extra fetch, so just mark all roles at default
+                // and trust the server PUT to wipe.
+                pendingPageChanges.set(`${id}|${role}`, def.has(role));
+            }
+        }
+        openSaveConfirm();
+    }
+
+    // ─── Restore flow ────────────────────────────────────────────────────────
+    function openRestoreConfirm(historyId, summary) {
+        pendingRestore = { historyId, summary };
+        document.getElementById('restore-summary').textContent =
+            `Restore will replace the current permission overrides with snapshot "${summary || '(no summary)'}". Page-access overrides are not affected.`;
+        document.getElementById('restore-overlay').classList.remove('hidden');
+    }
+    function closeRestoreConfirm() { document.getElementById('restore-overlay').classList.add('hidden'); pendingRestore = null; }
+    async function doRestore() {
+        if (!pendingRestore) return;
+        const { historyId, summary } = pendingRestore;
+        closeRestoreConfirm();
+        try {
+            const r = await fetch(`/api/rbac/history/${historyId}/restore`, {
+                method: 'POST', credentials: 'same-origin',
+            });
+            if (!r.ok) throw new Error(`${r.status}: ${(await r.text()).slice(0,200)}`);
+            toast(`Restored: ${summary}`, 'ok');
+            await loadPermissions();
+            await loadPages();
+            RBAC.clearEffective();
+            await RBAC.loadEffective({ force: true });
+            renderPermissions();
+            renderPages();
+            loadHistory();
+        } catch (e) {
+            toast(`Restore failed: ${e.message || e}`, 'err');
+        }
+    }
+
+    function viewSnapshot(row) {
+        const json = JSON.stringify(row, null, 2);
+        const w = window.open('', '_blank', 'width=600,height=600');
+        w.document.write(`<pre style="font-size:12px;font-family:monospace;padding:16px">${escapeHtml(json)}</pre>`);
+    }
+
+    // ─── UI helpers ──────────────────────────────────────────────────────────
+    function updateDirtyIndicator() {
+        const dirty = pendingChanges.size + pendingPageChanges.size > 0;
+        document.getElementById('dirty-pill').classList.toggle('hidden', !dirty);
+        document.getElementById('btn-discard').classList.toggle('hidden', !dirty);
+        document.getElementById('btn-save').classList.toggle('save-dirty', dirty);
+    }
+    function updateSourcePill() {
+        const e = RBAC.getEffective();
+        document.getElementById('source-pill').textContent = `source: ${e ? e.source : 'local defaults'}`;
+    }
+    function toast(msg, kind) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'show ' + (kind || 'ok');
+        setTimeout(() => t.className = '', 2400);
+    }
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    }
+    </script>
+</body>
+</html>
