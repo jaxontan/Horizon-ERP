@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Supplier Profile & Quotation | EspressGo</title>
+    <!-- Tailwind CSS (Play CDN for quick runtime execution) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Central Tailwind theme: font tokens, color tokens, spacing tokens -->
+    <script src="/components/tailwind-config.js?v=20260706"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js?v=20260706"></script>
+    <script>
+        // Supplier Profile uses a slightly different color palette than the rest
+        // of the app (warmer blue `#1E3A8A` instead of the standard `#031635`),
+        // so it overrides a handful of color tokens here. Fonts and most other
+        // design tokens come from the central /components/tailwind-config.js.
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1E3A8A',
+                        secondary: '#475569',
+                        accent: '#F59E0B',
+                        background: '#F8FAFC',
+                        surface: '#FFFFFF',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Material Symbols & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <!-- Custom Sidebar Component -->
+    <script src="/public/js/rbac.js?v=20260706"></script>
+    <script src="/components/sidebar.js?v=20260706" defer></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+
+        :root {
+            --eg-bg: #F4F6FB;
+            --eg-surface: #FFFFFF;
+            --eg-border: #E4E9F2;
+            --eg-border-strong: #D6DEEB;
+            --eg-ink: #0F172A;
+            --eg-ink-soft: #475569;
+            --eg-ink-mute: #94A3B8;
+            --eg-primary: #1E3A8A;
+            --eg-primary-soft: #EEF2FF;
+            --eg-accent: #F59E0B;
+            --eg-emerald: #10B981;
+            --eg-emerald-soft: #ECFDF5;
+            --eg-rose: #E11D48;
+            --eg-rose-soft: #FFF1F2;
+            --eg-sky: #0EA5E9;
+            --eg-sky-soft: #F0F9FF;
+        }
+
+        html, body { background-color: var(--eg-bg); }
+        body {
+            font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+            color: var(--eg-ink);
+            -webkit-font-smoothing: antialiased;
+            letter-spacing: -0.005em; /* tracking-headline-medium */
+        }
+
+        /* ===== CARD SYSTEM ===== */
+        .eg-card {
+            background: var(--eg-surface);
+            border: 1px solid var(--eg-border);
+            border-radius: 18px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 0 rgba(15, 23, 42, 0.02);
+            transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+        }
+        .eg-card:hover {
+            box-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.04);
+        }
+
+        .eg-card-pad {
+            padding: 1.75rem;
+        }
+        @media (max-width: 768px) {
+            .eg-card-pad { padding: 1.25rem; }
+        }
+
+        /* ===== HEADER BAR ===== */
+        .eg-app-bar {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: saturate(180%) blur(14px);
+            -webkit-backdrop-filter: saturate(180%) blur(14px);
+            border-bottom: 1px solid var(--eg-border);
+        }
+
+        /* ===== HERO PROFILE ===== */
+        .eg-hero {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(1200px 200px at -10% -50%, rgba(30, 58, 138, 0.06), transparent 60%),
+                radial-gradient(800px 220px at 110% 0%, rgba(245, 158, 11, 0.08), transparent 60%),
+                linear-gradient(180deg, #FFFFFF 0%, #FAFBFE 100%);
+            border: 1px solid var(--eg-border);
+            border-radius: 22px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .eg-hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(rgba(30, 58, 138, 0.04) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(30, 58, 138, 0.04) 1px, transparent 1px);
+            background-size: 28px 28px;
+            background-position: -1px -1px;
+            mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%);
+            -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%);
+            opacity: .55;
+            pointer-events: none;
+        }
+        .eg-hero-inner { position: relative; z-index: 1; }
+
+        .eg-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px -8px rgba(30, 58, 138, 0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+        }
+
+        .eg-eyebrow {
+            font-size: 11px;
+            font-weight: 700; /* font-bold */
+            letter-spacing: 0.12em; /* tracking-label-wider */
+            text-transform: uppercase; /* uppercase */
+            color: var(--eg-ink-mute);
+        }
+        .eg-title-xl {
+            font-family: 'Manrope', 'Inter', sans-serif;
+            font-size: 28px;
+            line-height: 1.15;
+            font-weight: 800; /* font-extrabold */
+            letter-spacing: -0.02em; /* tracking-headline-tight */
+            color: var(--eg-ink);
+        }
+        .eg-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 14px;
+            color: var(--eg-ink-soft);
+            font-size: 12px;
+            font-weight: 600; /* font-semibold */
+            margin-top: 10px;
+        }
+        .eg-meta-row .dot {
+            width: 4px; height: 4px; border-radius: 999px; background: #CBD5E1;
+            display: inline-block;
+        }
+        .eg-meta-row .material-symbols-outlined { color: var(--eg-ink-mute); }
+
+        /* ===== PILLS / BADGES ===== */
+        .eg-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 800; /* font-extrabold */
+            letter-spacing: 0.08em; /* tracking-label-wide */
+            text-transform: uppercase; /* uppercase */
+            border: 1px solid transparent;
+            transition: all .2s ease;
+        }
+        .eg-pill .dot-led { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+        .eg-pill-emerald { background: var(--eg-emerald-soft); color: #047857; border-color: #A7F3D0; }
+        .eg-pill-rose    { background: var(--eg-rose-soft);    color: #BE123C; border-color: #FECDD3; }
+        .eg-pill-sky     { background: var(--eg-sky-soft);     color: #0369A1; border-color: #BAE6FD; }
+        .eg-pill-amber   { background: #FFFBEB;                color: #B45309; border-color: #FDE68A; }
+        .eg-pill-indigo  { background: var(--eg-primary-soft); color: var(--eg-primary); border-color: #C7D2FE; }
+        .eg-pill-slate   { background: #F1F5F9;                color: #334155; border-color: #E2E8F0; }
+
+        /* ===== BUTTONS ===== */
+        .eg-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            border-radius: 12px;
+            font-weight: 700; /* font-bold */
+            font-size: 12px;
+            padding: 9px 14px;
+            border: 1px solid transparent;
+            transition: all .2s ease;
+            white-space: nowrap;
+        }
+        .eg-btn:active { transform: scale(0.97); }
+        .eg-btn-primary {
+            background: linear-gradient(180deg, #2A4AB8 0%, #1E3A8A 100%);
+            color: #fff;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 14px -8px rgba(30,58,138,0.6);
+        }
+        .eg-btn-primary:hover { filter: brightness(1.06); }
+        .eg-btn-ghost {
+            background: #fff;
+            color: var(--eg-ink-soft);
+            border-color: var(--eg-border-strong);
+        }
+        .eg-btn-ghost:hover { background: #F8FAFC; color: var(--eg-ink); }
+        .eg-btn-soft {
+            background: var(--eg-primary-soft);
+            color: var(--eg-primary);
+            border-color: #C7D2FE;
+        }
+        .eg-btn-soft:hover { background: #E0E7FF; }
+        .eg-btn-emerald {
+            background: linear-gradient(180deg, #14B886 0%, #059669 100%);
+            color: #fff;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 14px -8px rgba(5,150,105,0.55);
+        }
+        .eg-btn-rose {
+            background: #fff;
+            color: #BE123C;
+            border-color: #FECDD3;
+        }
+        .eg-btn-rose:hover { background: var(--eg-rose-soft); }
+
+        /* ===== STATUS TOGGLE (Hero) ===== */
+        .eg-status-toggle {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 6px 6px 6px 14px;
+            border-radius: 14px;
+            background: var(--eg-emerald-soft);
+            border: 1px solid #A7F3D0;
+            color: #047857;
+            transition: all .25s ease;
+        }
+        .eg-status-toggle .label {
+            font-size: 10px;
+            font-weight: 800; /* font-extrabold */
+            letter-spacing: 0.1em; /* tracking-widest */
+            text-transform: uppercase; /* uppercase */
+        }
+        .eg-status-toggle .sub {
+            font-size: 11px;
+            font-weight: 700; /* font-bold */
+            color: #065F46;
+            margin-top: 2px;
+        }
+        .eg-status-toggle .pill-action {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 12px;
+            border-radius: 10px;
+            background: var(--eg-rose);
+            color: #fff;
+            font-weight: 700; /* font-bold */
+            font-size: 12px;
+            letter-spacing: 0.02em; /* tracking-label-wide */
+            box-shadow: 0 6px 14px -8px rgba(225, 29, 72, 0.55);
+        }
+        .eg-status-toggle[data-state="inactive"] {
+            background: var(--eg-rose-soft);
+            border-color: #FECDD3;
+            color: #BE123C;
+        }
+        .eg-status-toggle[data-state="inactive"] .pill-action {
+            background: linear-gradient(180deg, #14B886 0%, #059669 100%);
+            box-shadow: 0 6px 14px -8px rgba(5,150,105,0.55);
+        }
+
+        /* ===== SECTION HEADING ===== */
+        .eg-section-head {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px dashed var(--eg-border);
+            margin-bottom: 8px;
+        }
+        .eg-section-head h2 {
+            font-family: 'Manrope', 'Inter', sans-serif;
+            font-size: 16px;
+            font-weight: 800; /* font-extrabold */
+            letter-spacing: -0.01em; /* tracking-headline-medium */
+            color: var(--eg-ink);
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .eg-section-head p {
+            font-size: 12px;
+            color: var(--eg-ink-soft);
+            margin-top: 4px;
+            font-weight: 500; /* font-medium */
+        }
+        .eg-section-head .icon-tile {
+            width: 32px; height: 32px;
+            border-radius: 10px;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--eg-primary-soft);
+            color: var(--eg-primary);
+            border: 1px solid #C7D2FE;
+        }
+
+        /* ===== TABLE ===== */
+        .eg-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 12px;
+        }
+        .eg-table thead th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 10px;
+            font-weight: 800; /* font-extrabold */
+            letter-spacing: 0.1em; /* tracking-widest */
+            text-transform: uppercase; /* uppercase */
+            color: var(--eg-ink-mute);
+            background: #FBFCFE;
+            border-bottom: 1px solid var(--eg-border);
+            position: sticky; top: 0;
+        }
+        .eg-table thead th:first-child { border-top-left-radius: 12px; }
+        .eg-table thead th:last-child  { border-top-right-radius: 12px; }
+        .eg-table tbody td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #EEF2F7;
+            vertical-align: middle;
+            color: var(--eg-ink);
+        }
+        .eg-table tbody tr { transition: background .15s ease; }
+        .eg-table tbody tr:hover { background: #F8FAFF; }
+        .eg-table tbody tr:last-child td { border-bottom: 0; }
+        .eg-table .cell-mute { color: var(--eg-ink-mute); font-size: 12px; font-weight: 600; /* font-semibold */ }
+        .eg-table .cell-strong { color: var(--eg-ink); font-weight: 700; /* font-bold */ }
+        .eg-table .cell-price {
+            font-family: 'Manrope', 'Inter', monospace;
+            font-weight: 800; /* font-extrabold */
+            color: var(--eg-primary);
+            letter-spacing: -0.01em; /* tracking-headline-medium */
+        }
+        .eg-table .cell-num {
+            font-family: 'Manrope', 'Inter', monospace;
+            font-weight: 700; /* font-bold */
+            color: var(--eg-ink-soft);
+        }
+        .eg-table tbody td .eg-btn { padding: 6px 11px; font-size: 11px; border-radius: 9px; }
+
+        /* ===== SIDE PANEL INFO CARD ===== */
+        .eg-info-card {
+            background:
+                radial-gradient(800px 200px at 100% 0%, rgba(245, 158, 11, 0.10), transparent 60%),
+                linear-gradient(160deg, #0B1730 0%, #1E3A8A 100%);
+            color: #fff;
+            border-radius: 18px;
+            border: 1px solid #1E3A8A;
+            box-shadow: 0 14px 30px -16px rgba(30, 58, 138, 0.55);
+            overflow: hidden;
+            position: relative;
+        }
+        .eg-info-card::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(circle at 20% 100%, rgba(255,255,255,0.05), transparent 40%);
+            pointer-events: none;
+        }
+        .eg-info-card .eg-info-head {
+            padding: 18px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .eg-info-card .eg-info-head .icon-tile {
+            width: 32px; height: 32px; border-radius: 10px;
+            background: rgba(245, 158, 11, 0.18);
+            color: #FBBF24;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+        .eg-info-card .eg-info-head h3 {
+            font-family: 'Manrope', 'Inter', sans-serif;
+            font-weight: 800; /* font-extrabold */
+            font-size: 13px;
+            letter-spacing: 0.01em; /* tracking-label-wide */
+            color: #FBBF24;
+        }
+        .eg-info-card .eg-info-body { padding: 18px 20px; position: relative; z-index: 1; }
+        .eg-info-card .eg-info-row {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .eg-info-card .eg-info-row:last-child { border-bottom: 0; }
+        .eg-info-card .eg-info-row .material-symbols-outlined { color: #93C5FD; font-size: 18px; }
+        .eg-info-card .eg-info-row .lbl {
+            font-size: 10px;
+            text-transform: uppercase; /* uppercase */
+            letter-spacing: 0.1em; /* tracking-widest */
+            color: rgba(255,255,255,0.55);
+            font-weight: 700; /* font-bold */
+        }
+        .eg-info-card .eg-info-row .val {
+            font-size: 13px;
+            color: #fff;
+            font-weight: 700; /* font-bold */
+            margin-top: 2px;
+            word-break: break-word;
+        }
+
+        /* ===== MODAL ===== */
+        .eg-modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 50;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease;
+        }
+        .eg-modal-backdrop.is-open { opacity: 1; pointer-events: auto; }
+        .eg-modal-card {
+            background: var(--eg-surface);
+            width: 520px;
+            max-width: calc(100vw - 32px);
+            border-radius: 20px;
+            border: 1px solid var(--eg-border);
+            box-shadow: 0 30px 60px -20px rgba(15, 23, 42, 0.45), 0 0 0 1px rgba(15, 23, 42, 0.02);
+            overflow: hidden;
+            transform: scale(0.96) translateY(8px);
+            transition: transform .25s ease;
+        }
+        .eg-modal-backdrop.is-open .eg-modal-card { transform: scale(1) translateY(0); }
+        .eg-modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--eg-border);
+            background: linear-gradient(180deg, #FBFCFE 0%, #FFFFFF 100%);
+        }
+        .eg-modal-header h3 {
+            font-family: 'Manrope', 'Inter', sans-serif;
+            font-weight: 800; /* font-extrabold */
+            font-size: 14px;
+            color: var(--eg-ink);
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .eg-modal-header h3 .material-symbols-outlined { color: var(--eg-primary); }
+        .eg-modal-close {
+            width: 32px; height: 32px;
+            border-radius: 10px;
+            display: inline-flex; align-items: center; justify-content: center;
+            color: var(--eg-ink-mute);
+            background: #F1F5F9;
+            border: 1px solid var(--eg-border);
+            transition: all .15s ease;
+            cursor: pointer;
+        }
+        .eg-modal-close:hover { background: #E2E8F0; color: var(--eg-ink); }
+        .eg-modal-body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+        .eg-modal-footer {
+            padding: 14px 22px;
+            background: #FBFCFE;
+            border-top: 1px solid var(--eg-border);
+            display: flex; justify-content: flex-end; gap: 10px;
+        }
+
+        .eg-field {
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .eg-field label {
+            font-size: 10px;
+            font-weight: 800; /* font-extrabold */
+            letter-spacing: 0.1em; /* tracking-widest */
+            text-transform: uppercase; /* uppercase */
+            color: var(--eg-ink-mute);
+        }
+        .eg-input {
+            border: 1px solid var(--eg-border-strong);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: 600; /* font-semibold */
+            color: var(--eg-ink);
+            background: #fff;
+            transition: all .15s ease;
+        }
+        .eg-input:focus {
+            outline: none;
+            border-color: var(--eg-primary);
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.12);
+        }
+        .eg-input[readonly] { background: #F8FAFC; color: var(--eg-ink-soft); }
+
+        /* ===== EMPTY STATE ===== */
+        .eg-empty {
+            padding: 36px 16px;
+            text-align: center;
+            color: var(--eg-ink-mute);
+            font-weight: 600; /* font-semibold */
+            font-size: 12px;
+            background: #FBFCFE;
+            border-radius: 14px;
+            border: 1px dashed var(--eg-border-strong);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            .eg-table { font-size: 12px !important; }
+            .eg-title-xl { font-size: 22px; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+
+<body class="font-body-md font-sans text-slate-800">
+    <!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top App Bar -->
+    <header class="eg-app-bar fixed top-0 right-0 left-64 h-16 flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <div class="flex items-center gap-3">
+                <span class="icon-tile w-9 h-9 rounded-xl bg-indigo-50 text-primary border border-indigo-100 inline-flex items-center justify-center" style="background:var(--eg-primary-soft);color:var(--eg-primary);border-color:#C7D2FE;">
+                    <span class="material-symbols-outlined text-[20px]">corporate_fare</span>
+                </span>
+                <div class="leading-tight">
+                    <p class="eg-eyebrow">Supplier Network</p>
+                    <h2 class="text-[15px] font-extrabold text-slate-900 tracking-tight" id="header-supplier-title">Loading...</h2>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="window.location.href='index.html'" class="eg-btn eg-btn-ghost">
+                    <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+                    Supplier Registry
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="ml-64 pt-20 min-h-[calc(100vh-80px)] p-8 flex flex-col gap-6">
+        <!-- 1. Supplier Profile Hero Banner -->
+        <section class="eg-hero p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shrink-0">
+            <div class="eg-hero-inner flex items-center gap-5 w-full md:w-auto">
+                <div class="eg-avatar">
+                    <span class="material-symbols-outlined text-[36px]">corporate_fare</span>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <h1 class="eg-title-xl" id="supplier-name-title">Loading...</h1>
+                        <span id="supplier-status-badge" class="eg-pill eg-pill-slate">
+                            <span class="dot-led"></span>
+                            <span id="supplier-status-text">Pending</span>
+                        </span>
+                    </div>
+                    <div class="eg-meta-row">
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px]">category</span>
+                            <span id="supplier-sector">Sector: Loading</span>
+                        </span>
+                        <span class="dot"></span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px]">public</span>
+                            <span id="supplier-country">Base: Loading</span>
+                        </span>
+                        <span class="dot"></span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px]">id_card</span>
+                            <span id="supplier-id-tag">SUP-XXX</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Controls (Active / Deactivate Switcher) -->
+            <div class="flex items-center gap-3 w-full md:w-auto md:border-l md:border-slate-200 md:pl-6 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
+                <div class="flex flex-col text-left md:text-right mr-2">
+                    <span class="eg-eyebrow">Partner Status Control</span>
+                    <span class="text-[12.5px] font-bold text-slate-600 mt-1" id="status-control-label">Status: Active</span>
+                </div>
+                <button onclick="toggleActiveStatus()" id="status-toggle-btn" data-state="active" class="eg-status-toggle">
+                    <div>
+                        <div class="label">Active</div>
+                        <div class="sub">Procurement enabled</div>
+                    </div>
+                    <span class="pill-action">
+                        <span class="material-symbols-outlined text-[16px]" id="status-toggle-icon">do_not_disturb_on</span>
+                        <span id="status-toggle-text">Deactivate</span>
+                    </span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 2. Main Content Sections Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- Left Panel: Quotation Menu & Details -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                <!-- "Menu" Quotation Section -->
+                <div class="eg-card eg-card-pad flex flex-col gap-5">
+                    <div class="eg-section-head">
+                        <div>
+                            <h2>
+                                <span class="icon-tile">
+                                    <span class="material-symbols-outlined text-[18px]">menu_book</span>
+                                </span>
+                                Partner Menu &amp; Quotation
+                            </h2>
+                            <p>Approved items, volume rates, and standard lead times guaranteed under current SLA.</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="eg-pill eg-pill-indigo" id="menu-sector-badge">Raw Materials</span>
+                            <button onclick="openAddItemModal()" class="eg-btn eg-btn-soft">
+                                <span class="material-symbols-outlined text-[16px]">add</span>
+                                Add Item
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Menu Items Table -->
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="eg-table">
+                            <thead>
+                                <tr>
+                                    <th>Item details</th>
+                                    <th>SKU / Ref</th>
+                                    <th>Price Date</th>
+                                    <th>Unit Price</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Procure</th>
+                                </tr>
+                            </thead>
+                            <tbody id="quotation-menu-body">
+                                <!-- Populated Dynamically based on Sector -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Panel: Partner Info Card -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                <div class="eg-info-card">
+                    <div class="eg-info-head">
+                        <span class="icon-tile">
+                            <span class="material-symbols-outlined text-[18px]">verified_user</span>
+                        </span>
+                        <h3>Partner Contact</h3>
+                    </div>
+                    <div class="eg-info-body">
+                        <div class="eg-info-row">
+                            <span class="material-symbols-outlined">person</span>
+                            <div>
+                                <div class="lbl">Account Executive</div>
+                                <div class="val" id="kpi-contact-name">—</div>
+                            </div>
+                        </div>
+                        <div class="eg-info-row">
+                            <span class="material-symbols-outlined">call</span>
+                            <div>
+                                <div class="lbl">Phone</div>
+                                <div class="val" id="kpi-contact-phone">—</div>
+                            </div>
+                        </div>
+                        <div class="eg-info-row">
+                            <span class="material-symbols-outlined">mail</span>
+                            <div>
+                                <div class="lbl">Email</div>
+                                <div class="val" id="kpi-contact-email">—</div>
+                            </div>
+                        </div>
+                        <div class="eg-info-row">
+                            <span class="material-symbols-outlined">description</span>
+                            <div>
+                                <div class="lbl">Contract Ref</div>
+                                <div class="val" id="kpi-contract-ref">LA-2026-XXX</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 3. INTERACTIVE ORDER SIMULATION MODAL -->
+    <div id="order-modal" class="eg-modal-backdrop">
+        <div class="eg-modal-card" id="order-modal-card">
+            <!-- Modal Header -->
+            <div class="eg-modal-header">
+                <h3>
+                    <span class="material-symbols-outlined">shopping_cart</span>
+                    Generate Purchase Order
+                </h3>
+                <button onclick="closeOrderModal()" class="eg-modal-close">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="eg-modal-body">
+                <div class="p-4 rounded-xl border border-indigo-100 flex items-center gap-3" style="background: linear-gradient(135deg, var(--eg-primary-soft) 0%, #F8FAFF 100%);">
+                    <div class="eg-avatar" style="width:42px;height:42px;border-radius:12px;">
+                        <span class="material-symbols-outlined text-[20px]">corporate_fare</span>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-[12px] font-extrabold text-slate-800 truncate" id="modal-supplier-name">Supplier Partner</p>
+                        <p class="text-[11px] text-slate-500 truncate" id="modal-item-name">Specialty Arabica Blend</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="eg-field">
+                        <label>Unit Price</label>
+                        <input type="text" id="modal-unit-price" readonly class="eg-input" />
+                    </div>
+                    <div class="eg-field">
+                        <label>MOQ Requirement</label>
+                        <input type="text" id="modal-moq" readonly class="eg-input" />
+                    </div>
+                </div>
+
+                <div class="eg-field">
+                    <label>Enter Order Quantity *</label>
+                    <input type="number" id="modal-quantity" oninput="calculateTotalValuation()" class="eg-input" min="1" placeholder="e.g. 500" />
+                    <p class="text-[10.5px] text-rose-600 font-bold hidden" id="moq-warning">Quantity is below Minimum Order Quantity (MOQ)!</p>
+                </div>
+
+                <div class="p-4 rounded-xl border border-slate-200 flex justify-between items-center" style="background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%);">
+                    <span class="text-[11.5px] font-bold text-slate-600">Calculated PO Valuation</span>
+                    <span class="font-headline-sm text-xl font-extrabold text-primary" id="modal-total-valuation">$0.00</span>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="eg-modal-footer">
+                <button onclick="closeOrderModal()" class="eg-btn eg-btn-ghost">Cancel</button>
+                <button id="dispatch-btn" onclick="submitPurchaseOrder()" class="eg-btn eg-btn-primary">
+                    <span class="material-symbols-outlined text-[16px]">send</span>
+                    Dispatch Purchase Order
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item to Quotation Modal -->
+    <div id="add-item-modal" class="eg-modal-backdrop">
+        <div class="eg-modal-card" id="add-item-card">
+            <div class="eg-modal-header">
+                <h3>
+                    <span class="material-symbols-outlined">add_box</span>
+                    Add Quoted Item
+                </h3>
+                <button onclick="closeAddItemModal()" class="eg-modal-close">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+            <div class="eg-modal-body">
+                <div class="eg-field">
+                    <label>Item Name *</label>
+                    <input type="text" id="add-item-name" placeholder="e.g. Arabica Green Beans" class="eg-input" />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="eg-field">
+                        <label>SKU / Ref</label>
+                        <input type="text" id="add-item-code" placeholder="SKU-001" class="eg-input" />
+                    </div>
+                    <div class="eg-field">
+                        <label>Unit</label>
+                        <select id="add-item-unit" class="eg-input">
+                            <option value="kg">kg</option>
+                            <option value="lb">lb</option>
+                            <option value="litre">litre</option>
+                            <option value="pcs">pcs</option>
+                            <option value="carton">carton</option>
+                            <option value="sack">sack</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="eg-field">
+                        <label>Unit Price ($) *</label>
+                        <input type="number" step="0.01" min="0" id="add-item-price" placeholder="0.00" class="eg-input" />
+                    </div>
+                    <div class="eg-field">
+                        <label>Price Date</label>
+                        <input type="date" id="add-item-price-date" class="eg-input" />
+                    </div>
+                </div>
+                <div class="eg-field">
+                    <label>Status</label>
+                    <select id="add-item-active" class="eg-input">
+                        <option value="true">Active — Can purchase</option>
+                        <option value="false">Inactive — Cannot purchase</option>
+                    </select>
+                </div>
+                <p id="add-item-error" class="text-[11.5px] text-rose-600 font-bold hidden"></p>
+            </div>
+            <div class="eg-modal-footer">
+                <button onclick="closeAddItemModal()" class="eg-btn eg-btn-ghost">Cancel</button>
+                <button id="submit-add-item-btn" onclick="submitAddItem()" class="eg-btn eg-btn-primary">
+                    <span class="material-symbols-outlined text-[16px]">save</span>
+                    Save Item
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Logic & Integration -->
+    <script>
+        const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        let _supabaseClient = null;
+        async function getClient() {
+            if (_supabaseClient) return _supabaseClient;
+            if (!window.supabase) {
+                await new Promise(r => setTimeout(r, 100));
+                return getClient();
+            }
+            _supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+            return _supabaseClient;
+        }
+
+        async function ensureSession() {
+            const client = await getClient();
+            if (client) {
+                try {
+                    const { data: { session } } = await client.auth.getSession();
+                    if (session) return;
+                } catch(e) { /* ignore */ }
+            }
+        }
+
+        async function sbClientOp({ table, operation, row, filters, columns, returning }) {
+            if (typeof window.erpSupabaseAPI === 'function') {
+                return window.erpSupabaseAPI({
+                    table,
+                    operation,
+                    data: row,
+                    filters,
+                    columns,
+                    returning: returning || '*'
+                });
+            }
+
+            const client = await getClient();
+            await ensureSession();
+            if (operation === 'select') {
+                const q = client.from(table).select(columns || '*');
+                if (filters && filters.eq) {
+                    for (const [col, val] of Object.entries(filters.eq)) {
+                        q.eq(col, val);
+                    }
+                }
+                const { data, error } = await q;
+                if (error) return [];
+                return data;
+            } else if (operation === 'insert') {
+                const { data, error } = await client.from(table).insert(row).select();
+                if (error) return [];
+                return data;
+            } else if (operation === 'update') {
+                const q = client.from(table).update(row);
+                if (filters && filters.eq) {
+                    for (const [col, val] of Object.entries(filters.eq)) {
+                        q.eq(col, val);
+                    }
+                }
+                const { data, error } = await q;
+                if (error) return [];
+                return data;
+            }
+        }
+
+        let currentSupplier = null;
+        let selectedMenuItem = null;
+        let supplierQuotations = [];
+        let supplierPOs = [];
+
+        async function loadSupplierPOs() {
+            if (!currentSupplier || !currentSupplier.dbId) return;
+            const loadingEl = document.getElementById('supplier-po-loading');
+            const emptyEl = document.getElementById('supplier-po-empty');
+            const listEl = document.getElementById('supplier-po-list');
+            if (!loadingEl) return;
+
+            loadingEl.classList.remove('hidden');
+            emptyEl?.classList.add('hidden');
+            listEl?.classList.add('hidden');
+
+            try {
+                const data = await sbClientOp({
+                    table: 'raw_material_orders',
+                    operation: 'select',
+                    columns: 'id, order_id, item_name, item_code, quantity, unit, unit_cost, total_amount, status, email_sent, email_sent_at, purchase_record_id, created_at',
+                    filters: { eq: { supplier_id: currentSupplier.dbId } }
+                });
+
+                supplierPOs = (data || []).map(po => ({
+                    id: po.id,
+                    po_number: po.purchase_record_id || (po.order_id ? `PO-${po.order_id}` : 'N/A'),
+                    item_name: po.item_name || po.item_code || '—',
+                    quantity: po.quantity,
+                    unit: po.unit || 'units',
+                    unit_price: parseFloat(po.unit_cost) || 0,
+                    total: parseFloat(po.total_amount) || 0,
+                    status: po.status || 'Pending',
+                    email_sent: po.email_sent || false,
+                    email_sent_at: po.email_sent_at,
+                    created_at: po.created_at
+                }));
+
+                renderSupplierPOs();
+            } catch(e) {
+                console.warn('Supplier PO load error:', e);
+                if (loadingEl) loadingEl.textContent = 'Failed to load POs.';
+            }
+        }
+
+        function renderSupplierPOs() {
+            const loadingEl = document.getElementById('supplier-po-loading');
+            const emptyEl = document.getElementById('supplier-po-empty');
+            const listEl = document.getElementById('supplier-po-list');
+            if (!loadingEl) return;
+
+            loadingEl.classList.add('hidden');
+
+            if (supplierPOs.length === 0) {
+                emptyEl?.classList.remove('hidden');
+                listEl?.classList.add('hidden');
+                return;
+            }
+
+            emptyEl?.classList.add('hidden');
+            listEl?.classList.remove('hidden');
+            listEl.innerHTML = '';
+
+            supplierPOs.forEach(po => {
+                const statusColor = po.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : po.status === 'Shipped' ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : po.status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200';
+                const emailIcon = po.email_sent ? 'check_circle' : 'schedule';
+                const emailColor = po.email_sent ? 'text-emerald-500' : 'text-slate-300';
+                const dateStr = po.created_at ? new Date(po.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+                const sentStr = po.email_sent_at ? new Date(po.email_sent_at).toLocaleString('en-GB', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+
+                const item = document.createElement('div');
+                item.className = 'p-4 hover:bg-slate-50 transition-colors';
+                item.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[11px] font-extrabold text-primary">${po.po_number}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${statusColor}">${po.status}</span>
+                    </div>
+                    <div class="text-xs font-semibold text-slate-700 mb-1">${po.item_name}</div>
+                    <div class="text-[11px] text-slate-400 mb-2">${po.quantity} ${po.unit || 'units'} @ $${po.unit_price.toFixed(4)} = <span class="font-extrabold text-primary">$${po.total.toFixed(2)}</span></div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-1 ${emailColor}">
+                            <span class="material-symbols-outlined text-[12px]">${emailIcon}</span>
+                            <span class="text-[10px] font-semibold">Sent ${sentStr}</span>
+                        </div>
+                        <span class="text-[9px] text-slate-400 font-medium">${dateStr}</span>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        // Parse search query
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        async function initPage() {
+            const supId = getUrlParameter('id');
+            if(!supId) {
+                alert("Error: No Supplier ID provided in the URL.");
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Load supplier from Supabase
+            try {
+                // The page's URL id is a display code like 'SUP-001' that the
+                // supplier list page synthesises from the array index. The
+                // canonical identifier is the UUID stored in
+                // localStorage.suppliers[].dbId. There's no safe way to
+                // reverse-engineer a UUID from a display code, so we MUST go
+                // through localStorage — if it's missing, the user landed on
+                // this page through a stale bookmark / shared link, and the
+                // right answer is "not found", not "pick row N and pray".
+                let supplierRow = null;
+                const storedSuppliers = JSON.parse(localStorage.getItem('suppliers') || '[]');
+                const stored = storedSuppliers.find(s => s.id === supId);
+
+                if (stored && stored.dbId) {
+                    // Query by the stored UUID
+                    const data = await sbClientOp({
+                        table: 'suppliers',
+                        operation: 'select',
+                        columns: '*',
+                        filters: { eq: { supplier_id: stored.dbId } }
+                    });
+                    if (data && data.length > 0) supplierRow = data[0];
+                }
+
+                // Fallback: the URL might already carry a UUID (deep link
+                // from another tool). Try a direct match on supplier_id so
+                // that path still works without depending on localStorage.
+                if (!supplierRow && /^[0-9a-f-]{36}$/i.test(supId)) {
+                    const data = await sbClientOp({
+                        table: 'suppliers',
+                        operation: 'select',
+                        columns: '*',
+                        filters: { eq: { supplier_id: supId } }
+                    });
+                    if (data && data.length > 0) supplierRow = data[0];
+                }
+
+                // Otherwise: no UUID lookup succeeded. Bail out instead of
+                // silently showing whatever row happens to be at index N in
+                // the table — that was the previous bug.
+
+                if (supplierRow && supplierRow.supplier_id) {
+                    currentSupplier = {
+                        id: supId,
+                        dbId: supplierRow.supplier_id,
+                        name: supplierRow.supplier_company,
+                        status: supplierRow.status_of_supplier,
+                        contactName: supplierRow.supplier_main_point_of_contact_name || "Account Executive",
+                        email: supplierRow.supplier_main_point_of_contact_email || "",
+                        phone: supplierRow.supplier_main_point_of_contact_number || "Not specified",
+                        country: supplierRow.supplier_origin || "Global",
+                        sector: "Raw Goods",
+                        rawGoods: supplierRow.raw_material_provider || "Standard materials"
+                    };
+                }
+            } catch(e) {
+                console.warn("Supabase load error:", e);
+                dismissPageLoading();
+            }
+
+            if (!currentSupplier) {
+                alert("Supplier details not found. Returning to Registry.");
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Populate Page Header and Profile elements
+            const headerTitle = document.getElementById('header-supplier-title');
+            if (headerTitle) headerTitle.textContent = `${currentSupplier.name} (${currentSupplier.id})`;
+            
+            const breadcrumb = document.getElementById('breadcrumb-supplier-name');
+            if (breadcrumb) breadcrumb.textContent = currentSupplier.name;
+            
+            const nameTitle = document.getElementById('supplier-name-title');
+            if (nameTitle) nameTitle.textContent = currentSupplier.name;
+            
+            const idTag = document.getElementById('supplier-id-tag');
+            if (idTag) idTag.textContent = currentSupplier.id;
+            
+            const sector = document.getElementById('supplier-sector');
+            if (sector) sector.textContent = `Sector: ${currentSupplier.sector}`;
+            
+            const country = document.getElementById('supplier-country');
+            if (country) country.textContent = `Base: ${currentSupplier.country || 'N/A'}`;
+
+            // Populate KPIs
+            const contractRef = document.getElementById('kpi-contract-ref');
+            if (contractRef) contractRef.textContent = `LA-2026-${currentSupplier.id.split('-')[1] || '990'}`;
+
+            const contactName = document.getElementById('kpi-contact-name');
+            if (contactName) contactName.textContent = currentSupplier.contactName || 'Ops Manager';
+
+            const contactPhone = document.getElementById('kpi-contact-phone');
+            if (contactPhone) contactPhone.textContent = currentSupplier.phone || 'N/A';
+
+            const contactEmail = document.getElementById('kpi-contact-email');
+            if (contactEmail) {
+                if (currentSupplier.email && currentSupplier.email.trim()) {
+                    contactEmail.textContent = currentSupplier.email;
+                    contactEmail.classList.remove('text-slate-400', 'italic');
+                    contactEmail.classList.add('text-white');
+                    contactEmail.removeAttribute('title');
+                } else {
+                    contactEmail.innerHTML = '<span class="text-slate-300 italic text-[11px]">No email on file — edit supplier to add</span>';
+                }
+            }
+
+            // Populate Status Badge & Toggle state
+            updateStatusElements();
+
+            // Dismiss loading placeholders
+            dismissPageLoading();
+
+            // Populate Menu Quotation Items based on Sector
+            await loadSupplierQuotations();
+            populateQuotationMenu();
+            loadSupplierPOs();
+        }
+
+        function dismissPageLoading() {
+            const header = document.getElementById('header-supplier-title');
+            if (header && header.textContent.includes('Loading')) header.textContent = '';
+            const nameTitle = document.getElementById('supplier-name-title');
+            if (nameTitle && nameTitle.textContent === 'Loading...') nameTitle.textContent = '';
+            const sector = document.getElementById('supplier-sector');
+            if (sector && sector.textContent.includes('Loading')) sector.textContent = '';
+            const country = document.getElementById('supplier-country');
+            if (country && country.textContent.includes('Loading')) country.textContent = '';
+            const kpiName = document.getElementById('kpi-contact-name');
+            if (kpiName && kpiName.textContent === 'Loading...') kpiName.textContent = '';
+        }
+
+        function updateStatusElements() {
+            const badge = document.getElementById('supplier-status-badge');
+            const badgeText = document.getElementById('supplier-status-text');
+            const label = document.getElementById('status-control-label');
+            const btn = document.getElementById('status-toggle-btn');
+            const btnText = document.getElementById('status-toggle-text');
+            const btnIcon = document.getElementById('status-toggle-icon');
+            const btnLabel = btn.querySelector('.label');
+            const btnSub = btn.querySelector('.sub');
+
+            const isActive = currentSupplier.status === 'Active' || currentSupplier.status === 'Verified';
+
+            if (isActive) {
+                badge.className = "eg-pill eg-pill-emerald";
+                badgeText.textContent = "Active";
+                label.textContent = "Status: Active";
+
+                btn.dataset.state = "active";
+                btnText.textContent = "Inactivate";
+                btnIcon.textContent = "do_not_disturb_on";
+                btnLabel.textContent = "Active";
+                btnSub.textContent = "Procurement enabled";
+            } else {
+                badge.className = "eg-pill eg-pill-rose";
+                badgeText.textContent = "Inactive";
+                label.textContent = "Status: Inactive";
+
+                btn.dataset.state = "inactive";
+                btnText.textContent = "Activate";
+                btnIcon.textContent = "check_circle";
+                btnLabel.textContent = "Inactive";
+                btnSub.textContent = "Procurement locked";
+            }
+        }
+
+        async function toggleActiveStatus() {
+            const isActive = currentSupplier.status === 'Active' || currentSupplier.status === 'Verified';
+
+            if (isActive) {
+                currentSupplier.status = 'Suspended'; // Maps to Inactivate in the UI and DB
+                alert(`Notice: ${currentSupplier.name} has been set to INACTIVE. Procurement streams have been locked.`);
+            } else {
+                currentSupplier.status = 'Verified'; // Maps to Active in the UI and DB
+                alert(`Notice: ${currentSupplier.name} has been set to ACTIVE. Enterprise logistics routes resumed.`);
+            }
+
+            // Sync to Supabase using Edge Function
+            try {
+                await sbClientOp({
+                    table: 'suppliers',
+                    operation: 'update',
+                    row: { status_of_supplier: currentSupplier.status === 'Verified' ? 'Active' : 'Suspended' },
+                    filters: { eq: { supplier_id: currentSupplier.dbId } }
+                });
+            } catch(err) {
+                console.warn('Supabase status sync failed:', err);
+            }
+
+            updateStatusElements();
+        }
+
+        async function loadSupplierQuotations() {
+            if (!currentSupplier || !currentSupplier.dbId) return;
+            const supplierId = currentSupplier.dbId;
+            let lastItems = [];
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const request = sbClientOp({
+                        table: 'supplier_quotations',
+                        operation: 'select',
+                        columns: '*',
+                        filters: { eq: { supplier_id: supplierId } }
+                    });
+                    const items = await Promise.race([
+                        request,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Quotation load timed out')), 7000))
+                    ]);
+
+                    if (!currentSupplier || currentSupplier.dbId !== supplierId) return;
+
+                    lastItems = Array.isArray(items) ? items : [];
+                    supplierQuotations = lastItems;
+                    if (supplierQuotations.length > 0) {
+                        populateQuotationMenu();
+                        return;
+                    }
+                } catch(err) {
+                    console.warn(`Quotation load attempt ${attempt + 1} failed:`, err);
+                }
+
+                if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            supplierQuotations = lastItems;
+            populateQuotationMenu();
+        }
+
+        async function populateQuotationMenu() {
+            const tableBody = document.getElementById('quotation-menu-body');
+            const sectorBadge = document.getElementById('menu-sector-badge');
+            if(!tableBody) return;
+
+            tableBody.innerHTML = '';
+            sectorBadge.textContent = currentSupplier.sector || 'Raw Goods';
+
+            if (!currentSupplier || !currentSupplier.dbId) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 font-semibold">Supplier not loaded.</td></tr>`;
+                return;
+            }
+
+            if (supplierQuotations.length > 0) {
+                supplierQuotations.forEach(item => {
+                    const rawPriceDate = item.price_date || item.created_at || new Date().toISOString().split('T')[0];
+                    const priceDate = rawPriceDate ? new Date(rawPriceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                    const isActive = item.is_active !== false;
+                    const statusBadge = isActive
+                        ? `<span class="eg-pill eg-pill-emerald"><span class="dot-led"></span>Active</span>`
+                        : `<span class="eg-pill eg-pill-rose"><span class="dot-led"></span>Inactive</span>`;
+                    const toggleActiveBtn = isActive
+                        ? `<button onclick="toggleQuotationActive('${item.id}', false)" title="Deactivate this produce" class="eg-btn eg-btn-rose !px-2 !py-1.5">
+                                <span class="material-symbols-outlined text-[14px]">block</span>
+                                <span class="hidden lg:inline">Deactivate</span>
+                            </button>`
+                        : `<button onclick="toggleQuotationActive('${item.id}', true)" title="Activate this produce" class="eg-btn eg-btn-emerald !px-2 !py-1.5">
+                                <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                <span class="hidden lg:inline">Activate</span>
+                            </button>`;
+                    const procureBtn = isActive
+                        ? `<button onclick="openOrderModal('${item.id}')" class="eg-btn eg-btn-primary ml-auto">
+                                <span class="material-symbols-outlined text-[14px]">shopping_cart</span>
+                                Procure
+                            </button>`
+                        : `<span class="eg-pill eg-pill-slate ml-auto">
+                                <span class="material-symbols-outlined text-[14px]">block</span>
+                                Unavailable
+                            </span>`;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>
+                            <span class="cell-strong">${item.item_name}</span>
+                        </td>
+                        <td>
+                            <span class="cell-mute">${item.item_code || '—'}</span>
+                        </td>
+                        <td>
+                            <span class="cell-mute">${priceDate}</span>
+                        </td>
+                        <td>
+                            <span class="cell-price">$${parseFloat(item.unit_price).toFixed(4)}<span class="cell-mute" style="font-weight:600">/${item.unit}</span></span>
+                        </td>
+                        <td>
+                            ${statusBadge}
+                        </td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                ${toggleActiveBtn}
+                                ${procureBtn}
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="6"><div class="eg-empty">No quoted goods yet. Click "Add Item" to list goods for this supplier.</div></td></tr>`;
+            }
+        }
+
+        // Toggle is_active on a single quotation row and re-render.
+        // Writes to supplier_quotations.is_active via the anon Supabase client
+        // (the quotation bootstrap endpoint ensures the column exists).
+        async function toggleQuotationActive(itemId, makeActive) {
+            const item = supplierQuotations.find(x => x.id === itemId);
+            if (!item) return;
+
+            const verb = makeActive ? 'activate' : 'deactivate';
+            if (!confirm(`${verb.charAt(0).toUpperCase() + verb.slice(1)} ${item.item_name}? ${makeActive ? 'Procurement will be re-enabled for this item.' : 'Procurement will be blocked for this item.'}`)) return;
+
+            // Optimistic update so the UI flips immediately.
+            item.is_active = makeActive;
+            populateQuotationMenu();
+
+            try {
+                const res = await sbClientOp({
+                    table: 'supplier_quotations',
+                    operation: 'update',
+                    row: { is_active: makeActive },
+                    filters: { eq: { id: itemId } }
+                });
+                if (!res || (Array.isArray(res) && res.length === 0)) {
+                    // Soft-fail: the bootstrap endpoint may not have run yet.
+                    console.warn('Quotation is_active update returned no data — column may be missing.');
+                }
+            } catch (err) {
+                console.error('Failed to toggle quotation is_active:', err);
+                alert(`Could not ${verb} ${item.item_name}. The quotation column may not exist yet — refresh the page to retry.`);
+                // Revert the optimistic update.
+                item.is_active = !makeActive;
+                populateQuotationMenu();
+            }
+        }
+
+        // Interactive Order Modal Logic
+        function openOrderModal(itemId) {
+            const item = supplierQuotations.find(x => x.id === itemId);
+            if (!item) return;
+
+            selectedMenuItem = item;
+            document.getElementById('modal-supplier-name').textContent = currentSupplier.name;
+            document.getElementById('modal-item-name').textContent = item.item_name;
+            document.getElementById('modal-unit-price').value = `$${parseFloat(item.unit_price).toFixed(4)} / ${item.unit}`;
+            document.getElementById('modal-moq').value = `${item.moq} ${item.unit}`;
+            document.getElementById('modal-quantity').value = '';
+            document.getElementById('modal-total-valuation').textContent = '$0.00';
+            document.getElementById('moq-warning').classList.add('hidden');
+
+            document.getElementById('order-modal').classList.add('is-open');
+        }
+
+        function closeOrderModal() {
+            document.getElementById('order-modal').classList.remove('is-open');
+            selectedMenuItem = null;
+        }
+
+        function calculateTotalValuation() {
+            if(!selectedMenuItem) return;
+
+            const qtyInput = document.getElementById('modal-quantity');
+            const qty = parseInt(qtyInput.value) || 0;
+            const moqWarning = document.getElementById('moq-warning');
+
+            if (qty < selectedMenuItem.moq) {
+                moqWarning.classList.remove('hidden');
+            } else {
+                moqWarning.classList.add('hidden');
+            }
+
+            const total = qty * selectedMenuItem.unit_price;
+            document.getElementById('modal-total-valuation').textContent = `$${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        // Add Item Modal
+        function openAddItemModal() {
+            document.getElementById('add-item-name').value = '';
+            document.getElementById('add-item-code').value = generateRandomSKU();
+            document.getElementById('add-item-unit').value = 'kg';
+            document.getElementById('add-item-price').value = '';
+            document.getElementById('add-item-price-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('add-item-active').value = 'true';
+            document.getElementById('add-item-error').textContent = '';
+
+            document.getElementById('add-item-modal').classList.add('is-open');
+        }
+
+        function generateRandomSKU() {
+            const ts = Date.now().toString(36).toUpperCase().slice(-4);
+            const rand = Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4).padEnd(4, 'X');
+            return `SKU-${ts}${rand}`;
+        }
+
+        function closeAddItemModal() {
+            document.getElementById('add-item-modal').classList.remove('is-open');
+        }
+
+        async function submitAddItem() {
+            if (!currentSupplier || !currentSupplier.dbId) {
+                alert("Supplier data is still loading. Please wait a moment and try again.");
+                return;
+            }
+            const name = document.getElementById('add-item-name').value.trim();
+            const code = document.getElementById('add-item-code').value.trim();
+            const unit = document.getElementById('add-item-unit').value;
+            const price = parseFloat(document.getElementById('add-item-price').value);
+            const priceDate = document.getElementById('add-item-price-date').value;
+            const isActive = document.getElementById('add-item-active').value === 'true';
+            const errorEl = document.getElementById('add-item-error');
+
+            if (!name) {
+                errorEl.textContent = 'Item name is required.';
+                return;
+            }
+            if (isNaN(price) || price <= 0) {
+                errorEl.textContent = 'Unit price must be a positive number.';
+                return;
+            }
+
+            errorEl.textContent = '';
+            const btn = document.getElementById('submit-add-item-btn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            try {
+                const insertResult = await sbClientOp({
+                    table: 'supplier_quotations',
+                    operation: 'insert',
+                    row: {
+                        supplier_id: currentSupplier.dbId,
+                        item_name: name,
+                        item_code: code || null,
+                        unit: unit,
+                        unit_price: price,
+                        price_date: priceDate || new Date().toISOString().split('T')[0],
+                        is_active: isActive
+                    }
+                });
+
+                console.log('[ERP] Supplier quotation insert result:', insertResult);
+
+                supplierQuotations.push({
+                    id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+                    supplier_id: currentSupplier.dbId,
+                    item_name: name,
+                    item_code: code || null,
+                    unit: unit,
+                    unit_price: price,
+                    price_date: priceDate || new Date().toISOString().split('T')[0],
+                    is_active: isActive
+                });
+                populateQuotationMenu();
+                closeAddItemModal();
+            } catch(err) {
+                console.warn('Error adding item:', err);
+                errorEl.textContent = 'Failed to save item. Please try again.';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Save Item';
+            btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">save</span> Save Item`;
+        }
+
+        // Fire-and-forget PO notification to the supplier. The endpoint flips
+        // raw_material_orders.email_sent / email_sent_at so the supplier PO list
+        // reflects the outcome; a missing email or send failure must NOT roll
+        // back the PO that was just created.
+        async function sendSupplierPoEmail(payload) {
+            try {
+                const res = await fetch('/api/supplier/send-po-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const json = await res.json().catch(() => ({}));
+                if (json && json.ok) return;
+                if (json && json.skipped && json.reason === 'no_supplier_email') {
+                    console.info('[PO email] supplier has no email on file; PO was created but no notification sent.');
+                    return;
+                }
+                console.warn('[PO email] non-OK response:', json?.error || json);
+            } catch (err) {
+                console.warn('[PO email] dispatch failed:', err);
+            }
+        }
+
+        // Idempotently ensure the optional audit columns exist on
+        // raw_material_orders so the email_recipient / email_error fields stick.
+        // Safe to call on every page load — the endpoint runs IF NOT EXISTS DDL.
+        (function ensurePoEmailColumns() {
+            try {
+                fetch('/api/supplier/po-email/bootstrap', { method: 'POST' })
+                    .catch(() => {});
+            } catch (_) {}
+        })();
+
+        // Idempotently ensure price_date + is_active exist on supplier_quotations
+        // so the Add Item modal's insert doesn't get silently dropped by PostgREST.
+        (function ensureQuotationColumns() {
+            try {
+                fetch('/api/supplier/quotation/bootstrap', { method: 'POST' })
+                    .catch(() => {});
+            } catch (_) {}
+        })();
+
+        async function submitPurchaseOrder() {
+            if(!selectedMenuItem) return;
+
+            const qty = parseInt(document.getElementById('modal-quantity').value) || 0;
+            if (qty < selectedMenuItem.moq) {
+                alert(`Error: Order quantity cannot be below the Minimum Order Quantity (MOQ) of ${selectedMenuItem.moq} units.`);
+                return;
+            }
+
+            const unitPrice = parseFloat(selectedMenuItem.unit_price) || 0;
+            const total = qty * unitPrice;
+            const poNumber = `PO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+            const supplierId = selectedMenuItem.supplier_id || null;
+            const itemCode = selectedMenuItem.item_code || null;
+            const itemName = selectedMenuItem.item_name || itemCode || 'Raw material';
+            const unit = selectedMenuItem.unit || 'units';
+
+            if (!supplierId) {
+                alert(`Error: No supplier ID found for ${itemName}. Cannot create purchase order.`);
+                return;
+            }
+
+            document.getElementById('dispatch-btn').disabled = true;
+            document.getElementById('dispatch-btn').innerHTML = `<span class="material-symbols-outlined animate-spin text-sm mr-1">sync</span> Placing Order...`;
+
+            // Look up inventory_id for reliable stock update when PO is marked Received
+            let inventoryId = selectedMenuItem.inventory_id || null;
+            if (!inventoryId && itemCode) {
+                try {
+                    const invRows = await sbClientOp({
+                        table: 'inventory',
+                        operation: 'select',
+                        columns: 'id',
+                        filters: { eq: { item_code: itemCode } }
+                    });
+                    if (invRows && invRows.length > 0) {
+                        inventoryId = invRows[0].id;
+                    }
+                } catch(e) {
+                    console.warn('[submitPurchaseOrder] inventory lookup failed:', e);
+                }
+            }
+
+            try {
+                const purchaseRows = await sbClientOp({
+                    table: 'purchase_records',
+                    operation: 'insert',
+                    row: {
+                        record_number: poNumber,
+                        po_number: poNumber,
+                        supplier_name: currentSupplier.name,
+                        items: [{ item_code: itemCode, item_name: itemName, quantity: qty, unit, unit_cost: unitPrice }],
+                        total_amount: total,
+                        status: 'Pending',
+                        purchase_date: new Date().toISOString().split('T')[0],
+                        notes: `PO for ${qty} ${unit} of ${itemName}`,
+                        inventory_id: inventoryId
+                    }
+                });
+
+                const prId = purchaseRows && purchaseRows.length > 0 && purchaseRows[0].id ? purchaseRows[0].id : poNumber;
+
+                await sbClientOp({
+                    table: 'raw_material_orders',
+                    operation: 'insert',
+                    row: {
+                        supplier_id: currentSupplier.dbId,
+                        supplier_name: currentSupplier.name,
+                        items: [{ item_code: itemCode, item_name: itemName, quantity: qty, unit, unit_cost: unitPrice }],
+                        total_amount: total,
+                        status: 'Pending',
+                        order_date: new Date().toISOString().split('T')[0],
+                        order_number: poNumber,
+                        notes: `PO for ${qty} ${unit} of ${itemName}`,
+                        inventory_id: inventoryId
+                    }
+                });
+
+                await loadSupplierPOs();
+                alert(`Purchase Order ${poNumber} created successfully for ${qty} ${unit} of ${itemName}. Total: $${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`);
+                closeOrderModal();
+
+                // Notify the supplier by email. Fire-and-forget: a missing email
+                // or a Brevo failure must NOT roll back the PO that was just
+                // committed — the server records the outcome on
+                // raw_material_orders.email_sent / email_sent_at.
+                sendSupplierPoEmail({
+                    supplierId: currentSupplier.dbId,
+                    supplierName: currentSupplier.name,
+                    contactName: currentSupplier.contactName,
+                    poNumber,
+                    purchaseRecordId: prId,
+                    items: [{ item_code: itemCode, item_name: itemName, quantity: qty, unit, unit_cost: unitPrice }],
+                    totalAmount: total,
+                    currency: 'USD',
+                    purchaseDate: new Date().toISOString().split('T')[0],
+                    notes: `PO for ${qty} ${unit} of ${itemName}`
+                });
+            } catch (err) {
+                alert(`Error: Could not create purchase order. ${err.message}`);
+            } finally {
+                document.getElementById('dispatch-btn').disabled = false;
+                document.getElementById('dispatch-btn').innerHTML = `<span class="material-symbols-outlined text-[16px]">send</span> Dispatch Purchase Order`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initPage();
+        });
+    </script>
+</body>
+
+</html>
