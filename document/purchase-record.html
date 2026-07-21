@@ -1,0 +1,1982 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Purchase Records & Traceability | Supply Chain Manager</title>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+        <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800"
+        rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js"></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { background-color: #F8FAFC; }
+
+        /* Table row hover */
+        .record-row {
+            transition: background-color 0.15s ease;
+            cursor: pointer;
+        }
+        .record-row:hover {
+            background-color: #f7f9fb;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600; /* font-semibold */
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+
+<body class="font-body-md text-on-surface flex h-screen overflow-hidden">
+    <!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+    
+    <!-- Top App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">receipt_long</span>
+                Purchase Records Hub
+            </h2>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2 text-[11px] font-bold text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Procurement · Live
+                </div>
+                <a href="/document/traceability.html" class="text-[11px] font-bold text-primary bg-surface-container-low hover:bg-surface-container border border-outline-variant px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px]">track_changes</span>
+                    Traceability
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex flex-col min-w-0 ml-64 relative min-h-[calc(100vh-80px)]">
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-auto pt-20 px-8 pb-8 flex flex-col gap-6">
+            <!-- Filters & Controls -->
+            <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-wrap gap-4 items-center justify-between shrink-0">
+                <div class="flex gap-4">
+                    <select class="bg-surface-container-low border-none rounded-lg text-body-md py-2 px-4 text-on-surface">
+                        <option value="">All Statuses</option>
+                        <option value="Submitted Order">Submitted Order</option>
+                        <option value="Received">Received</option>
+                    </select>
+                    <select id="supplier-filter" onchange="filterTable()" class="bg-surface-container-low border-none rounded-lg text-body-md py-2 px-4 text-on-surface">
+                        <option value="">All Suppliers</option>
+                    </select>
+                    <input type="date" class="bg-surface-container-low border-none rounded-lg text-body-md py-2 px-4 text-on-surface" />
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex-1 flex flex-col">
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-left border-collapse min-w-[800px]">
+                        <thead>
+                            <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-[13px] uppercase tracking-wide">
+                                <th class="p-4 font-semibold border-b border-outline-variant">PO Number</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant">Supplier</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant">Raw Goods</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant">Total Value</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant">Order Date</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant">Status</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant text-right" data-rbac="procurement:delete">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="po-table-body" class="divide-y divide-outline-variant text-body-md">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-4 border-t border-outline-variant bg-surface-bright flex justify-between items-center text-sm text-on-surface-variant">
+                    <span>Showing 1 to 10 of <span id="total-records">0</span> records</span>
+                    <div class="flex gap-2">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Right Side Panel: Traceability & Document Preview -->
+    <div id="side-panel" class="fixed right-0 top-0 bottom-0 w-[500px] bg-white border-l border-outline-variant shadow-2xl transform translate-x-full transition-transform duration-300 z-50 flex flex-col">
+        <div class="h-16 px-6 border-b border-outline-variant flex justify-between items-center bg-surface-bright shrink-0">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">receipt_long</span>
+                <h2 class="text-headline-sm text-primary font-bold" id="panel-po-number">PO-0000</h2>
+            </div>
+            <button onclick="closePanel()" class="p-2 hover:bg-surface-container-low rounded-full">
+                <span class="material-symbols-outlined text-on-surface-variant">close</span>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto">
+            <!-- Tabs -->
+            <div class="flex border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-10">
+                <button id="tab-btn-traceability" onclick="switchSidePanelTab('traceability')" class="flex-1 py-3 text-sm font-bold text-primary border-b-2 border-primary text-center">Traceability</button>
+                <button id="tab-btn-documents" onclick="switchSidePanelTab('documents')" class="flex-1 py-3 text-sm font-bold text-on-surface-variant hover:bg-surface-container-low text-center">Documents</button>
+                <button id="tab-btn-financials" onclick="switchSidePanelTab('financials')" class="flex-1 py-3 text-sm font-bold text-on-surface-variant hover:bg-surface-container-low text-center flex items-center justify-center gap-1">
+                    Financials
+                    <span id="tab-match-badge" class="text-[9px] px-2 py-0.5 rounded-full font-bold"></span>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <!-- Tab Section: Delivery & Stock Info -->
+                <div id="panel-tab-traceability" class="flex flex-col gap-8">
+                    <!-- Supplier & PO Summary Card -->
+                    <div class="bg-surface-container-low rounded-xl p-5 border border-outline-variant">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Supplier</p>
+                                <p class="text-body-lg font-bold text-primary flex items-center gap-2" id="panel-supplier">
+                                    Supplier Name
+                                </p>
+                            </div>
+                            <div id="panel-status-container">
+                                <!-- Status Badge -->
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/50">
+                            <div>
+                                <p class="text-xs text-on-surface-variant">Items</p>
+                                <p class="font-semibold text-primary" id="panel-items">...</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-on-surface-variant">Total Value</p>
+                                <p class="font-semibold text-primary" id="panel-value">...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quantity Details Card -->
+                    <div class="bg-surface-container-low rounded-xl p-5 border border-outline-variant">
+                        <h3 class="text-label-md font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">inventory_2</span>
+                            Quantity Details
+                        </h3>
+                        <!-- Single-row summary (legacy single-item POs) -->
+                        <div id="panel-qty-summary" class="grid grid-cols-3 gap-4">
+                            <div>
+                                <p class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider mb-1">Quantity</p>
+                                <p class="text-sm font-bold text-primary font-data-tabular" id="panel-qty">—</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider mb-1">Unit</p>
+                                <p class="text-sm font-bold text-primary" id="panel-qty-unit">—</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider mb-1">Unit Price</p>
+                                <p class="text-sm font-bold text-primary font-data-tabular" id="panel-unit-price">—</p>
+                            </div>
+                        </div>
+                        <!-- Per-line breakdown (multi-item POs). Populated by openPanel(). -->
+                        <div id="panel-qty-lines" class="hidden flex flex-col gap-2"></div>
+                    </div>
+
+                </div>
+
+                <!-- Tab Section: Documents -->
+                <div id="panel-tab-documents" class="hidden flex flex-col gap-6">
+                    <div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant">
+                        <h3 class="text-xs font-extrabold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-[18px]">cloud_upload</span>
+                            Record & Upload Document
+                        </h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-extrabold text-on-surface-variant uppercase mb-1">Document Category</label>
+                                <select id="upload-doc-type" class="w-full text-xs font-semibold rounded-lg border-outline-variant bg-white focus:border-primary focus:ring-primary py-1.5">
+                                    <option value="po">Purchase Order (PO)</option>
+                                    <option value="grn">Goods Received Note (GRN)</option>
+                                    <option value="invoice">Supplier Invoice (INV)</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Upload lock status per category -->
+                            <div id="upload-lock-status" class="flex flex-col gap-1.5">
+                                <div id="lock-grn" class="hidden flex items-center gap-2 p-2 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0]">
+                                    <span class="material-symbols-outlined text-[#10B981] text-[16px]" style="font-variation-settings:'FNI' 1,'wght' 700">check_circle</span>
+                                    <span class="text-[10px] font-bold text-[#047857]">GRN uploaded</span>
+                                    <button onclick="requestUnlock('grn')" class="ml-auto text-[9px] text-[#047857] hover:text-[#065f46] font-bold underline underline-offset-1">Edit</button>
+                                </div>
+                                <div id="lock-invoice" class="hidden flex items-center gap-2 p-2 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0]">
+                                    <span class="material-symbols-outlined text-[#10B981] text-[16px]" style="font-variation-settings:'FNI' 1,'wght' 700">check_circle</span>
+                                    <span class="text-[10px] font-bold text-[#047857]">Invoice uploaded</span>
+                                    <button onclick="requestUnlock('invoice')" class="ml-auto text-[9px] text-[#047857] hover:text-[#065f46] font-bold underline underline-offset-1">Edit</button>
+                                </div>
+                            </div>
+
+                            <!-- File input dropzone -->
+                            <div id="upload-dropzone" onclick="if(!this.classList.contains('locked')) document.getElementById('file-upload-input').click()" class="border-2 border-dashed border-outline-variant hover:border-primary rounded-xl p-4 flex flex-col items-center justify-center transition-colors bg-white group text-center cursor-pointer">
+                                <input type="file" id="file-upload-input" class="hidden" accept=".pdf,.csv,.png,.jpg,.jpeg" onchange="handleFileSelect(this)" />
+                                <span id="upload-icon" class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[28px] mb-1">upload_file</span>
+                                <p class="text-xs font-bold text-primary" id="upload-file-label">Click to select or drag document</p>
+                                <p class="text-[9px] text-on-surface-variant/70 mt-0.5">Supports PDF, CSV, JPG up to 10MB</p>
+                            </div>
+
+                            <button id="upload-btn" onclick="uploadDocument()" class="w-full py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary-container transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                                <span class="material-symbols-outlined text-[16px]">upload</span>
+                                Upload & Check Matching
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Upload Trace Log -->
+                    <div id="upload-trace-container" class="hidden mt-2 p-3 bg-[#fafafa] border border-outline-variant rounded-xl">
+                        <h4 class="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[14px]">history</span>
+                            Upload Trace
+                        </h4>
+                        <div id="upload-trace-list" class="flex flex-col gap-1.5 max-h-32 overflow-y-auto">
+                            <!-- Populated per doc type -->
+                        </div>
+                    </div>
+                    <div id="upload-trace-template" class="hidden">
+                        <div class="flex items-center justify-between py-1.5">
+                            <div class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[#10B981] text-[12px]" style="font-variation-settings:'FNI' 1,'wght' 600">check_circle</span>
+                                <span class="text-[10px] text-on-surface-variant truncate max-w-[140px]" title="__FILENAME__">__FILENAME__</span>
+                            </div>
+                            <span class="text-[9px] text-outline-variant font-data-tabular shrink-0">__DATE__</span>
+                        </div>
+                    </div>
+
+                    <!-- Attached Documents Preview -->
+                    <div>
+                        <h3 class="text-xs font-extrabold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">folder_shared</span>
+                            Related Documents
+                        </h3>
+                        <div class="flex flex-col gap-3" id="documents-list-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Section: Financials (3-Way Matching) -->
+                <div id="panel-tab-financials" class="hidden flex flex-col gap-6">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-6 border-t border-outline-variant bg-surface-bright shrink-0">
+            <button onclick="openStatusPicker()" class="w-full py-3 bg-primary text-white rounded-xl font-label-md hover:bg-primary-container transition-colors flex justify-center items-center gap-2" id="panel-action-btn">
+                <span class="material-symbols-outlined text-[20px]">edit_document</span>
+                Update Record Status
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Picker Popup -->
+    <div id="status-picker-overlay" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[70] hidden" onclick="closeStatusPicker()"></div>
+    <div id="status-picker" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[71] w-80 bg-white border border-[#c5c6cf] rounded-2xl shadow-2xl hidden flex flex-col overflow-hidden">
+        <div class="px-5 py-4 bg-[#031635] text-white flex justify-between items-center shrink-0">
+            <h3 class="font-bold text-sm">Change Record Status</h3>
+            <button onclick="closeStatusPicker()" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                <span class="material-symbols-outlined text-white text-[16px]">close</span>
+            </button>
+        </div>
+        <div class="p-3 space-y-1.5 overflow-y-auto max-h-80" id="status-options-list">
+            <!-- Populated dynamically -->
+        </div>
+        <div class="p-4 border-t border-[#c5c6cf] shrink-0">
+            <button onclick="closeStatusPicker()" class="w-full py-2 border border-[#c5c6cf] text-[#44474e] rounded-lg text-xs font-bold hover:bg-[#f2f4f6] transition-colors">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Overlay -->
+    <div id="delete-record-overlay" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[80] hidden" onclick="closeDeleteRecordConfirm()"></div>
+    <div id="delete-record-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[81] w-[420px] bg-white border border-[#c5c6cf] rounded-2xl shadow-2xl hidden flex flex-col overflow-hidden">
+        <div class="px-5 py-4 bg-red-700 text-white flex justify-between items-center shrink-0">
+            <h3 class="font-bold text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+                Delete Purchase Record
+            </h3>
+            <button onclick="closeDeleteRecordConfirm()" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                <span class="material-symbols-outlined text-white text-[16px]">close</span>
+            </button>
+        </div>
+        <div class="p-5 flex flex-col gap-3">
+            <div class="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <span class="material-symbols-outlined text-red-600 text-[20px]">warning</span>
+                <div>
+                    <p class="text-sm font-bold text-red-800">This action cannot be undone.</p>
+                    <p class="text-xs text-red-700 mt-1">Deleting this purchase record will permanently remove it and all linked FIFO / waybill metadata from the database.</p>
+                </div>
+            </div>
+            <div class="bg-surface-container-low border border-outline-variant rounded-lg p-3">
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-on-surface-variant">PO Number</p>
+                <p class="text-sm font-bold text-primary mt-0.5" id="delete-record-po">—</p>
+            </div>
+            <p class="text-[11px] text-on-surface-variant">
+                Type <span class="font-mono font-bold text-primary">DELETE</span> to confirm.
+            </p>
+            <input
+                id="delete-record-confirm-input"
+                type="text"
+                placeholder="Type DELETE to confirm"
+                autocomplete="off"
+                class="w-full text-sm font-semibold rounded-lg border-outline-variant bg-white focus:border-red-500 focus:ring-red-500 py-2 px-3" />
+        </div>
+        <div class="p-4 border-t border-[#c5c6cf] flex gap-2 shrink-0">
+            <button onclick="closeDeleteRecordConfirm()" class="flex-1 py-2 border border-[#c5c6cf] text-[#44474e] rounded-lg text-xs font-bold hover:bg-[#f2f4f6] transition-colors">Cancel</button>
+            <button
+                id="delete-record-confirm-btn"
+                onclick="confirmDeleteRecord()"
+                disabled
+                class="flex-1 py-2 bg-red-700 text-white rounded-lg text-xs font-bold hover:bg-red-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[14px]">delete</span>
+                Delete Permanently
+            </button>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="panel-overlay" class="fixed inset-0 bg-primary/20 backdrop-blur-sm z-40 hidden transition-opacity" onclick="closePanel()"></div>
+
+    <script>
+        // Use erpSupabaseAPI for reads (goes through server proxy, no race condition)
+        // Fall back to direct client only after ensuring it is initialised.
+        async function apiSelect(table, columns = '*', extra = {}) {
+            try {
+                const payload = { table, operation: 'select', columns, ...extra };
+                if (extra.noCache) {
+                    // Bypass the client-side 30s read cache for fresh data
+                    const cacheKey = JSON.stringify(payload);
+                    if (window.invalidateSupabaseCache) window.invalidateSupabaseCache(table);
+                    delete payload.noCache;
+                }
+                const data = await erpSupabaseAPI(payload);
+                return { data, error: null };
+            } catch (e) {
+                return { data: null, error: e };
+            }
+        }
+
+        // Lazy direct client — waits for erp-supabase.js initialisation before any write
+        function getSb() {
+            if (window.supabase && window.supabase._client) return window.supabase._client;
+            if (window.supabase && typeof window.supabase.from === 'function') return window.supabase;
+            return null;
+        }
+
+        // Data state
+        let records = [];
+        let activeRecord = null;
+        let selectedFile = null;
+
+        // Cache for which columns exist on raw_material_orders so the receive flow
+        // can pick the right filter column (order_number vs po_number) without
+        // a network roundtrip on every receive.
+        const _poRmoColumns = new Set();
+
+        // UI config - maps to purchase_records.status field
+        const statusTypes = [
+            { label: 'Submitted Order', color: 'bg-[#EFF6FF] text-[#1D4ED8]', icon: 'send', stage: 1 },
+            { label: 'Received', color: 'bg-[#ECFDF5] text-[#047857]', icon: 'check_circle', stage: 2 }
+        ];
+
+        // Load purchase records from Supabase + FIFO match info from raw_material_orders
+        async function loadPurchaseRecords() {
+            const [{ data, error }, { data: rmoData }] = await Promise.all([
+                apiSelect('purchase_records', '*', { order: { column: 'created_at', ascending: false }, limit: 50 }),
+                apiSelect('raw_material_orders', 'item_code, email_sent, created_at, batch_id, po_created, po_number, purchase_record_id', { order: { column: 'created_at', ascending: true } })
+            ]);
+
+            if (error) {
+                console.warn('Error loading purchase records:', error);
+                renderTable([]);
+                return;
+            }
+
+            // Build FIFO lookup: purchase_record_id → rmo order_id
+            // fix: also match by po_number as fallback for records created before the link was added
+            const rmoByPrId = {};
+            const rmoByPoNumber = {};
+            if (rmoData) {
+                rmoData.forEach(rmo => {
+                    // Match by purchase_record_id (preferred)
+                    if (rmo.purchase_record_id) {
+                        if (!rmoByPrId[rmo.purchase_record_id]) {
+                            rmoByPrId[rmo.purchase_record_id] = [];
+                        }
+                        rmoByPrId[rmo.purchase_record_id].push(rmo);
+                    }
+                    // Match by po_number (fallback for legacy records)
+                    if (rmo.po_number) {
+                        if (!rmoByPoNumber[rmo.po_number]) {
+                            rmoByPoNumber[rmo.po_number] = [];
+                        }
+                        rmoByPoNumber[rmo.po_number].push(rmo);
+                    }
+                });
+            }
+
+            records = (data || []).map(r => {
+                const st = statusTypes.find(s => s.label === r.status) || { color: 'bg-gray-100 text-gray-600', icon: 'help', stage: 1 };
+                // Keep the raw array AND a joined string. The table column needs a
+                // single string, but the right-side panel and Receive flow need the
+                // full per-line array — so we expose both as `itemsArray` and `items`.
+                const rawsItems = Array.isArray(r.items) ? r.items : [];
+                const itemsArr = rawsItems.length === 0 && typeof r.items === 'string' && r.items
+                    ? [{ item_name: r.items, item_code: r.item_code || '', quantity: r.quantity || 1, unit: r.unit || 'units' }]
+                    : rawsItems;
+                const itemsStr = itemsArr.length > 0
+                    ? itemsArr.map(i => i.item_name || i.name || JSON.stringify(i)).join(', ')
+                    : (r.items || '');
+                const total = parseFloat(r.total_amount) || 0;
+
+                // FIFO: check if this PR was auto-created from a raw material reorder
+                const rmoList = rmoByPrId[r.id] || rmoByPoNumber[r.po_number] || [];
+                const isFifo = (r.source === 'raw_material_reorder') || rmoList.length > 0;
+                const fifoOrderNum = rmoList.length > 0 ? (rmoList[0].id || rmoList[0].order_id || rmoList[0].po_number) : null;
+                const emailSent = rmoList.length > 0 ? rmoList[0].email_sent : null;
+
+                // Compute per-line unit_price and quantity for use in putaway / panel.
+                let unitPriceFromItems = null;
+                let qtyFromItems = null;
+                let unitFromItems = null;
+                if (itemsArr.length > 0) {
+                    const firstItem = itemsArr[0];
+                    unitPriceFromItems = parseFloat(
+                        firstItem.unit_price || firstItem['unit_price'] || firstItem.unit_cost || firstItem['unit_cost'] || 0
+                    );
+                    qtyFromItems = parseFloat(firstItem.quantity || firstItem.qty || 0) || null;
+                    unitFromItems = firstItem.unit || null;
+                }
+                if (!unitPriceFromItems && r.quantity > 0) {
+                    unitPriceFromItems = parseFloat(r.total_amount) / r.quantity;
+                }
+                // Resolve quantity with fallback chain: items[0].quantity -> row.quantity -> total/unit_price
+                let resolvedQty = r.quantity != null ? parseFloat(r.quantity) : null;
+                if (resolvedQty == null || resolvedQty <= 0) {
+                    if (qtyFromItems && qtyFromItems > 0) resolvedQty = qtyFromItems;
+                    else if (unitPriceFromItems > 0 && total > 0) resolvedQty = total / unitPriceFromItems;
+                }
+
+                return {
+                    id: r.id,
+                    po_number: r.record_number || r.purchase_order_number || 'N/A',
+                    supplier: r.supplier_name || (r.supplier_id ? `Supplier ${r.supplier_id.slice(0,8)}` : 'Unknown'),
+                    items: itemsStr,           // joined string for the table column
+                    itemsArray: itemsArr,      // raw per-line array for the side panel + Receive
+                    item_name: r.item_name || null,
+                    item_code: r.item_code || null,
+                    value: '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+                    date: new Date(r.created_at || r.order_date || Date.now()),
+                    status: r.status || 'Submitted Order',
+                    statusData: st,
+                    estDeliveryDate: r.expected_delivery ? new Date(r.expected_delivery).toISOString() : null,
+                    actualDeliveryDate: r.actual_delivery ? new Date(r.actual_delivery).toISOString() : null,
+                    quantity: resolvedQty,
+                    total_amount: r.total_amount || null,
+                    unit_price: unitPriceFromItems,  // fix: carry unit_price into putaway flow
+                    unit: unitFromItems,
+                    customDocs: (r.documents || []).map(d => ({
+                        name: d.name || d.filename || 'Document',
+                        icon: d.icon || 'attach_file',
+                        iconColor: d.iconColor || 'bg-gray-100 text-gray-600',
+                        size: d.size || null,
+                        uploaded: d.uploaded || null,
+                        // Defensive: if the row carries a publicUrl (from a future
+                        // PR that writes the JSON column), preserve it so the
+                        // download link survives page refresh.
+                        publicUrl: d.publicUrl || null,
+                        storedPath: d.storedPath || null,
+                        docType: d.docType || null,
+                    })),
+                    // FIFO metadata
+                    isFifo,
+                    fifoOrderNum,
+                    emailSent,
+                    waybillMatched: rmoList.some(rmo => rmo.waybill_matched) || false,
+                    waybillNumber: rmoList.find(rmo => rmo.waybill_matched)?.waybill_number || null,
+                    batchId: r.batch_id || rmoList[0]?.batch_id || null,
+                    poCreated: r.po_created || rmoList[0]?.po_created || false,
+                    inventory_id: r.inventory_id || null
+                };
+            });
+            renderTable(records);
+        }
+
+        // Generate PO PDF client-side (downloadable from PO page).
+        // Supports multi-line POs: when `lines` is an array of {name, qty, unitPrice}, render
+        // one row per line and sum into a TOTAL. Legacy single-line POs still work via the
+        // (itemName, quantity, unitPrice, totalAmount) params.
+        function generatePOPdf(poNumber, supplierName, itemName, quantity, unitPrice, totalAmount, orderDate, batchId, lines) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageW = doc.internal.pageSize.getWidth();
+
+            doc.setFillColor(3, 22, 53);
+            doc.rect(0, 0, pageW, 35, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.text('PURCHASE ORDER', 14, 18);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`PO-${poNumber}`, 14, 26);
+            doc.setFontSize(9);
+            doc.text(`Date: ${new Date(orderDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 14, 32);
+            doc.text(`Batch: ${batchId || 'N/A'}`, pageW - 14, 18, { align: 'right' });
+            doc.text(`Supplier: ${supplierName || 'N/A'}`, pageW - 14, 24, { align: 'right' });
+
+            doc.setDrawColor(200, 200, 200);
+            doc.line(14, 38, pageW - 14, 38);
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setFillColor(240, 240, 240);
+            doc.rect(14, 42, pageW - 28, 8, 'F');
+            doc.text('Item Name', 16, 47);
+            doc.text('Qty', 130, 47);
+            doc.text('Unit Price', 155, 47);
+            doc.text('Total', pageW - 16, 47, { align: 'right' });
+
+            // Render rows. Multi-line takes precedence when provided.
+            const useLines = Array.isArray(lines) && lines.length > 0;
+            let grandTotal = parseFloat(totalAmount || 0) || 0;
+            if (useLines) {
+                doc.setFont('helvetica', 'normal');
+                let y = 52;
+                let rowShade = true;
+                lines.forEach((line) => {
+                    if (rowShade) { doc.setFillColor(250, 250, 250); doc.rect(14, y, pageW - 28, 8, 'F'); }
+                    const lnQty = Number(line.qty || line.quantity || 0);
+                    const lnUnitPrice = parseFloat(line.unitPrice || line.unit_price || line.unit_cost || 0) || 0;
+                    const lnTotal = lnQty * lnUnitPrice;
+                    doc.text(String(line.name || line.item_name || 'N/A').substring(0, 60), 16, y + 5);
+                    doc.text(String(lnQty || 0), 130, y + 5);
+                    doc.text('$' + lnUnitPrice.toFixed(2), 155, y + 5);
+                    doc.text('$' + lnTotal.toFixed(2), pageW - 16, y + 5, { align: 'right' });
+                    y += 8;
+                    rowShade = !rowShade;
+                });
+                grandTotal = lines.reduce((s, l) => s + (Number(l.qty || l.quantity || 0) * (parseFloat(l.unitPrice || l.unit_price || l.unit_cost || 0) || 0)), 0);
+            } else {
+                // Legacy single-line render.
+                doc.setFont('helvetica', 'normal');
+                doc.setFillColor(250, 250, 250);
+                doc.rect(14, 52, pageW - 28, 8, 'F');
+                doc.text(String(itemName || 'N/A').substring(0, 60), 16, 57);
+                doc.text(String(quantity || 0), 130, 57);
+                doc.text('$' + parseFloat(unitPrice || 0).toFixed(2), 155, 57);
+                doc.text('$' + parseFloat(totalAmount || 0).toFixed(2), pageW - 16, 57, { align: 'right' });
+            }
+
+            doc.setLineWidth(0.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.text('TOTAL:', 130, 72);
+            doc.text('$' + grandTotal.toFixed(2), pageW - 16, 72, { align: 'right' });
+
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text('EspressGo Purchase Order — Confidential', pageW / 2, 285, { align: 'center' });
+
+            return doc;
+        }
+
+        function downloadPOPdf(record) {
+            if (!record.poCreated) {
+                alert('PO has not been created yet for this record.');
+                return;
+            }
+            // Build per-line array from itemsArray when present (multi-line POs).
+            const lines = Array.isArray(record.itemsArray) && record.itemsArray.length > 0
+                ? record.itemsArray.map(i => ({
+                    name: i.item_name || i.name || 'N/A',
+                    qty: i.quantity || i.qty || 0,
+                    unitPrice: i.unit_price || i['unit_price'] || i.unit_cost || i['unit_cost'] || 0,
+                }))
+                : null;
+            const useMulti = Array.isArray(lines) && lines.length > 1;
+            const unitPrice = record.quantity > 0 ? (parseFloat(record.total_amount || 0) / record.quantity) : 0;
+            const doc = generatePOPdf(
+                record.po_number,
+                record.supplier,
+                useMulti ? lines.map(l => l.name).join(', ') : record.items,
+                useMulti ? lines.reduce((s, l) => s + Number(l.qty || 0), 0) : (record.quantity || 1),
+                useMulti ? 0 : unitPrice,
+                useMulti ? (parseFloat(record.total_amount || 0) || 0) : record.total_amount,
+                record.date,
+                record.batchId,
+                useMulti ? lines : null
+            );
+            doc.save(`PO-${record.po_number}.pdf`);
+        }
+
+        function openStatusPicker() {
+            if (!activeRecord) return;
+            // If already received, the status is locked — don't open the picker
+            if (activeRecord.status === 'Received') {
+                showToast('Status is locked — this record has already been received and stock updated.');
+                return;
+            }
+            const list = document.getElementById('status-options-list');
+            list.innerHTML = '';
+            statusTypes.forEach(st => {
+                const btn = document.createElement('button');
+                const isCurrent = activeRecord.status === st.label;
+                btn.className = `w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2.5 transition-all ${isCurrent ? 'bg-primary text-white' : 'hover:bg-surface-container-low text-on-surface'}`;
+                btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">${st.icon}</span> ${st.label}${isCurrent ? ' (current)' : ''}`;
+                btn.onclick = () => changeRecordStatus(st.label, st);
+                list.appendChild(btn);
+            });
+            document.getElementById('status-picker-overlay').classList.remove('hidden');
+            document.getElementById('status-picker').classList.remove('hidden');
+        }
+
+        function closeStatusPicker() {
+            document.getElementById('status-picker-overlay').classList.add('hidden');
+            document.getElementById('status-picker').classList.add('hidden');
+        }
+
+        // ─── Delete purchase record (admin-only) ─────────────────────────────
+        // Gate is performed both declaratively (data-rbac="procurement:delete" hides
+        // every Delete button via applyRBACToDOM()) and imperatively here
+        // (can() re-check on click) so a stale DOM that pre-dates the user's
+        // session cannot bypass the rule.
+        let _pendingDeleteId = null;
+        const _poDeleteInProgress = new WeakSet();
+
+        window.__poHandleDeleteClick = function (event, btn) {
+            // Stop the parent <tr> from also receiving the click and opening the side panel.
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            if (!btn) return;
+            const id = btn.getAttribute('data-record-id');
+            const po = btn.getAttribute('data-record-po') || '';
+            if (!id) {
+                showToast('Cannot delete: missing record id.', 'error');
+                return;
+            }
+            // Runtime RBAC re-check, defense-in-depth.
+            if (window.RBAC && typeof window.RBAC.can === 'function' && !window.RBAC.can('procurement:delete')) {
+                showToast('Only admins can delete purchase records.', 'error');
+                return;
+            }
+            openDeleteRecordConfirm(id, po);
+        };
+
+        function openDeleteRecordConfirm(recordId, poNumber) {
+            _pendingDeleteId = recordId;
+            const poEl = document.getElementById('delete-record-po');
+            const input = document.getElementById('delete-record-confirm-input');
+            const btn = document.getElementById('delete-record-confirm-btn');
+            if (poEl) poEl.textContent = poNumber || '—';
+            if (input) {
+                input.value = '';
+                input.classList.remove('border-red-500');
+            }
+            if (btn) btn.disabled = true;
+            document.getElementById('delete-record-overlay').classList.remove('hidden');
+            document.getElementById('delete-record-modal').classList.remove('hidden');
+            // Auto-focus the input so the operator can type DELETE immediately
+            setTimeout(() => {
+                try { input && input.focus(); } catch (_) {}
+            }, 50);
+        }
+
+        function closeDeleteRecordConfirm() {
+            _pendingDeleteId = null;
+            document.getElementById('delete-record-overlay').classList.add('hidden');
+            document.getElementById('delete-record-modal').classList.add('hidden');
+        }
+
+        // Enable the Delete button only after the operator types the literal word.
+        document.addEventListener('input', (e) => {
+            if (!e || !e.target) return;
+            if (e.target.id !== 'delete-record-confirm-input') return;
+            const btn = document.getElementById('delete-record-confirm-btn');
+            if (!btn) return;
+            const ok = (e.target.value || '').trim().toUpperCase() === 'DELETE';
+            btn.disabled = !ok;
+        });
+
+        // Pressing Esc inside the confirm input cancels
+        document.addEventListener('keydown', (e) => {
+            if (e && e.key === 'Escape') {
+                const modal = document.getElementById('delete-record-modal');
+                if (modal && !modal.classList.contains('hidden')) closeDeleteRecordConfirm();
+            }
+        });
+
+        async function confirmDeleteRecord() {
+            const id = _pendingDeleteId;
+            if (!id) {
+                closeDeleteRecordConfirm();
+                return;
+            }
+            // Find the live record so we can guard against double-fires and grab PO number for the toast.
+            const record = records.find(r => r.id === id);
+            if (!record) {
+                showToast('Record no longer exists — refreshing list.', 'error');
+                closeDeleteRecordConfirm();
+                await loadPurchaseRecords();
+                return;
+            }
+            if (_poDeleteInProgress.has(record)) {
+                showToast('Delete already in progress for this record.', 'info');
+                return;
+            }
+            _poDeleteInProgress.add(record);
+            const btn = document.getElementById('delete-record-confirm-btn');
+            const originalBtnHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> Deleting…';
+            }
+            const toast = showToast(`Deleting ${record.po_number}…`, 'info', 60000);
+            try {
+                await erpSupabaseAPI({
+                    table: 'purchase_records',
+                    operation: 'delete',
+                    filters: { eq: { id } },
+                });
+                if (toast && toast.remove) toast.remove();
+                showToast(`Purchase record ${record.po_number} deleted.`);
+                // Drop it from the in-memory list and re-render.
+                records = records.filter(r => r.id !== id);
+                renderTable(records);
+                closeDeleteRecordConfirm();
+            } catch (err) {
+                console.error('[deleteRecord] failed:', err);
+                if (toast && toast.remove) toast.remove();
+                showToast('Failed to delete record: ' + (err && err.message ? err.message : err), 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnHtml;
+                }
+            } finally {
+                _poDeleteInProgress.delete(record);
+            }
+        }
+
+        // Track in-flight receives so a fast second click on a different status can't race the writes.
+        const _poSyncInProgress = new WeakSet();
+        let _poSyncToast = null;
+
+        async function changeRecordStatus(newStatus, statusInfo) {
+            if (!activeRecord) return;
+            if (_poSyncInProgress.has(activeRecord)) {
+                showToast('Already saving — please wait for the previous update to finish.', 'error');
+                return;
+            }
+            _poSyncInProgress.add(activeRecord);
+            closeStatusPicker();
+            activeRecord.status = newStatus;
+            activeRecord.statusData = statusInfo;
+
+            // Generate batchId if status changed to Received without one
+            if (newStatus === 'Received' && !activeRecord.batchId) {
+                const poSuffix = (activeRecord.po_number || 'PO').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase();
+                activeRecord.batchId = `RM-${poSuffix}-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+            }
+
+            renderTable(records);
+            openPanel(activeRecord);
+            _poSyncToast = showToast(`Saving status change to "${newStatus}"…`, 'info', 60000);
+            try {
+                await syncStatusToDb(activeRecord);
+                if (_poSyncToast && _poSyncToast.remove) _poSyncToast.remove();
+                showToast(`Status updated to "${newStatus}"`);
+            } catch (syncErr) {
+                if (_poSyncToast && _poSyncToast.remove) _poSyncToast.remove();
+                showToast('Failed to save status: ' + (syncErr?.message || syncErr), 'error');
+            } finally {
+                _poSyncInProgress.delete(activeRecord);
+                _poSyncToast = null;
+            }
+        }
+
+        // Persist status + batch_id + delivery date changes back to Supabase
+        async function syncStatusToDb(record) {
+            if (!record || !record.id) throw new Error('No record to sync');
+            const stepErrors = [];
+            try {
+                const now = new Date().toISOString();
+
+                // Lazily discover which join columns raw_material_orders has so the
+                // step 2 update picks the right field (po_number vs order_number).
+                // Look at up to 10 rows so a legacy first row doesn't poison the cache.
+                if (_poRmoColumns.size === 0) {
+                    try {
+                        const probe = await apiSelect('raw_material_orders', 'po_number, order_number', { limit: 10 });
+                        const probeRows = Array.isArray(probe) ? probe : [];
+                        probeRows.forEach((r) => {
+                            if (!r) return;
+                            if ('order_number' in r) _poRmoColumns.add('order_number');
+                            if ('po_number' in r) _poRmoColumns.add('po_number');
+                        });
+                    } catch (probeErr) {
+                        console.warn('[syncStatusToDb] could not probe raw_material_orders columns:', probeErr);
+                    }
+                }
+
+                const prUpdate = {
+                    status: record.status,
+                    expected_delivery: record.estDeliveryDate ? new Date(record.estDeliveryDate).toISOString() : null,
+                    actual_delivery: record.actualDeliveryDate || null
+                };
+                if (record.batchId) prUpdate.batch_id = record.batchId;
+
+                let prErr = null;
+                try {
+                    await erpSupabaseAPI(
+                        { table: 'purchase_records', operation: 'update', data: prUpdate, filters: { eq: { id: record.id } } }
+                    );
+                } catch (e) {
+                    prErr = e;
+                }
+                if (prErr) {
+                    console.error('[syncStatusToDb] PR sync error:', prErr);
+                    showToast('Failed to update record: ' + prErr.message, 'error');
+                    stepErrors.push({ step: 'purchase_records', error: prErr.message });
+                }
+
+                // Persist the uploaded document list (including publicUrl +
+                // storedPath) into purchase_records.documents so it survives a
+                // page refresh. This is a SEPARATE write from the status update
+                // above — if the documents column is missing or has a type
+                // drift (text vs jsonb), we catch and warn instead of breaking
+                // the status save. Status is load-bearing; document JSON is
+                // best-effort durability for the URLs we just minted.
+                if (Array.isArray(record.customDocs) && record.customDocs.length > 0) {
+                    try {
+                        const documentsPayload = JSON.stringify(
+                            record.customDocs.map((d) => ({
+                                name: d.name || null,
+                                icon: d.icon || null,
+                                iconColor: d.iconColor || null,
+                                size: d.size || null,
+                                uploaded: d.uploaded || null,
+                                publicUrl: d.publicUrl || null,
+                                storedPath: d.storedPath || null,
+                                docType: d.docType || null,
+                            }))
+                        );
+                        await erpSupabaseAPI(
+                            { table: 'purchase_records', operation: 'update', data: { documents: documentsPayload }, filters: { eq: { id: record.id } } }
+                        );
+                    } catch (docErr) {
+                        // Don't block the rest of sync on this — the file bytes
+                        // are still on disk under /uploads/purchase-records/.
+                        console.warn('[syncStatusToDb] documents JSON not persisted (column missing or wrong type?):', docErr?.message || docErr);
+                    }
+                }
+
+                // Update raw_material_orders status to keep supplier-side state in sync.
+                // Strategy (most-preferred first):
+                //   1) exact match on po_number (shared across per-line rows).
+                //   2) LIKE match on order_number for the per-line suffix pattern "<po>-L##".
+                //   3) exact match on order_number (legacy single-line rows where po_number is null).
+                // This is a bookkeeping best-effort — failure here must never block the Receive flow.
+                let rmoUpdated = false;
+                const poBase = record.po_number;
+                const lineFilter = poBase ? `${poBase}-L%` : null;
+                const syncPayload = { status: record.status, updated_at: now };
+                const trySync = async (label, filters) => {
+                    try {
+                        const result = await erpSupabaseAPI(
+                            { table: 'raw_material_orders', operation: 'update', data: syncPayload, filters }
+                        );
+                        const matched = !!(result && (Array.isArray(result) ? result.length > 0 : result.data?.length > 0));
+                        return { ok: matched, result, label };
+                    } catch (e) {
+                        // "column does not exist" → this strategy not applicable; try next.
+                        console.warn(`[syncStatusToDb] rmo sync via ${label} failed:`, e?.message || e);
+                        return { ok: false, error: e, label };
+                    }
+                };
+                const attempts = [];
+                if (poBase && _poRmoColumns.has('po_number')) {
+                    attempts.push(() => trySync('po_number', { eq: { po_number: poBase } }));
+                }
+                if (poBase && _poRmoColumns.has('order_number')) {
+                    attempts.push(() => trySync('order_number LIKE', { like: { order_number: lineFilter } }));
+                    attempts.push(() => trySync('order_number exact', { eq: { order_number: poBase } }));
+                }
+                if (attempts.length === 0 && poBase && poBase !== 'N/A') {
+                    // Probe was never run (or returned empty). Force-run it now and retry.
+                    try {
+                        const probe = await apiSelect('raw_material_orders', 'po_number, order_number', { limit: 5 });
+                        const probeRows = Array.isArray(probe) ? probe : [];
+                        probeRows.forEach((r) => {
+                            if ('po_number' in r) _poRmoColumns.add('po_number');
+                            if ('order_number' in r) _poRmoColumns.add('order_number');
+                        });
+                        if (_poRmoColumns.has('po_number')) attempts.push(() => trySync('po_number (late probe)', { eq: { po_number: poBase } }));
+                        if (_poRmoColumns.has('order_number')) {
+                            attempts.push(() => trySync('order_number LIKE (late probe)', { like: { order_number: lineFilter } }));
+                            attempts.push(() => trySync('order_number exact (late probe)', { eq: { order_number: poBase } }));
+                        }
+                    } catch (probeErr) {
+                        console.warn('[syncStatusToDb] late rmo probe failed:', probeErr);
+                    }
+                }
+                try {
+                    for (const run of attempts) {
+                        const r = await run();
+                        if (r.ok) { rmoUpdated = true; break; }
+                    }
+                    if (!rmoUpdated && (!poBase || poBase === 'N/A')) {
+                        // No PO number on the record — nothing to sync, not an error.
+                    } else if (!rmoUpdated) {
+                        // Soft warning only. The Receive flow already credited stock correctly;
+                        // this is bookkeeping between purchase_records and raw_material_orders.
+                        console.warn(`[syncStatusToDb] rmo status not synced for ${poBase} (tried ${attempts.length} strategies).`);
+                    }
+                } catch (e) {
+                    console.warn('[syncStatusToDb] raw_material_orders sync error:', e);
+                }
+
+                // Guard: only update stock when transitioning TO 'Received' for the first time.
+                // Re-triggering 'Received' is a no-op to prevent duplicate batch/stock entries.
+                if (record.status === 'Received' && record.batchId) {
+                    console.log('[syncStatusToDb] === Received block START ===');
+
+                    // Prefer the in-memory raw per-line array (set by the loader).
+                    // Fall back to r.items, which can be either an array or a legacy string.
+                    const itemsArr = Array.isArray(record.itemsArray) && record.itemsArray.length > 0
+                        ? record.itemsArray
+                        : (Array.isArray(record.items) ? record.items : []);
+                    // Backwards-compat: if everything we have is a string (legacy row),
+                    // wrap it so the per-line loop below still works once.
+                    const normalizedItems = itemsArr.length === 0 && typeof record.items === 'string' && record.items
+                        ? [{ item_name: record.items, item_code: record.item_code || '', quantity: record.quantity || 1, unit: 'units' }]
+                        : itemsArr;
+                    const lineCount = normalizedItems.length;
+                    console.log('[syncStatusToDb] Normalized items:', normalizedItems);
+
+                    if (lineCount === 0) {
+                        console.warn('[syncStatusToDb] No line items found on PO; nothing to receive.');
+                        showToast('Warning: no line items found on this PO — stock not updated.', 'error');
+                    } else {
+                        // Build a per-line suffix so each line gets its own batch_code
+                        // (inventory_batches.batch_code is UNIQUE), while still grouping
+                        // them under the same PO for traceability.
+                        const baseBatch = record.batchId;
+                        const lineResults = [];
+
+                        for (let i = 0; i < lineCount; i++) {
+                            const line = normalizedItems[i] || {};
+                            const lineSuffix = lineCount > 1 ? `-L${String(i + 1).padStart(2, '0')}` : '';
+                            const lineBatchId = `${baseBatch}${lineSuffix}`;
+
+                            const itemName = line.item_name || line.name || record.item_name || '';
+                            const itemCode = line.item_code || line.code || record.item_code || '';
+                            const itemQty = parseFloat(line.quantity || line.qty || 0)
+                                || parseFloat(record.total_amount > 0 && record.unit_price > 0 ? (record.total_amount / record.unit_price) : 0)
+                                || (lineCount === 1 ? 1 : 0);
+                            const itemUnit = line.unit || 'units';
+                            const lineInventoryId = line.inventory_id || record.inventory_id || null;
+
+                            console.log('[syncStatusToDb] Processing line', i + 1, {
+                                lineBatchId, itemName, itemCode, itemQty, itemUnit, lineInventoryId,
+                            });
+
+                            if (!itemQty || itemQty <= 0) {
+                                lineResults.push({ ok: false, name: itemName || itemCode || `line ${i + 1}`, reason: 'quantity is 0' });
+                                continue;
+                            }
+
+                            // 1) Resolve inventory row: prefer line.inventory_id, then record.inventory_id, then lookup by code/name.
+                            let invRow = null;
+                            if (lineInventoryId) {
+                                const { data: invById } = await apiSelect('inventory', 'id, current_stock, name, item_code', {
+                                    filters: { eq: { id: lineInventoryId } },
+                                    noCache: true
+                                });
+                                invRow = Array.isArray(invById) ? invById[0] : invById;
+                            }
+                            if (!invRow && itemCode) {
+                                const { data: invByCode } = await apiSelect('inventory', 'id, current_stock, name, item_code', {
+                                    filters: { eq: { item_code: itemCode } }
+                                });
+                                invRow = Array.isArray(invByCode) ? invByCode[0] : invByCode;
+                            }
+                            if (!invRow && itemName) {
+                                const { data: invByName } = await apiSelect('inventory', 'id, current_stock, name, item_code', {
+                                    filters: { eq: { category: 'raw_material' } }
+                                });
+                                const all = Array.isArray(invByName) ? invByName : [];
+                                const target = itemName.toLowerCase().trim();
+                                invRow = all.find(inv =>
+                                    inv.name?.toLowerCase().trim() === target ||
+                                    inv.name?.toLowerCase().includes(target) ||
+                                    target.includes(inv.name?.toLowerCase().trim())
+                                );
+                            }
+
+                            if (!invRow || !invRow.id) {
+                                lineResults.push({ ok: false, name: itemName || itemCode || `line ${i + 1}`, reason: 'inventory row not found' });
+                                showToast(`Line ${i + 1}: Could not find inventory "${itemName || itemCode}" — stock for this line skipped.`, 'error');
+                                continue;
+                            }
+
+                            // 2) Upsert inventory_batches (per-line unique batch_code).
+                            try {
+                                await erpSupabaseAPI({
+                                    table: 'inventory_batches',
+                                    operation: 'upsert',
+                                    data: {
+                                        batch_code: lineBatchId,
+                                        item_name: itemName || invRow.name,
+                                        item_code: itemCode || invRow.item_code,
+                                        inventory_id: invRow.id,
+                                        po_number: record.po_number,
+                                        supplier_name: record.supplier,
+                                        received_qty: itemQty,
+                                        current_qty: itemQty,
+                                        unit: itemUnit,
+                                        status: 'Available',
+                                        stock_state: 'incoming',
+                                        arrival_date: record.actualDeliveryDate || now
+                                    },
+                                    onConflict: 'batch_code'
+                                });
+                            } catch (batchErr) {
+                                console.warn('[syncStatusToDb] batch upsert error (continuing):', batchErr);
+                            }
+
+                            // 3) Recompute this inventory item's current_stock from the sum
+                            //    of its active batches. Batches are the single source of truth.
+                            try {
+                                const { data: allBatches } = await apiSelect('inventory_batches', 'current_qty, stock_state', {
+                                    filters: { eq: { inventory_id: invRow.id } },
+                                    noCache: true
+                                });
+                                const activeBatches = Array.isArray(allBatches) ? allBatches : [];
+                                const validStates = ['incoming', 'in_stock'];
+                                const batchSum = activeBatches
+                                    .filter(b => validStates.includes(b.stock_state))
+                                    .reduce((sum, b) => sum + (parseFloat(b.current_qty) || 0), 0);
+
+                                await erpSupabaseAPI({
+                                    table: 'inventory',
+                                    operation: 'update',
+                                    data: { current_stock: batchSum },
+                                    filters: { eq: { id: invRow.id } }
+                                });
+                                lineResults.push({
+                                    ok: true,
+                                    name: invRow.name,
+                                    batchCount: activeBatches.length,
+                                    newStock: batchSum,
+                                });
+                            } catch (updateErr) {
+                                console.error('[syncStatusToDb] Inventory update FAILED for', invRow.name, updateErr);
+                                lineResults.push({ ok: false, name: invRow.name, reason: updateErr?.message || String(updateErr) });
+                            }
+                        }
+
+                        const okLines = lineResults.filter(r => r.ok);
+                        const failLines = lineResults.filter(r => !r.ok);
+                        if (okLines.length > 0) {
+                            const summary = okLines
+                                .map(r => `${r.name} (${r.newStock} units)`)
+                                .join(', ');
+                            showToast(
+                                `Stock updated for ${okLines.length}/${lineCount} line(s): ${summary}` + (failLines.length ? ` • ${failLines.length} skipped.` : ''),
+                                failLines.length ? 'info' : 'success',
+                                8000
+                            );
+                        } else if (failLines.length === lineCount) {
+                            showToast(`No stock updated — ${failLines.map(f => `${f.name}: ${f.reason}`).join('; ')}`, 'error', 8000);
+                        }
+                    }
+                    console.log('[syncStatusToDb] === Received block END ===');
+                }
+            } catch(e) {
+                console.error('[syncStatusToDb] Outer catch error:', e);
+                showToast('Error updating stock: ' + e.message, 'error');
+                throw e;
+            }
+            if (stepErrors.length > 0) {
+                const msg = stepErrors.map((s) => `${s.step}: ${s.error}`).join('; ');
+                throw new Error('Partial save: ' + msg);
+            }
+        }
+
+
+        function renderTable(data) {
+            const tbody = document.getElementById('po-table-body');
+            tbody.innerHTML = '';
+            
+            data.slice(0, 10).forEach(record => {
+                const tr = document.createElement('tr');
+                tr.className = 'record-row';
+                tr.onclick = (e) => {
+                    // Don't open the panel when the operator clicked the delete
+                    // button — that button has its own confirmation flow.
+                    if (e.target.closest('[data-record-delete]')) return;
+                    openPanel(record);
+                };
+
+                tr.innerHTML = `
+                    <td class="p-4 font-semibold text-primary">
+                        ${record.po_number}
+                        ${record.isFifo ? `<span class="ml-1.5 px-1.5 py-0.5 bg-secondary-fixed text-[10px] font-extrabold uppercase rounded tracking-wide" title="Auto-created from raw material reorder (FIFO queue entry #${record.fifoOrderNum})">FIFO</span>` : ''}
+                        ${record.emailSent ? `<span class="ml-1 px-1 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-extrabold uppercase rounded tracking-wide" title="Supplier email sent">EM</span>` : ''}
+                        ${record.poCreated ? `<span class="ml-1 px-1 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-extrabold uppercase rounded tracking-wide" title="PO PDF created">PO</span>` : ''}
+                    </td>
+                    <td class="p-4 flex items-center gap-2">
+                        <div class="w-6 h-6 rounded bg-surface-container-high flex items-center justify-center text-xs font-bold text-primary">
+                            ${record.supplier.charAt(0)}
+                        </div>
+                        ${record.supplier}
+                    </td>
+                    <td class="p-4 truncate max-w-[200px]" title="${record.items}">${record.items}</td>
+                    <td class="p-4 font-data-tabular">${record.value}</td>
+                    <td class="p-4">${record.date.toLocaleDateString()}</td>
+                    <td class="p-4">
+                        <span class="status-badge ${record.statusData.color}">
+                            <span class="material-symbols-outlined text-[14px]">${record.statusData.icon}</span>
+                            ${record.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right" data-rbac="procurement:delete">
+                        <button
+                            type="button"
+                            data-record-delete
+                            data-record-id="${record.id}"
+                            data-record-po="${escapeHtmlAttr(record.po_number)}"
+                            aria-label="Delete purchase record ${escapeHtmlAttr(record.po_number)}"
+                            onclick="window.__poHandleDeleteClick && window.__poHandleDeleteClick(event, this)"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-colors text-[11px] font-bold uppercase tracking-wide">
+                            <span class="material-symbols-outlined text-[14px]">delete</span>
+                            Delete
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            document.getElementById('total-records').innerText = data.length;
+        }
+
+        function filterTable() {
+            const term = document.getElementById('global-search').value.toLowerCase();
+            const supplierFilter = document.getElementById('supplier-filter').value;
+            let filtered = records.filter(r =>
+                r.po_number.toLowerCase().includes(term) ||
+                r.supplier.toLowerCase().includes(term) ||
+                r.items.toLowerCase().includes(term)
+            );
+            if (supplierFilter) {
+                filtered = filtered.filter(r => r.supplier === supplierFilter);
+            }
+            renderTable(filtered);
+        }
+
+        // Load suppliers from the suppliers table so the filter dropdown
+        // reflects real registered partners instead of hardcoded placeholders.
+        async function loadSuppliersFilter() {
+            const select = document.getElementById('supplier-filter');
+            if (!select) return;
+
+            // Preserve the existing "All Suppliers" placeholder while we load.
+            const placeholder = select.options[0] ? select.options[0].outerHTML : '<option value="">All Suppliers</option>';
+
+            try {
+                const { data, error } = await apiSelect('suppliers', 'supplier_company');
+                if (error) throw error;
+
+                // De-duplicate by name (a partner may have multiple rows for
+                // different sectors) and sort alphabetically for a stable list.
+                const names = Array.from(new Set(
+                    (data || [])
+                        .map(s => (s.supplier_company || '').trim())
+                        .filter(Boolean)
+                )).sort((a, b) => a.localeCompare(b));
+
+                if (names.length === 0) {
+                    // No rows in DB — leave just the placeholder so the page
+                    // still renders cleanly rather than failing the filter.
+                    select.innerHTML = placeholder;
+                    return;
+                }
+
+                select.innerHTML = placeholder + names
+                    .map(n => `<option value="${escapeHtmlAttr(n)}">${escapeHtml(n)}</option>`)
+                    .join('');
+            } catch (err) {
+                console.warn('Suppliers filter load failed:', err);
+                select.innerHTML = placeholder;
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function escapeHtmlAttr(str) {
+            return escapeHtml(str).replace(/"/g, '&quot;');
+        }
+        function switchSidePanelTab(tabName) {
+            const tabs = ['traceability', 'documents', 'financials'];
+            tabs.forEach(tab => {
+                const btn = document.getElementById(`tab-btn-${tab}`);
+                const panel = document.getElementById(`panel-tab-${tab}`);
+                if (tab === tabName) {
+                    btn.className = "flex-1 py-3 text-sm font-bold text-primary border-b-2 border-primary text-center";
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.className = "flex-1 py-3 text-sm font-bold text-on-surface-variant hover:bg-surface-container-low text-center";
+                    panel.classList.add('hidden');
+                }
+            });
+        }
+
+        function renderDynamicDocuments(record) {
+            const container = document.getElementById('documents-list-container');
+            container.innerHTML = '';
+
+            // Determine which docs are actually uploaded
+            const uploadedGRN = record.customDocs.find(d => d.icon === 'local_shipping');
+            const uploadedInvoice = record.customDocs.find(d => d.icon === 'description');
+
+            const documents = [
+                {
+                    name: record.poCreated ? `Purchase_Order_${record.po_number}.pdf` : 'Purchase Order',
+                    type: 'pdf',
+                    icon: 'picture_as_pdf',
+                    iconColor: 'bg-error-container text-error',
+                    size: '—',
+                    uploaded: '—',
+                    locked: !record.poCreated,
+                    onClick: 'downloadPOPdf'
+                }
+            ];
+
+            if (record.poCreated) {
+                documents.push({
+                    name: uploadedGRN ? uploadedGRN.name : 'Goods Received Note',
+                    type: uploadedGRN ? uploadedGRN.type : 'pdf',
+                    icon: 'local_shipping',
+                    iconColor: 'bg-secondary-container text-[#475f87]',
+                    size: uploadedGRN ? uploadedGRN.size : '—',
+                    uploaded: uploadedGRN ? uploadedGRN.uploaded : '—',
+                    locked: !uploadedGRN,
+                    onClick: null
+                });
+                documents.push({
+                    name: uploadedInvoice ? uploadedInvoice.name : 'Supplier Invoice',
+                    type: uploadedInvoice ? uploadedInvoice.type : 'pdf',
+                    icon: 'description',
+                    iconColor: 'bg-tertiary-fixed text-primary',
+                    size: uploadedInvoice ? uploadedInvoice.size : '—',
+                    uploaded: uploadedInvoice ? uploadedInvoice.uploaded : '—',
+                    locked: !uploadedInvoice,
+                    onClick: null
+                });
+            }
+
+            // Append actual uploaded custom docs
+            record.customDocs.forEach(doc => {
+                if (!documents.some(d => d.icon === doc.icon)) {
+                    documents.push({ ...doc, locked: false, onClick: null });
+                }
+            });
+
+            documents.forEach(doc => {
+                const div = document.createElement('div');
+                div.className = `flex items-center justify-between p-3 border border-outline-variant rounded-lg transition-colors group bg-white ${doc.locked ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary'}`;
+                // If the doc was uploaded via /api/uploads, the newDoc row carries a
+                // publicUrl — render a real download/view anchor so the operator can
+                // open the file in a new tab. Falls back to a non-clickable check
+                // icon for docs loaded from the DB without a URL (legacy rows).
+                const action = (!doc.locked && doc.publicUrl)
+                    ? `<a href="${doc.publicUrl}" target="_blank" rel="noopener" class="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-primary/10 text-secondary hover:text-primary" title="Open file in new tab"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>`
+                    : `<span class="material-symbols-outlined ${doc.locked ? 'text-outline-variant' : 'text-outline-variant group-hover:text-primary'}">${doc.locked ? 'lock' : (doc.icon === 'picture_as_pdf' ? 'download' : 'check_circle')}</span>`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 ${doc.iconColor} rounded flex items-center justify-center">
+                            <span class="material-symbols-outlined">${doc.icon}</span>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-bold text-primary">${doc.name}</p>
+                                ${doc.locked
+                                    ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-extrabold uppercase rounded">${doc.icon === 'picture_as_pdf' ? 'Not Created' : 'Not Uploaded'}</span>`
+                                    : `<span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-extrabold uppercase rounded">Ready</span>`
+                                }
+                            </div>
+                            <p class="text-xs text-on-surface-variant">${doc.locked ? (doc.icon === 'picture_as_pdf' ? 'PO not yet created' : 'Awaiting upload') : (doc.size + ' • ' + (doc.uploaded || '—'))}</p>
+                        </div>
+                    </div>
+                    ${action}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderThreeWayMatch(record) {
+            const container = document.getElementById('panel-tab-financials');
+            const matchBadge = document.getElementById('tab-match-badge');
+            container.innerHTML = '';
+
+            // Step logic
+            const poDone = record.poCreated === true;
+            const grnDone = record.customDocs.some(d => d.icon === 'local_shipping') || record.status === 'Received' || record.status === 'Completed';
+            const invDone = record.customDocs.some(d => d.icon === 'description');
+
+            const doneCount = [poDone, grnDone, invDone].filter(Boolean).length;
+
+            let bannerBg = 'bg-surface-container-low border-outline-variant';
+            let bannerIcon = 'pending';
+            let bannerLabel = `Step ${doneCount}/3 — ${doneCount === 0 ? 'Awaiting PO Creation' : doneCount === 1 ? 'PO Created' : doneCount === 2 ? 'GRN Uploaded' : 'All Matched'}`;
+            let bannerIconColor = 'text-outline-variant';
+            let bannerStatusBg = 'bg-surface-container text-on-surface-variant';
+
+            if (doneCount === 3) {
+                bannerBg = 'bg-[#ECFDF5] border-[#A7F3D0]';
+                bannerIcon = 'verified';
+                bannerLabel = 'All Matched';
+                bannerIconColor = 'text-[#047857]';
+                bannerStatusBg = 'bg-[#ECFDF5] text-[#047857]';
+            }
+
+            matchBadge.className = `text-[9px] px-1.5 py-0.5 rounded-full font-bold ${bannerStatusBg}`;
+            matchBadge.innerText = doneCount === 3 ? '✓ Match' : 'Pending';
+            matchBadge.style.display = 'inline-block';
+
+            // Alert box for 3-way match progress
+            let alertBox = '';
+            if (doneCount < 3 && doneCount > 0) {
+                alertBox = `
+                    <div class="bg-surface-container-low border border-outline-variant rounded-xl p-4 flex gap-3">
+                        <span class="material-symbols-outlined text-outline">info</span>
+                        <div>
+                            <p class="text-sm font-bold text-primary">3-Way Verification In Progress</p>
+                            <p class="text-xs text-on-surface-variant mt-0.5">${doneCount === 1 ? 'Purchase Order is ready. Upload the remaining documents to complete verification.' : doneCount === 2 ? 'Two documents verified. Upload the Supplier Invoice to complete.' : ''}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Extract item details for comparison table. Prefer the per-line array; fall back
+            // to parsing the legacy joined string for old single-line rows.
+            let qty = 0;
+            let unit = 'units';
+            let unitPrice = 0;
+            if (Array.isArray(record.itemsArray) && record.itemsArray.length > 0) {
+                // Use the first line as the displayed representative row, but sum totals.
+                const first = record.itemsArray[0];
+                qty = Number(first.quantity || first.qty || 0);
+                unit = first.unit || 'units';
+                unitPrice = parseFloat(first.unit_price || first['unit_price'] || first.unit_cost || first['unit_cost'] || 0) || 0;
+            } else {
+                const rawItems = record.items || '';
+                const qtyMatch = rawItems.match(/^([\d,]+)(x|kg|L)?\s*(.*)$/);
+                if (qtyMatch) {
+                    qty = parseInt(qtyMatch[1].replace(/,/g, ''));
+                    const suffix = qtyMatch[2] || '';
+                    if (suffix === 'kg') unit = 'kg';
+                    else if (suffix === 'L') unit = 'L';
+                    else unit = 'pcs';
+                }
+            }
+            if (qty <= 0) qty = Number(record.quantity || 1);
+            // Total value parsed from "$1,234.56" display string. Declared in function
+            // scope (not inside the if block) because it is referenced below in the
+            // comparison-table template literal — declaring it inside the if caused a
+            // ReferenceError for any record where unitPrice > 0, which silently
+            // aborted openPanel() and left the side panel hidden.
+            const valNum = parseFloat((record.value || '').replace(/[^0-9.]/g, '')) || 0;
+            if (unitPrice <= 0) {
+                unitPrice = (valNum > 0 && qty > 0) ? (valNum / qty) : 0;
+            }
+
+            const poQty = poDone ? qty : 0;
+            const grnQty = grnDone ? qty : 0;
+            const invQty = invDone ? qty : 0;
+
+            const iconTick = (done) => done ? '<span class="material-symbols-outlined text-[#10B981]">check_circle</span>' : '<span class="material-symbols-outlined text-outline-variant">radio_button_unchecked</span>';
+            const textCls = (done) => done ? 'text-primary' : 'text-outline-variant';
+            const grnLabel = grnDone ? `GRN-${(record.po_number || 'N/A').split('-')[2] || '001'}` : 'Pending Arrival';
+            const invLabel = invDone ? `INV-${(record.po_number || 'N/A').split('-')[2] || '001'}` : 'Pending Receipt';
+
+            container.innerHTML = `
+                <!-- 3-Way Match Banner -->
+                <div class="p-5 rounded-xl border flex flex-col gap-3 ${bannerBg}">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">3-Way Match Check</span>
+                        <span class="text-[9px] px-2 py-1 rounded-full font-bold ${bannerStatusBg} flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[12px] ${bannerIconColor}">${bannerIcon}</span>
+                            ${bannerLabel}
+                        </span>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="flex-1 h-1.5 rounded-full ${poDone ? 'bg-[#10B981]' : 'bg-outline-variant/40'}"></div>
+                        <div class="flex-1 h-1.5 rounded-full ${grnDone ? 'bg-[#10B981]' : 'bg-outline-variant/40'}"></div>
+                        <div class="flex-1 h-1.5 rounded-full ${invDone ? 'bg-[#10B981]' : 'bg-outline-variant/40'}"></div>
+                    </div>
+                </div>
+
+                ${alertBox}
+
+                <!-- Document Checklist -->
+                <div>
+                    <h4 class="text-xs font-bold text-primary uppercase tracking-wider mb-3">Linked Documents</h4>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between p-3 rounded-lg border ${poDone ? 'bg-[#f0fdf4] border-[#bbf7d0]' : 'bg-surface-container-lowest border-outline-variant/60'}">
+                            <div class="flex items-center gap-2">
+                                ${iconTick(poDone)}
+                                <span class="text-sm font-semibold ${textCls(poDone)}">1. Purchase Order</span>
+                            </div>
+                            <span class="text-xs text-on-surface-variant font-data-tabular">${record.po_number || '—'}</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-lg border ${grnDone ? 'bg-[#f0fdf4] border-[#bbf7d0]' : 'bg-surface-container-lowest border-outline-variant/60'}">
+                            <div class="flex items-center gap-2">
+                                ${iconTick(grnDone)}
+                                <span class="text-sm font-semibold ${textCls(grnDone)}">2. Goods Received Note</span>
+                            </div>
+                            <span class="text-xs text-on-surface-variant font-data-tabular">${grnLabel}</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-lg border ${invDone ? 'bg-[#f0fdf4] border-[#bbf7d0]' : 'bg-surface-container-lowest border-outline-variant/60'}">
+                            <div class="flex items-center gap-2">
+                                ${iconTick(invDone)}
+                                <span class="text-sm font-semibold ${textCls(invDone)}">3. Supplier Invoice</span>
+                            </div>
+                            <span class="text-xs text-on-surface-variant font-data-tabular">${invLabel}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Table -->
+                <div>
+                    <h4 class="text-xs font-bold text-primary uppercase tracking-wider mb-3">Matching Comparison</h4>
+                    <div class="rounded-xl border border-outline-variant overflow-hidden">
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="bg-surface-container-lowest">
+                                    <th class="py-2 px-3 text-left font-bold text-on-surface-variant">Document</th>
+                                    <th class="py-2 px-3 text-center font-bold text-on-surface-variant">Qty</th>
+                                    <th class="py-2 px-3 text-right font-bold text-on-surface-variant">Unit Price</th>
+                                    <th class="py-2 px-3 text-right font-bold text-on-surface-variant">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-t border-outline-variant/40 ${poQty > 0 ? '' : 'opacity-40'}">
+                                    <td class="py-2 px-3 font-semibold">Purchase Order <span class="text-[9px] px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 font-extrabold uppercase ml-1">${poQty > 0 ? '✓' : '✗'}</span></td>
+                                    <td class="py-2 px-3 text-center font-data-tabular">${poQty > 0 ? qty.toLocaleString() + ' ' + unit : '—'}</td>
+                                    <td class="py-2 px-3 text-right font-data-tabular">${poQty > 0 ? '$' + unitPrice.toFixed(2) : '—'}</td>
+                                    <td class="py-2 px-3 text-right font-bold font-data-tabular">${poQty > 0 ? '$' + valNum.toFixed(2) : '—'}</td>
+                                </tr>
+                                <tr class="border-t border-outline-variant/40 ${grnQty > 0 ? '' : 'opacity-40'}">
+                                    <td class="py-2 px-3 font-semibold">Goods Received Note <span class="text-[9px] px-1 py-0.5 rounded ${grnQty > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'} font-extrabold uppercase ml-1">${grnQty > 0 ? '✓' : '✗'}</span></td>
+                                    <td class="py-2 px-3 text-center font-data-tabular">${grnQty > 0 ? qty.toLocaleString() + ' ' + unit : '—'}</td>
+                                    <td class="py-2 px-3 text-right font-data-tabular">${grnQty > 0 ? '$' + unitPrice.toFixed(2) : '—'}</td>
+                                    <td class="py-2 px-3 text-right font-bold font-data-tabular">${grnQty > 0 ? '$' + valNum.toFixed(2) : '—'}</td>
+                                </tr>
+                                <tr class="border-t border-outline-variant/40 ${invQty > 0 ? '' : 'opacity-40'}">
+                                    <td class="py-2 px-3 font-semibold">Supplier Invoice <span class="text-[9px] px-1 py-0.5 rounded ${invQty > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'} font-extrabold uppercase ml-1">${invQty > 0 ? '✓' : '✗'}</span></td>
+                                    <td class="py-2 px-3 text-center font-data-tabular">${invQty > 0 ? qty.toLocaleString() + ' ' + unit : '—'}</td>
+                                    <td class="py-2 px-3 text-right font-data-tabular">${invQty > 0 ? '$' + unitPrice.toFixed(2) : '—'}</td>
+                                    <td class="py-2 px-3 text-right font-bold font-data-tabular">${invQty > 0 ? '$' + valNum.toFixed(2) : '—'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function openPanel(record) {
+            activeRecord = record; // Assign currently selected record
+
+            document.getElementById('panel-po-number').innerText = record.po_number;
+            document.getElementById('panel-supplier').innerText = record.supplier;
+            document.getElementById('panel-items').innerText = record.items;
+            document.getElementById('panel-value').innerText = record.value;
+
+            // Quantity details — show one row per line for multi-item POs.
+            const summaryEl = document.getElementById('panel-qty-summary');
+            const linesEl = document.getElementById('panel-qty-lines');
+            const lineArr = Array.isArray(record.itemsArray) && record.itemsArray.length > 0
+                ? record.itemsArray
+                : (typeof record.items === 'string' && record.items
+                    ? [{ item_name: record.items, quantity: record.quantity || 1, unit: record.unit || 'units', unit_price: record.unit_price || null }]
+                    : []);
+
+            if (lineArr.length > 1) {
+                // Multi-line PO → render a table-like list of rows.
+                if (summaryEl) summaryEl.classList.add('hidden');
+                if (linesEl) {
+                    linesEl.classList.remove('hidden');
+                    linesEl.innerHTML = `
+                        <div class="grid grid-cols-12 gap-2 px-2 pb-1 border-b border-outline-variant text-[10px] font-extrabold uppercase tracking-wider text-on-surface-variant">
+                            <div class="col-span-5">Item</div>
+                            <div class="col-span-2 text-right">Qty</div>
+                            <div class="col-span-1 text-center">Unit</div>
+                            <div class="col-span-2 text-right">Unit Price</div>
+                            <div class="col-span-2 text-right">Line Total</div>
+                        </div>
+                    ` + lineArr.map((line, idx) => {
+                        const lnQty = Number(line.quantity || line.qty || 0);
+                        const lnUnit = line.unit || 'units';
+                        const lnUnitPrice = parseFloat(line.unit_price || line['unit_price'] || line.unit_cost || line['unit_cost'] || 0) || 0;
+                        const lnLineTotal = lnQty * lnUnitPrice;
+                        return `
+                            <div class="grid grid-cols-12 gap-2 items-center px-2 py-2 rounded-lg hover:bg-surface-container-highest transition-colors">
+                                <div class="col-span-5">
+                                    <p class="text-sm font-bold text-primary truncate" title="${escapeHtml(line.item_name || line.name || `Line ${idx + 1}`)}">${escapeHtml(line.item_name || line.name || `Line ${idx + 1}`)}</p>
+                                    ${line.item_code ? `<p class="text-[10px] font-mono text-on-surface-variant">${escapeHtml(line.item_code)}</p>` : ''}
+                                </div>
+                                <div class="col-span-2 text-right text-sm font-bold text-primary font-data-tabular">${lnQty ? lnQty.toLocaleString('en-US') : '—'}</div>
+                                <div class="col-span-1 text-center text-xs font-semibold text-on-surface-variant">${escapeHtml(lnUnit)}</div>
+                                <div class="col-span-2 text-right text-sm font-semibold text-primary font-data-tabular">${lnUnitPrice ? '$' + lnUnitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</div>
+                                <div class="col-span-2 text-right text-sm font-bold text-primary font-data-tabular">${lnLineTotal ? '$' + lnLineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } else {
+                // Single-line PO → original 3-column summary.
+                if (summaryEl) summaryEl.classList.remove('hidden');
+                if (linesEl) { linesEl.classList.add('hidden'); linesEl.innerHTML = ''; }
+                const qtyVal = record.quantity != null ? Number(record.quantity).toLocaleString('en-US') : '—';
+                document.getElementById('panel-qty').innerText = qtyVal;
+
+                // Prefer stored unit; otherwise parse from items string (e.g. "10kg Beans", "5L Milk", "20x Cups")
+                let qtyUnit = record.unit || '—';
+                if (!qtyUnit || qtyUnit === '—') {
+                    const qtyMatch = String(record.items || '').match(/^([\d,]+)(x|kg|L)?\s*(.*)$/);
+                    if (qtyMatch) {
+                        const suffix = qtyMatch[2] || '';
+                        if (suffix === 'kg') qtyUnit = 'kg';
+                        else if (suffix === 'L') qtyUnit = 'L';
+                        else if (suffix === 'x') qtyUnit = 'pcs';
+                        else if (suffix) qtyUnit = suffix;
+                        else qtyUnit = 'units';
+                    } else if (record.unit_price != null) {
+                        qtyUnit = 'units';
+                    } else {
+                        qtyUnit = '—';
+                    }
+                }
+                document.getElementById('panel-qty-unit').innerText = qtyUnit;
+
+                const unitPriceVal = record.unit_price != null
+                    ? '$' + Number(record.unit_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : (record.quantity && record.total_amount
+                        ? '$' + (Number(record.total_amount) / Number(record.quantity)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : '—');
+                document.getElementById('panel-unit-price').innerText = unitPriceVal;
+            }
+
+            // Batch ID and PO created badge in panel header
+            const batchBadge = document.getElementById('panel-batch-badge') || (() => {
+                const d = document.createElement('div');
+                d.id = 'panel-batch-badge';
+                document.getElementById('panel-po-number')?.parentElement?.appendChild(d);
+                return d;
+            })();
+            batchBadge.innerHTML = record.batchId ? `
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-extrabold uppercase rounded tracking-wide">Batch: ${record.batchId}</span>
+                    ${record.poCreated ? `<span class="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-extrabold uppercase rounded tracking-wide">PO PDF Ready</span>` : ''}
+                </div>` : '';
+
+            // Reset upload inputs
+            document.getElementById('upload-file-label').innerText = "Click to select or drag document";
+            document.getElementById('file-upload-input').value = "";
+            selectedFile = null;
+
+            // Putaway section is handled exclusively in the warehouse-map page now.
+
+            document.getElementById('panel-status-container').innerHTML = `
+                <span class="status-badge ${record.statusData.color} px-3 py-1 text-sm">
+                    <span class="material-symbols-outlined text-[16px]">${record.statusData.icon}</span>
+                    ${record.status}
+                </span>
+            `;
+
+            // Show FIFO metadata in traceability panel if this record was auto-created from reorder
+            const fifoMetaContainer = document.getElementById('fifo-meta-container') || (() => {
+                const el = document.createElement('div');
+                el.id = 'fifo-meta-container';
+                document.querySelector('#panel-tab-traceability')?.prepend(el);
+                return el;
+            })();
+            if (record.isFifo && fifoMetaContainer) {
+                fifoMetaContainer.innerHTML = `
+                    <div class="bg-secondary-fixed border border-[#afc7f5] rounded-xl p-4 mb-6 flex flex-col gap-2">
+                        <div class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#2f476e]">
+                            <span class="material-symbols-outlined text-[16px]">queue</span>
+                            FIFO Reorder Record
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-[10px] text-[#2f476e]/70 uppercase tracking-wider font-bold">Queue Entry</p>
+                                <p class="text-sm font-bold text-primary">RMO-${String(record.fifoOrderNum).padStart(4, '0')}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-[#2f476e]/70 uppercase tracking-wider font-bold">Email</p>
+                                <p class="text-sm font-bold ${record.emailSent ? 'text-emerald-700' : 'text-amber-700'} flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">${record.emailSent ? 'mark_email_read' : 'email'}</span>
+                                    ${record.emailSent ? 'Sent to Supplier' : 'Not Sent'}
+                                </p>
+                            </div>
+                            ${record.waybillMatched ? `
+                            <div>
+                                <p class="text-[10px] text-[#2f476e]/70 uppercase tracking-wider font-bold">Waybill Matched</p>
+                                <p class="text-sm font-bold text-primary">${record.waybillNumber || 'Yes'}</p>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                `;
+            } else if (fifoMetaContainer) {
+                fifoMetaContainer.innerHTML = '';
+            }
+
+            renderDynamicDocuments(record);
+            applyUploadLockState();
+            renderThreeWayMatch(record);
+
+            switchSidePanelTab('traceability');
+
+            document.getElementById('side-panel').classList.remove('translate-x-full');
+            document.getElementById('panel-overlay').classList.remove('hidden');
+        }
+
+        function closePanel() {
+            if (_poSyncInProgress.size > 0) {
+                showToast('A status save is still in progress — please wait for it to finish before closing.', 'error');
+                return;
+            }
+            document.getElementById('side-panel').classList.add('translate-x-full');
+            document.getElementById('panel-overlay').classList.add('hidden');
+            activeRecord = null;
+        }
+
+        // Block page unload (refresh, navigation) while a save is in flight so
+        // in-flight POSTs aren't aborted mid-write. A confirm dialog is shown.
+        window.addEventListener('beforeunload', (e) => {
+            if (_poSyncInProgress.size > 0) {
+                e.preventDefault();
+                e.returnValue = 'A status save is still in progress. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
+
+        function handleFileSelect(input) {
+            if (input.files && input.files[0]) {
+                selectedFile = input.files[0];
+                document.getElementById('upload-file-label').innerText = `Selected: ${selectedFile.name}`;
+            }
+        }
+
+        async function uploadDocument() {
+            if (!activeRecord) return;
+            if (!selectedFile) {
+                alert("Please click and select a document file to upload first.");
+                return;
+            }
+
+            // Lock the upload button + dropzone while the file bytes are in flight,
+            // so the operator doesn't double-click and trigger two uploads of the
+            // same file (which would create two customDocs rows + two statuses).
+            const uploadBtn = document.getElementById('upload-btn');
+            const dropzone = document.getElementById('upload-dropzone');
+            const originalBtnHtml = uploadBtn ? uploadBtn.innerHTML : '';
+            const setBusy = (busy) => {
+                if (uploadBtn) {
+                    uploadBtn.disabled = busy;
+                    uploadBtn.innerHTML = busy
+                        ? '<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> Uploading…'
+                        : originalBtnHtml;
+                }
+                if (dropzone) {
+                    dropzone.classList.toggle('opacity-60', busy);
+                    dropzone.classList.toggle('pointer-events-none', busy);
+                }
+            };
+            setBusy(true);
+
+            // Upload the file bytes to /api/uploads so the document is actually
+            // stored on the server and we get back a publicUrl we can render as
+            // a download link. Category=purchase-records places the file under
+            // ./uploads/purchase-records/<YYYY-MM-DD>/<ts>-<rand>-<safe-name>.
+            let publicUrl = null;
+            let storedPath = null;
+            try {
+                const fd = new FormData();
+                fd.append('file', selectedFile, selectedFile.name);
+                fd.append('category', 'purchase-records');
+                fd.append('filename', selectedFile.name);
+                const upResp = await fetch('/api/uploads', { method: 'POST', body: fd });
+                if (!upResp.ok) {
+                    let msg = `Upload failed (HTTP ${upResp.status})`;
+                    try {
+                        const errBody = await upResp.json();
+                        if (errBody && errBody.error) msg = errBody.error;
+                    } catch { /* body may be empty */ }
+                    showToast(msg, 'error');
+                    setBusy(false);
+                    return;
+                }
+                const upResult = await upResp.json();
+                publicUrl = upResult?.data?.publicUrl || null;
+                storedPath = upResult?.data?.path || null;
+                if (!publicUrl) {
+                    showToast('Upload response missing publicUrl — please retry.', 'error');
+                    setBusy(false);
+                    return;
+                }
+            } catch (upErr) {
+                showToast('Upload failed: ' + (upErr?.message || upErr), 'error');
+                setBusy(false);
+                return;
+            }
+
+            const docType = document.getElementById('upload-doc-type').value;
+            let displayCategoryName = 'Purchase Order';
+            let icon = 'picture_as_pdf';
+            let iconColor = 'bg-error-container text-error';
+
+            if (docType === 'grn') {
+                displayCategoryName = 'Goods Received Note';
+                icon = 'local_shipping';
+                iconColor = 'bg-secondary-container text-[#475f87]';
+
+                // GRN upload = stock has arrived — set actual delivery date
+                activeRecord.actualDeliveryDate = new Date().toISOString();
+                activeRecord.status = 'Received';
+                activeRecord.statusData = statusTypes.find(s => s.label === 'Received');
+
+                // Generate batch ID if not yet assigned
+                if (!activeRecord.batchId) {
+                    const poSuffix = (activeRecord.po_number || 'PO').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase();
+                    activeRecord.batchId = `RM-${poSuffix}-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+                }
+            } else if (docType === 'invoice') {
+                displayCategoryName = 'Supplier Invoice';
+                icon = 'description';
+                iconColor = 'bg-tertiary-fixed text-primary';
+
+                if (activeRecord.status === 'Received') {
+                    activeRecord.status = 'Received';
+                    activeRecord.statusData = statusTypes.find(s => s.label === 'Received');
+                }
+            }
+
+            const newDoc = {
+                name: selectedFile.name,
+                type: selectedFile.name.split('.').pop() || 'pdf',
+                icon: icon,
+                iconColor: iconColor,
+                size: (selectedFile.size / 1024).toFixed(0) + ' KB',
+                uploaded: new Date().toLocaleDateString(),
+                // Carry the storage URL so the documents panel can render a
+                // real download/view link instead of just a check icon.
+                publicUrl,
+                storedPath,
+                docType,
+            };
+
+            // Track upload lock per doc type
+            if (!activeRecord.uploadLocks) activeRecord.uploadLocks = {};
+            activeRecord.uploadLocks[docType] = true;
+
+            // Track upload trace
+            if (!activeRecord.uploadTrace) activeRecord.uploadTrace = [];
+            activeRecord.uploadTrace.push({
+                filename: selectedFile.name,
+                docType: docType,
+                category: displayCategoryName,
+                date: new Date().toLocaleString(),
+                publicUrl,
+                storedPath,
+            });
+
+            activeRecord.customDocs.push(newDoc);
+
+            await syncStatusToDb(activeRecord);
+
+            renderTable(records);
+            openPanel(activeRecord);
+            applyUploadLockState();
+
+            if (docType === 'grn') {
+                showToast(`${displayCategoryName} uploaded — goods arrived at Receiving Bay (${activeRecord.batchId}). Move to warehouse-map to complete zone placement.`);
+            } else {
+                showToast(`${displayCategoryName} recorded and match recalculated!`);
+            }
+
+            // Reset selected file state
+            selectedFile = null;
+            document.getElementById('upload-file-label').innerText = "Click to select or drag document";
+            document.getElementById('file-upload-input').value = "";
+            setBusy(false);
+        }
+
+        function applyUploadLockState() {
+            if (!activeRecord || !activeRecord.uploadLocks) return;
+            const locks = activeRecord.uploadLocks;
+            const trace = activeRecord.uploadTrace || [];
+            const dropzone = document.getElementById('upload-dropzone');
+            const uploadBtn = document.getElementById('upload-btn');
+            const fileLabel = document.getElementById('upload-file-label');
+            const uploadIcon = document.getElementById('upload-icon');
+            const traceContainer = document.getElementById('upload-trace-container');
+            const traceList = document.getElementById('upload-trace-list');
+
+            // Lock status badges
+            const lockGRN = document.getElementById('lock-grn');
+            const lockInvoice = document.getElementById('lock-invoice');
+            if (lockGRN) lockGRN.classList.toggle('hidden', !locks.grn);
+            if (lockInvoice) lockInvoice.classList.toggle('hidden', !locks.invoice);
+
+            // If GRN or Invoice is locked, disable the whole upload area
+            const isLocked = !!locks.grn && !!locks.invoice;
+            if (dropzone) {
+                if (isLocked) {
+                    dropzone.classList.add('locked', 'opacity-50', 'cursor-not-allowed', 'hover:border-outline-variant');
+                    dropzone.classList.remove('hover:border-primary');
+                } else {
+                    dropzone.classList.remove('locked', 'opacity-50', 'cursor-not-allowed', 'hover:border-outline-variant');
+                    dropzone.classList.add('hover:border-primary');
+                }
+            }
+            if (uploadBtn) {
+                uploadBtn.disabled = isLocked;
+                uploadBtn.classList.toggle('opacity-50', isLocked);
+                uploadBtn.classList.toggle('cursor-not-allowed', isLocked);
+            }
+
+            // Show trace log
+            if (trace.length > 0) {
+                traceContainer.classList.remove('hidden');
+                traceList.innerHTML = '';
+                trace.forEach(entry => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between py-1 border-b border-outline-variant/30 last:border-0';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[#10B981] text-[12px]" style="font-variation-settings:'FNI' 1,'wght' 600">check_circle</span>
+                            <span class="text-[10px] text-on-surface-variant font-semibold">${entry.category}</span>
+                            <span class="text-[10px] text-on-surface-variant/70 truncate max-w-[110px]" title="${entry.filename}">${entry.filename}</span>
+                        </div>
+                        <span class="text-[9px] text-outline-variant font-data-tabular shrink-0">${entry.date}</span>
+                    `;
+                    traceList.appendChild(row);
+                });
+            }
+        }
+
+        function requestUnlock(docType) {
+            const name = docType === 'grn' ? 'Goods Received Note' : 'Supplier Invoice';
+            if (confirm(`Request to edit/replace the ${name} document?\n\nThis will unlock the upload slot. A record of this unlock request will be logged.`)) {
+                if (!activeRecord.uploadLocks) activeRecord.uploadLocks = {};
+                delete activeRecord.uploadLocks[docType];
+                applyUploadLockState();
+                showToast(`${name} unlocked — you may now replace the file.`);
+            }
+        }
+
+        function showToast(message, type = 'success', durationMs, options = {}) {
+            let toast = document.getElementById('record-update-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'record-update-toast';
+                toast.className = 'fixed bottom-8 right-8 text-white border px-6 py-4 rounded-xl shadow-2xl z-[100] transition-all duration-300 translate-y-32 flex items-center gap-3';
+                document.body.appendChild(toast);
+            }
+
+            const isError = type === 'error';
+            const isInfo = type === 'info';
+            const bgClass = isError ? 'bg-red-900' : (isInfo ? 'bg-blue-900' : 'bg-[#031635]');
+            const iconName = isError ? 'error' : (isInfo ? 'sync' : 'check_circle');
+            const iconClass = isError ? 'text-red-300' : (isInfo ? 'text-blue-300' : 'text-green-400');
+            toast.className = `fixed bottom-8 right-8 ${bgClass} text-white border-outline-variant px-6 py-4 rounded-xl shadow-2xl z-[100] transition-all duration-300 translate-y-32 flex items-center gap-3`;
+
+            toast.innerHTML = `
+                <span class="material-symbols-outlined ${iconClass}" style="font-variation-settings: 'FILL' 1;">${iconName}${isInfo ? ' animate-spin' : ''}</span>
+                <div>
+                    <p class="text-xs font-bold font-headline-sm">${message}</p>
+                </div>
+            `;
+
+            toast.classList.remove('translate-y-32');
+            const ms = durationMs || 3000;
+            const hideTimer = setTimeout(() => {
+                toast.classList.add('translate-y-32');
+            }, ms);
+
+            // Return a handle so callers can dismiss persistent toasts early.
+            return {
+                remove() {
+                    clearTimeout(hideTimer);
+                    toast.classList.add('translate-y-32');
+                }
+            };
+        }
+
+        // Ensure purchase_records has inventory_id column (one-time migration)
+        async function ensureInventoryIdColumn() {
+            try {
+                await erpSupabaseAPI({ operation: 'ddl', query: 'ALTER TABLE public.purchase_records ADD COLUMN IF NOT EXISTS inventory_id uuid' });
+            } catch (e) {
+                if (!e.message.includes('already exists')) {
+                    console.warn('[migrate] inventory_id column:', e.message);
+                }
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await ensureInventoryIdColumn();
+            loadSuppliersFilter();
+            loadPurchaseRecords();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<!-- build-tag: PO-bind-v5 (2026-07-03T23:21) -->
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Batch Tracing Hub | Supply Chain Manager</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
+        <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+        <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+<script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js"></script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+        body { background-color: #F0F2F7; }
+        .timeline-container { position: relative; padding-left: 36px; }
+        .timeline-container::before { content: ''; position: absolute; top: 12px; bottom: 0; left: 15px; width: 2px; background: #e2e8f0; }
+        .timeline-item { position: relative; padding-bottom: 32px; }
+        .timeline-item:last-child { padding-bottom: 0; }
+        .timeline-item::before { content: ''; position: absolute; left: -25px; top: 3px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #e2e8f0; background: #fff; }
+        .timeline-item.completed::before { background: #10b981; border-color: #10b981; }
+        .timeline-item.completed { opacity: 0.7; }
+        .timeline-item.active::before { background: #fff; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); animation: pulse-dot 2s infinite; }
+        .timeline-item.active h4 { color: #1d4ed8; }
+        @keyframes pulse-dot { 0%,100%{box-shadow:0 0 0 3px rgba(59,130,246,0.2)} 50%{box-shadow:0 0 0 6px rgba(59,130,246,0.1)} }
+        .timeline-item::before { content: ''; position: absolute; left: -36px; top: 4px; width: 32px; height: 32px; border-radius: 50%; background: #ffffff; border: 3px solid #cbd5e1; z-index: 1; }
+        .timeline-item.completed::before { background: #10B981; border-color: #10B981; content: '\2713'; color: white; font-size: 13px; font-weight: 700; /* font-bold */ line-height: 26px; text-align: center; }
+        .timeline-item.active::before { border-color: #3B82F6; background: #EFF6FF; content: '\25CF'; color: #3B82F6; font-size: 10px; font-weight: 700; /* font-bold */ line-height: 26px; text-align: center; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Entrance animations */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .animate-fade-slide-up { animation: fadeSlideUp 0.45s ease-out both; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out both; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+        .animate-delay-1 { animation-delay: 0.1s; }
+        .animate-delay-2 { animation-delay: 0.2s; }
+        .animate-delay-3 { animation-delay: 0.3s; }
+        .animate-delay-4 { animation-delay: 0.4s; }
+        .animate-delay-5 { animation-delay: 0.5s; }
+        .animate-delay-6 { animation-delay: 0.6s; }
+
+        /* Staggered card entrances */
+        .bento-card:nth-child(1) { animation: fadeSlideUp 0.45s ease-out 0.05s both; }
+        .bento-card:nth-child(2) { animation: fadeSlideUp 0.45s ease-out 0.15s both; }
+        .bento-card:nth-child(3) { animation: fadeSlideUp 0.45s ease-out 0.25s both; }
+        .bento-card:nth-child(4) { animation: fadeSlideUp 0.45s ease-out 0.35s both; }
+
+        /* Card hover effects */
+        .bento-card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; cursor: default; }
+        .bento-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: #a0aab8; }
+
+        /* Tab transitions */
+        .tab-btn { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: #031635; transform: scaleX(0); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tab-btn.active::after { transform: scaleX(1); }
+        .tab-btn.active { color: #031635; }
+        .tab-btn:hover:not(.active) { color: #031635; background: rgba(3,22,53,0.04); }
+
+        /* Table row hover */
+        .data-table tbody tr { transition: background 0.15s ease; }
+        .data-table tbody tr:hover { background-color: rgba(59,130,246,0.04); }
+        .data-table tbody tr:nth-child(even) { background-color: rgba(244,246,250,0.5); }
+        .data-table tbody tr:nth-child(even):hover { background-color: rgba(59,130,246,0.04); }
+
+        /* Badge shimmer */
+        .badge-new { background: linear-gradient(90deg, #f0f9ff 25%, #dbeafe 50%, #f0f9ff 75%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+
+        /* Custom scrollbar for main content */
+        .tab-body::-webkit-scrollbar { width: 6px; }
+        .tab-body::-webkit-scrollbar-track { background: transparent; }
+        .tab-body::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        .tab-body::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        /* Dropdown select styling */
+        #batch-selector { transition: border-color 0.2s, box-shadow 0.2s; }
+        #batch-selector:focus { border-color: #031635; box-shadow: 0 0 0 3px rgba(3,22,53,0.08); outline: none; }
+        #batch-selector:hover { border-color: #94a3b8; }
+
+        /* Section divider accent */
+        .section-accent { position: relative; }
+        .section-accent::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #3B82F6, #10B981); border-radius: 2px; }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+
+<body class="font-body-md text-sm text-on-surface">
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">qr_code_scanner</span>
+                Batch Tracing Hub
+                <span id="build-chip" class="text-[9px] font-bold uppercase tracking-wider text-[#0891b2] bg-[#ecfeff] border border-[#a5f3fc] px-2 py-0.5 rounded-full">PO-bind-v5</span>
+            </h2>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2 text-[11px] font-bold text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Provenance Ledger · Synced
+                </div>
+                <a href="/production/index.html" class="text-[11px] font-bold text-primary bg-surface-container-low hover:bg-surface-container border border-outline-variant px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px]">factory</span>
+                    Production Floor
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="ml-64 min-h-screen flex flex-col">
+        <!-- Main Content -->
+        <main class="pt-20 px-8 pb-8 flex flex-col gap-8 flex-1">
+
+            <!-- Batch Selector Bar -->
+            <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-wrap gap-4 items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <!-- Dropdown with left filter icon and right chevron -->
+                    <div class="relative shrink-0">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#94a3b8] z-10">
+                            <span class="material-symbols-outlined text-[18px] block leading-none">filter_list</span>
+                        </span>
+                        <select id="batch-selector" onchange="selectBatch(this.value)" class="pl-10 pr-10 py-2.5 bg-[#f2f4f6] border border-[#c5c6cf] rounded-xl text-sm text-[#191c1e] focus:ring-2 focus:ring-[#031635]/20 focus:border-[#031635] outline-none cursor-pointer hover:border-[#cbd5e1] transition-colors shadow-sm w-[300px] bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%2394a3b8%22%3E%3Cpath%20d%3D%22M7%2010l5%205%205-5z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_12px_center] bg-[length:16px_16px] appearance-none">
+                            <option value="">Select a production batch...</option>
+                        </select>
+                    </div>
+                    <!-- Refresh button: 40x40 with refresh icon -->
+                    <button onclick="reloadBatches()" title="Reload batches" type="button" class="shrink-0 inline-flex items-center justify-center w-10 h-10 bg-white border border-[#c5c6cf] rounded-xl text-[#64748b] hover:text-[#031635] hover:bg-[#f2f4f6] hover:border-[#94a3b8] transition-colors shadow-sm">
+                        <span class="material-symbols-outlined text-[20px] block leading-none">refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Empty State (shown when no batch selected) -->
+            <div id="empty-state" class="flex-1 flex flex-col items-center justify-center py-24">
+                <div class="animate-float mb-6">
+                    <div class="w-28 h-28 rounded-3xl bg-gradient-to-br from-[#dbeafe] to-[#bfdbfe] flex items-center justify-center shadow-lg relative">
+                        <span class="material-symbols-outlined text-[#1e40af] text-[56px]">qr_code_scanner</span>
+                        <div class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-[#1e40af] flex items-center justify-center shadow-md animate-pulse-ring">
+                            <span class="material-symbols-outlined text-white text-[14px]">add</span>
+                        </div>
+                    </div>
+                </div>
+                <h3 class="text-xl font-headline-sm font-bold text-on-surface mb-2">Select a Batch to Trace</h3>
+                <p class="text-sm text-on-surface-variant max-w-md text-center leading-relaxed mb-8">Choose a production batch from the dropdown above to view its full traceability chain — from raw ingredients to finished goods distribution.</p>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low rounded-lg border border-outline-variant">
+                        <span class="material-symbols-outlined text-[#10B981] text-[16px]">verified</span>
+                        <span class="text-xs text-on-surface-variant font-medium">Raw Material Trace</span>
+                    </div>
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low rounded-lg border border-outline-variant">
+                        <span class="material-symbols-outlined text-[#8b5cf6] text-[16px]">storefront</span>
+                        <span class="text-xs text-on-surface-variant font-medium">Distribution</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trace Content (hidden until batch selected) -->
+            <div id="trace-content" class="hidden flex flex-col gap-6">
+
+                <!-- Batch Summary Bento Board -->
+                <section id="summary-bento" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+
+                    <!-- Batch Info Card -->
+                    <div class="bento-card bg-white rounded-2xl border border-outline-variant shadow-sm p-5 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-[#dbeafe]/40 to-transparent rounded-bl-full"></div>
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-7 h-7 rounded-lg bg-[#dbeafe] flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[#1e40af] text-[14px]">batch_prediction</span>
+                            </div>
+                            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Production Batch</span>
+                        </div>
+                        <h2 id="sum-batch-code" class="text-[17px] font-bold text-on-surface leading-tight break-all mb-1">--</h2>
+                        <p id="sum-product-name" class="text-xs text-on-surface-variant mt-0.5 leading-snug">--</p>
+                        <div class="mt-4 pt-3 border-t border-outline-variant/30 space-y-1.5">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-on-surface-variant font-medium">Operator</span>
+                                <span id="sum-operator" class="text-[11px] font-bold text-primary">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-on-surface-variant font-medium">Coordinator</span>
+                                <span id="sum-coordinator" class="text-[11px] font-bold text-primary">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Finished Lot & Yield Card REMOVED -->
+
+                    <!-- Primary Factory Booking Card -->
+                    <div class="bento-card bg-white rounded-2xl border border-outline-variant shadow-sm p-5 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-[#f3e8ff]/40 to-transparent rounded-bl-full"></div>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-[#f3e8ff] flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-[#7c3aed] text-[14px]">precision_manufacturing</span>
+                                </div>
+                                <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Primary Factory Booking</span>
+                            </div>
+                            <span id="sum-booking-status" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500" title="Booking link status">UNLINKED</span>
+                        </div>
+                        <h2 id="sum-factory-zone" class="text-[17px] font-bold text-on-surface leading-tight mb-1">--</h2>
+                        <p id="sum-batch-status" class="text-xs text-on-surface-variant mt-0.5">--</p>
+                        <div class="mt-4 pt-3 border-t border-outline-variant/30 flex justify-between items-center">
+                            <span class="text-[10px] text-on-surface-variant font-medium">Batch ID</span>
+                            <span id="sum-batch-id" class="text-[11px] font-bold text-[#7c3aed]">--</span>
+                        </div>
+                        <div class="mt-2 pt-2 border-t border-outline-variant/30 flex justify-between items-center">
+                            <span class="text-[10px] text-on-surface-variant font-medium">Booking Ref</span>
+                            <span id="sum-booking-ref-wrap" class="flex items-center gap-1.5"></span>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-outline-variant/30 flex gap-2">
+                            <button id="sum-attach-booking" onclick="openFactoryBookingPicker()"
+                                class="flex-1 py-1.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">link</span>
+                                <span id="sum-attach-booking-label">Attach Factory Booking</span>
+                            </button>
+                            <button id="sum-unlink-booking" onclick="unlinkFactoryBooking()" style="display:none"
+                                class="px-3 py-1.5 border border-rose-300 text-rose-700 hover:bg-rose-50 text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">link_off</span>
+                                Unlink
+                            </button>
+                        </div>
+                        <p class="text-[9px] text-on-surface-variant mt-2 font-semibold">One factory booking per production batch.</p>
+                    </div>
+
+                    <!-- Secondary Factory Booking Card REMOVED -->
+                </section>
+
+                <!-- Tabs -->
+                <div class="bg-white border border-outline-variant rounded-2xl shadow-sm flex-1 flex flex-col overflow-hidden">
+                    <!-- Tab Bar -->
+                    <div class="flex border-b border-outline-variant bg-surface-container-low px-4 shrink-0">
+                        <button onclick="switchTab('trace')" id="btn-tab-trace" class="tab-btn active py-3.5 px-5 font-bold text-xs text-on-surface transition-all flex items-center gap-2 whitespace-nowrap">
+                            <span class="material-symbols-outlined text-[16px]">route</span>
+                            Batch Trace
+                        </button>
+                        <button onclick="switchTab('ingredients')" id="btn-tab-ingredients" class="tab-btn py-3.5 px-5 font-bold text-xs text-on-surface-variant transition-all flex items-center gap-2 whitespace-nowrap">
+                            <span class="material-symbols-outlined text-[16px]">view_in_ar</span>
+                            Raw Material Trace
+                            <span id="tab-ingredient-count" class="ml-1 bg-surface-container-high text-[10px] font-bold px-2 py-0.5 rounded-full text-on-surface-variant">0</span>
+                        </button>
+                        <button onclick="switchTab('customers')" id="btn-tab-customers" class="tab-btn py-3.5 px-5 font-bold text-xs text-on-surface-variant transition-all flex items-center gap-2 whitespace-nowrap">
+                            <span class="material-symbols-outlined text-[16px]">storefront</span>
+                            Distribution
+                            <span id="tab-customer-count" class="ml-1 bg-surface-container-high text-[10px] font-bold px-2 py-0.5 rounded-full text-on-surface-variant">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Tab Body -->
+                    <div class="flex-1 overflow-y-auto p-8 no-scrollbar tab-body">
+
+                        <!-- Tab: Batch Trace -->
+                        <div id="panel-trace" class="tab-panel active">
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                <!-- Left: Operations Timeline -->
+                                <div id="trace-left-column" class="lg:col-span-7 border-r border-outline-variant/30 pr-6">
+                                    <h3 class="text-[17px] font-bold text-primary mb-6 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary text-[18px]">route</span>
+                                        Production Operations Timeline
+                                    </h3>
+                                    <div class="timeline-container" id="trace-timeline"></div>
+                                </div>
+
+                                <!-- Right: Additional Details -->
+                                <div id="trace-right-column" class="lg:col-span-5 flex flex-col gap-5">
+                                    <!-- Warehouse Rack Placement Card -->
+                                    <div id="trace-warehouse-placement" class="hidden bg-surface-container-low rounded-2xl p-5 border border-outline-variant">
+                                        <h4 class="font-bold text-primary mb-4 flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-[16px] text-primary">warehouse</span>
+                                            Warehouse Rack Placement
+                                        </h4>
+                                        <div class="space-y-0 text-sm divide-y divide-outline-variant/30">
+                                            <div class="flex justify-between items-center py-2.5">
+                                                <span class="text-on-surface-variant text-xs">Zone</span>
+                                                <span id="trace-finished-zone" class="font-bold text-primary text-xs">--</span>
+                                            </div>
+                                            <div class="flex justify-between items-center py-2.5">
+                                                <span class="text-on-surface-variant text-xs">Section</span>
+                                                <span id="trace-finished-section" class="font-bold text-primary text-xs">--</span>
+                                            </div>
+                                            <div class="flex justify-between items-center py-2.5">
+                                                <span class="text-on-surface-variant text-xs">Rack</span>
+                                                <span id="trace-finished-rack" class="font-bold text-primary text-xs font-mono">--</span>
+                                            </div>
+                                            <div class="flex justify-between items-center py-2.5">
+                                                <span class="text-on-surface-variant text-xs">Slot</span>
+                                                <span id="trace-finished-slot" class="font-bold text-primary text-xs">--</span>
+                                            </div>
+                                            <div class="flex justify-between items-center py-2.5">
+                                                <span class="text-on-surface-variant text-xs">Bin Code</span>
+                                                <span id="trace-finished-bin" class="font-bold text-primary text-xs font-mono bg-surface-container-high px-2 py-0.5 rounded-md">--</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- FIFO RM Consumption Summary (inline in Batch Trace tab) -->
+                                <div id="trace-rm-summary" class="hidden lg:col-span-12 bg-[#f0fdf4] rounded-2xl p-5 border border-[#a7f3d0]">
+                                    <h4 class="font-bold text-[#047857] mb-3 flex items-center gap-2 text-sm">
+                                        <span class="material-symbols-outlined text-[16px]">grass</span>
+                                        FIFO Raw Material Consumption
+                                    </h4>
+                                    <div id="trace-rm-summary-body">
+                                        <!-- Filled by renderBatchTrace -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Raw Material Trace -->
+                        <div id="panel-ingredients" class="tab-panel">
+                            <div class="flex flex-col gap-6">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h3 class="text-[17px] font-bold text-primary">Raw Material &amp; Ingredient Trace</h3>
+                                        <p class="text-xs text-on-surface-variant mt-1">Lot numbers and originating purchase orders for all materials consumed by this batch.</p>
+                                    </div>
+                                </div>
+
+                                <div class="overflow-x-auto rounded-xl border border-outline-variant">
+                                    <table class="w-full text-left border-collapse data-table">
+                                        <thead>
+                                            <tr class="bg-surface-container-low border-b border-outline-variant">
+                                                <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">RM Lot #</th>
+                                                <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Material / Item Code</th>
+                                                <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Qty Consumed</th>
+                                                <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">PO #</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="rm-table-body" class="divide-y divide-outline-variant text-sm">
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- No RM data state -->
+                                <div id="rm-empty" class="hidden flex flex-col items-center justify-center py-12 text-center bg-surface-container-low rounded-xl border border-outline-variant">
+                                    <span class="material-symbols-outlined text-on-surface-variant text-[40px] mb-3">grass</span>
+                                    <p class="font-bold text-on-surface text-sm">No raw material consumption records found for this batch.</p>
+                                    <p class="text-xs text-on-surface-variant mt-1 max-w-md">Raw material lot usage is recorded when the batch is confirmed and materials are consumed via FIFO.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Customer Distribution -->
+                        <div id="panel-customers" class="tab-panel">
+                            <div class="flex flex-col gap-6">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h3 class="text-[17px] font-bold text-primary">Customer Distribution Trace</h3>
+                                        <p class="text-xs text-on-surface-variant mt-1">Downstream FIFO allocation: oldest confirmed batch consumed first per order.</p>
+                                    </div>
+                                    <span id="dist-fifo-badge" class="bg-[#f0fdf4] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full border border-[#bbf7d0] flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-[#22c55e]"></span>
+                                        <span id="dist-alloc-count">0</span> allocations
+                                    </span>
+                                </div>
+
+                                <!-- FIFO Summary Cards -->
+                                <div id="fifo-summary-section" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div class="bg-[#EFF6FF] border border-[#BFDBFE] rounded-2xl p-4">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="material-symbols-outlined text-[#1D4ED8] text-[16px]">inventory_2</span>
+                                            <span class="text-[10px] font-bold text-[#1D4ED8] uppercase tracking-wider">Batch Production</span>
+                                        </div>
+                                        <p id="fifo-batch-qty" class="text-xl font-headline-sm font-extrabold text-[#1D4ED8]">--</p>
+                                        <p class="text-[10px] text-[#64748b] mt-0.5">Total units produced</p>
+                                    </div>
+                                    <div class="bg-[#ECFDF5] border border-[#A7F3D0] rounded-2xl p-4">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="material-symbols-outlined text-[#047857] text-[16px]">local_shipping</span>
+                                            <span class="text-[10px] font-bold text-[#047857] uppercase tracking-wider">Allocated to Orders</span>
+                                        </div>
+                                        <p id="fifo-allocated-qty" class="text-xl font-headline-sm font-extrabold text-[#047857]">--</p>
+                                        <p class="text-[10px] text-[#64748b] mt-0.5">Units distributed (FIFO)</p>
+                                    </div>
+                                    <div class="bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl p-4">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="material-symbols-outlined text-[#C2410C] text-[16px]">inventory</span>
+                                            <span class="text-[10px] font-bold text-[#C2410C] uppercase tracking-wider">Remaining Stock</span>
+                                        </div>
+                                        <p id="fifo-remaining-qty" class="text-xl font-headline-sm font-extrabold text-[#C2410C]">--</p>
+                                        <p class="text-[10px] text-[#64748b] mt-0.5">Units still in stock</p>
+                                    </div>
+                                </div>
+
+                                <!-- FIFO Allocation Breakdown -->
+                                <div id="fifo-alloc-section">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="material-symbols-outlined text-[16px] text-primary">route</span>
+                                        <h4 class="text-sm font-bold text-primary">FIFO Allocation Chain</h4>
+                                        <span class="text-[10px] bg-[#EFF6FF] text-[#1D4ED8] px-2 py-0.5 rounded-full font-bold">Per Order Breakdown</span>
+                                    </div>
+                                    <div id="fifo-alloc-list" class="flex flex-col gap-3">
+                                        <!-- Filled by renderCustomers -->
+                                    </div>
+                                    <div id="fifo-alloc-empty" class="hidden flex flex-col items-center justify-center py-8 text-center bg-surface-container-low rounded-xl border border-outline-variant/60">
+                                        <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2">route</span>
+                                        <p class="text-sm font-bold text-on-surface-variant">No FIFO allocation data yet.</p>
+                                        <p class="text-xs text-on-surface-variant mt-1">Fulfillment allocations will appear here when B2B/B2C orders are processed.</p>
+                                    </div>
+                                </div>
+
+                                <!-- B2B Section -->
+                                <div>
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="material-symbols-outlined text-[16px] text-primary">business</span>
+                                        <h4 class="text-sm font-bold text-primary">B2B Wholesale Partners</h4>
+                                        <span id="b2b-count-badge" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded-full font-bold">0</span>
+                                    </div>
+                                    <div class="overflow-x-auto rounded-xl border border-outline-variant">
+                                        <table class="w-full text-left border-collapse data-table">
+                                            <thead>
+                                                <tr class="bg-surface-container-low border-b border-outline-variant">
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">SO / Order #</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">FIFO #</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Customer / Company</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Qty Taken</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Qty Shipped</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Shipment Date</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Carrier</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Tracking #</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Total Amount</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Payment</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="b2b-table-body" class="divide-y divide-outline-variant text-sm"></tbody>
+                                        </table>
+                                    </div>
+                                    <div id="b2b-empty" class="hidden flex flex-col items-center justify-center py-8 text-center bg-surface-container-low rounded-xl border border-outline-variant/60 mt-3">
+                                        <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2">business</span>
+                                        <p class="text-sm font-bold text-on-surface-variant">No B2B sales from this batch.</p>
+                                        <p class="text-xs text-on-surface-variant mt-1">B2B wholesale allocations will appear here when products are dispatched to partners.</p>
+                                    </div>
+                                </div>
+
+                                <!-- B2C Section -->
+                                <div>
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="material-symbols-outlined text-[16px] text-primary">person</span>
+                                        <h4 class="text-sm font-bold text-primary">B2C Retail Purchases</h4>
+                                        <span id="b2c-count-badge" class="text-[10px] bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded-full font-bold">0</span>
+                                    </div>
+                                    <div class="overflow-x-auto rounded-xl border border-outline-variant">
+                                        <table class="w-full text-left border-collapse data-table">
+                                            <thead>
+                                                <tr class="bg-surface-container-low border-b border-outline-variant">
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Purchase #</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">FIFO #</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Customer Name</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Qty Taken</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Qty Shipped</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Shipment Date</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Carrier</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Tracking #</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Total Amount</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Payment</th>
+                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="b2c-table-body" class="divide-y divide-outline-variant text-sm"></tbody>
+                                        </table>
+                                    </div>
+                                    <div id="b2c-empty" class="hidden flex flex-col items-center justify-center py-8 text-center bg-surface-container-low rounded-xl border border-outline-variant/60 mt-3">
+                                        <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2">shopping_bag</span>
+                                        <p class="text-sm font-bold text-on-surface-variant">No B2C retail sales from this batch.</p>
+                                        <p class="text-xs text-on-surface-variant mt-1">Retail purchases allocated from this batch will appear here.</p>
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Factory Booking Picker Modal -->
+    <div id="factory-booking-picker-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-transform duration-300 scale-95 overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-gradient-to-r from-[#f3e8ff] to-white">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[#7c3aed] text-[20px]">link</span>
+                    <h3 class="text-base font-extrabold text-on-surface">Attach Factory Booking</h3>
+                </div>
+                <button onclick="closeFactoryBookingPicker()" class="w-8 h-8 rounded-lg hover:bg-black/5 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+            <div class="px-6 py-3 border-b border-outline-variant bg-surface-container-low text-[11px] text-on-surface-variant">
+                <div class="flex justify-between items-center">
+                    <span>Production Batch: <span id="fb-picker-batch-code" class="font-bold text-on-surface">--</span></span>
+                    <span id="fb-picker-current" class="text-[10px] font-bold"></span>
+                </div>
+                <p class="mt-1.5">Select one factory booking. Each booking can only be linked to a single production batch.</p>
+            </div>
+            <div class="flex-1 overflow-y-auto p-3 space-y-2" id="fb-picker-list">
+                <!-- Loaded dynamically -->
+            </div>
+            <div class="px-6 py-4 border-t border-outline-variant bg-surface-container-low flex justify-end gap-2">
+                <button onclick="closeFactoryBookingPicker()" class="px-4 py-2 border border-outline text-on-surface-variant hover:bg-surface-container font-bold rounded-xl transition-colors text-xs">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm hidden">
+        <div class="bg-surface-container-lowest rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+            <div class="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            <p class="text-sm font-bold text-primary">Loading batch trace data...</p>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="trace-toast" class="fixed bottom-6 right-6 z-[60] hidden translate-y-4 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white rounded-2xl shadow-2xl px-5 py-3 min-w-[260px] flex items-start gap-3 border border-slate-700 pointer-events-auto">
+            <span id="trace-toast-icon" class="material-symbols-outlined text-xl text-emerald-400">check_circle</span>
+            <div class="flex-1 min-w-0">
+                <p id="trace-toast-title" class="text-sm font-extrabold leading-tight">Done</p>
+                <p id="trace-toast-msg" class="text-[11px] text-slate-300 mt-0.5 leading-snug">--</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // Supabase Configuration (init inside DOMContentLoaded to ensure CDN loads first)
+        // window.supabase is declared by the @supabase/supabase-js CDN script tag
+        // ============================================================
+
+        // ============================================================
+        // State
+        // ============================================================
+        let batchList = [];       // merged: Supabase rows + adapted gantt batches
+        let traceRows = [];       // rows from batch_trace_view for selected batch
+        let selectedBatchId = null;
+        let fgAllocations = [];   // rows from production_fg_allocation for selected batch
+
+        // ============================================================
+        // Load gantt batches from Supabase
+        // ============================================================
+        async function loadGanttBatchesFromSupabase() {
+            try {
+                const client = window.supabase?._client || window.supabase;
+                if (!client || !client.from) return [];
+                const { data, error } = await client
+                    .from('production_batches')
+                    .select('id, batch_code, product_name, qty_produced, unit, status, created_at')
+                    .order('created_at', { ascending: false });
+                if (!error && data && data.length > 0) {
+                    return data.map(b => ({
+                        // Keep the real DB id (UUID) so traceability joins work,
+                        // and expose batch_code separately.
+                        id: b.id,
+                        batch_code: b.batch_code || b.id,
+                        product: b.product_name || 'Unknown Product',
+                        equipment: 'Roaster A (12 kg)',
+                        quantity: b.qty_produced || 0,
+                        startDate: b.created_at ? new Date(b.created_at) : new Date(),
+                        duration: 3,
+                        status: b.status === 'in_production' ? 'In Progress' : b.status === 'completed' ? 'Completed' : 'Scheduled',
+                        progress: b.status === 'completed' ? 100 : b.status === 'in_production' ? 50 : 0,
+                        stage: b.status === 'in_production' ? 'Roasting' : b.status === 'completed' ? 'QA Certified' : 'Scheduled',
+                        temp: b.status === 'in_production' ? 145 : 0,
+                        quality: b.status === 'completed' ? 'A+' : 'Pending',
+                        ingredients: ''
+                    }));
+                }
+            } catch (e) {
+                console.warn('Could not load batches from Supabase:', e);
+            }
+            return [];
+        }
+
+        // Convert a gantt batch object to the same shape as a production_batches row
+        function adaptGanttBatch(gb) {
+            return {
+                // Preserve real DB id (UUID) when present; fall back to batch_code.
+                id: gb.batch_code || gb.id,
+                batch_code: gb.batch_code || gb.id,
+                product_name: gb.product,
+                product_code: gb.id,
+                recipe_code: '',
+                qty_produced: gb.quantity,
+                unit: 'kg',
+                status: gb.status === 'In Progress' ? 'in_production' : gb.status === 'Completed' ? 'completed' : 'scheduled',
+                produced_by: gb.equipment,
+                factory_booking_id: null,
+                second_booking_id: null,
+                coordinator_id: null,
+                coordinator_name: null,
+                operator_id: null,
+                operator_name: gb.equipment,
+                factory_zone: null,
+                factory_start_at: gb.startDate,
+                factory_end_at: null,
+                recipe_ingredients: [],
+                confirmed_at: gb.status === 'Completed' ? gb.startDate : null,
+                warehouse_putaway_at: null,
+                created_at: gb.startDate,
+                updated_at: gb.startDate,
+                batch_lot_id: null,
+                _gantt: {
+                    stage: gb.stage,
+                    progress: gb.progress,
+                    temp: gb.temp,
+                    quality: gb.quality,
+                    ingredients: gb.ingredients,
+                    duration: gb.duration
+                }
+            };
+        }
+
+        // ============================================================
+        // Helpers
+        // ============================================================
+        function fmt(dateStr) {
+            if (!dateStr) return '--';
+            const d = new Date(dateStr);
+            return isNaN(d) ? '--' : d.toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+        function fmtDT(dateStr) {
+            if (!dateStr) return '--';
+            const d = new Date(dateStr);
+            return isNaN(d) ? '--' : d.toLocaleString('en-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+        function txt(el, val) {
+            const e = document.getElementById(el);
+            if (e) e.textContent = val || '--';
+        }
+        function htm(el, html) {
+            const e = document.getElementById(el);
+            if (e) e.innerHTML = html;
+        }
+        function show(id) { document.getElementById(id)?.classList.remove('hidden'); }
+        function hide(id) { document.getElementById(id)?.classList.add('hidden'); }
+
+        function showToast(title, msg, type = 'success') {
+            const toast  = document.getElementById('trace-toast');
+            const icon   = document.getElementById('trace-toast-icon');
+            const tEl    = document.getElementById('trace-toast-title');
+            const mEl    = document.getElementById('trace-toast-msg');
+            if (!toast) return;
+            tEl.textContent = title || '';
+            mEl.textContent = msg   || '';
+            icon.textContent = type === 'error' ? 'error' : type === 'info' ? 'info' : 'check_circle';
+            icon.className   = `material-symbols-outlined text-xl ${type === 'error' ? 'text-red-400' : type === 'info' ? 'text-blue-400' : 'text-emerald-400'}`;
+            toast.classList.remove('hidden');
+            requestAnimationFrame(() => toast.classList.remove('translate-y-4', 'opacity-0'));
+            clearTimeout(showToast._t);
+            showToast._t = setTimeout(() => {
+                toast.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        function batchStatusBadge(status) {
+            const s = status || '';
+            const map = {
+                'pending':         ['bg-slate-50 text-slate-600 border-slate-200',   'Pending'],
+                'in_production':   ['bg-blue-50 text-blue-700 border-blue-200',     'In Production'],
+                'quality_check':   ['bg-amber-50 text-amber-700 border-amber-200',   'Quality Check'],
+                'confirmed':       ['bg-green-50 text-green-700 border-green-200',   'Confirmed'],
+                'completed':       ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Completed'],
+                'cancelled':       ['bg-red-50 text-red-700 border-red-200',        'Cancelled'],
+            };
+            const [cls, label] = map[s] || ['bg-slate-50 text-slate-700 border-slate-200', s];
+            return `<span class="px-3 py-1 text-xs font-bold rounded-xl inline-flex items-center border ${cls}">${label}</span>`;
+        }
+
+        // ============================================================
+        // Factory Booking ↔ Production Batch binding (one-to-one)
+        // ============================================================
+        let currentTraceBatchId    = null;
+        let currentTraceBatchCode  = null;
+        let currentTraceBookingId  = null;
+        let fbPickerCache          = [];   // [{ id, booking_code, space_name, date_from, date_to, status, linkedBatchId }]
+
+        async function openFactoryBookingPicker() {
+            if (!currentTraceBatchId) return;
+            const modal   = document.getElementById('factory-booking-picker-modal');
+            const list    = document.getElementById('fb-picker-list');
+            const codeEl  = document.getElementById('fb-picker-batch-code');
+            const curEl   = document.getElementById('fb-picker-current');
+            if (!modal || !list) return;
+
+            codeEl.textContent = currentTraceBatchCode || '--';
+            curEl.textContent  = currentTraceBookingId ? 'Currently: LINKED' : 'Currently: UNLINKED';
+            list.innerHTML     = '<div class="text-xs text-on-surface-variant text-center py-8">Loading factory bookings…</div>';
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.transform').classList.remove('scale-95');
+            });
+
+            try {
+                // Load all factory bookings + all production batches that already reference one
+                const [bookings, batches] = await Promise.all([
+                    window.erpSupabaseAPI({
+                        table: 'factory_bookings',
+                        operation: 'select',
+                        columns: '*',
+                        filters: { order: { column: 'date_from', ascending: false } }
+                    }),
+                    window.erpSupabaseAPI({
+                        table: 'production_batches',
+                        operation: 'select',
+                        columns: 'id, batch_code, factory_booking_id'
+                    })
+                ]);
+
+                // Map booking_id → [batchCode, ...] for one-to-one enforcement
+                const bookingToBatches = {};
+                (batches || []).forEach(b => {
+                    if (!b.factory_booking_id) return;
+                    if (!bookingToBatches[b.factory_booking_id]) bookingToBatches[b.factory_booking_id] = [];
+                    bookingToBatches[b.factory_booking_id].push(b.batch_code || b.id);
+                });
+
+                fbPickerCache = (bookings || []).map(b => ({
+                    id: b.id,
+                    booking_code: b.booking_code || b.id,
+                    space_name: b.space_name || '--',
+                    date_from: b.date_from || '',
+                    date_to:   b.date_to   || b.date_from || '',
+                    status:    b.status    || 'Logged',
+                    coordinator: b.coordinator_id || '',
+                    linkedBatchIds: bookingToBatches[b.id] || []
+                }));
+
+                renderFactoryBookingPicker();
+            } catch (err) {
+                list.innerHTML = `<div class="text-xs text-rose-700 text-center py-8">Failed to load bookings: ${err.message}</div>`;
+            }
+        }
+
+        function renderFactoryBookingPicker() {
+            const list = document.getElementById('fb-picker-list');
+            if (!list) return;
+            if (!fbPickerCache.length) {
+                list.innerHTML = `<div class="text-xs text-on-surface-variant text-center py-8">No factory bookings found. Create one in the Factory Booking page first.</div>`;
+                return;
+            }
+            const fmtDate = s => {
+                if (!s) return '--';
+                const d = new Date(s);
+                return isNaN(d) ? '--' : d.toLocaleDateString('en-SG', { day:'2-digit', month:'short', year:'numeric' });
+            };
+            list.innerHTML = fbPickerCache.map(b => {
+                const linkedToOther = b.linkedBatchIds.length && b.linkedBatchIds[0] !== currentTraceBatchCode;
+                const isCurrent     = b.id === currentTraceBookingId;
+                const isDisabled    = linkedToOther && !isCurrent;
+                const disabledCls   = isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-[#c084fc] hover:bg-[#faf5ff] cursor-pointer';
+                const badge = isCurrent
+                    ? '<span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">CURRENT</span>'
+                    : (isDisabled
+                        ? `<span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700">LINKED → ${escapeHtml(b.linkedBatchIds[0])}</span>`
+                        : '<span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">AVAILABLE</span>');
+                const win = b.date_from && b.date_to && b.date_from !== b.date_to
+                    ? `${fmtDate(b.date_from)} → ${fmtDate(b.date_to)}`
+                    : fmtDate(b.date_from);
+                return `
+                    <button type="button" data-booking-id="${escapeAttr(b.id)}"
+                        class="fb-pick w-full text-left p-3 rounded-xl border border-outline-variant ${disabledCls} transition-colors flex items-start justify-between gap-3"
+                        title="${isDisabled ? `Already linked to batch ${escapeAttr(b.linkedBatchIds[0])} — unlink it first` : `Link ${escapeAttr(b.booking_code)} to ${escapeAttr(currentTraceBatchCode)}`}">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <span class="material-symbols-outlined text-[#7c3aed] text-[16px]">precision_manufacturing</span>
+                                <span class="text-[12px] font-extrabold text-on-surface">${escapeHtml(b.booking_code)}</span>
+                                ${badge}
+                            </div>
+                            <div class="text-[11px] text-on-surface-variant truncate">${escapeHtml(b.space_name)}</div>
+                            <div class="text-[10px] text-on-surface-variant/70 mt-0.5">${win}</div>
+                        </div>
+                        <span class="material-symbols-outlined text-[18px] text-[#7c3aed]">link</span>
+                    </button>`;
+            }).join('');
+        }
+
+        // Minimal HTML escaping for safe injection of DB-derived strings into attributes/text.
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+        }
+        function escapeAttr(s) { return escapeHtml(s); }
+
+        // Event delegation for the picker — safer than inline onclick with interpolated ids.
+        document.addEventListener('click', (ev) => {
+            const btn = ev.target.closest('.fb-pick');
+            if (!btn) return;
+            if (btn.getAttribute('aria-disabled') === 'true') return;
+            const id = btn.getAttribute('data-booking-id');
+            if (id) attachFactoryBooking(id);
+        });
+
+        function closeFactoryBookingPicker() {
+            const modal = document.getElementById('factory-booking-picker-modal');
+            if (!modal) return;
+            modal.classList.add('opacity-0');
+            modal.querySelector('.transform').classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        async function attachFactoryBooking(bookingId) {
+            if (!currentTraceBatchId || !bookingId) return;
+            const booking = fbPickerCache.find(b => b.id === bookingId);
+            if (!booking) return;
+            // Safety: refuse if booking already belongs to another batch
+            if (booking.linkedBatchIds.length && booking.linkedBatchIds[0] !== currentTraceBatchCode && bookingId !== currentTraceBookingId) {
+                showToast('Already Linked', `Booking ${booking.booking_code} is linked to ${booking.linkedBatchIds[0]}. Unlink it first.`, 'error');
+                return;
+            }
+            try {
+                await window.erpSupabaseAPI({
+                    table: 'production_batches',
+                    operation: 'update',
+                    data: { factory_booking_id: bookingId, updated_at: new Date().toISOString() },
+                    filters: { eq: { id: currentTraceBatchId } }
+                });
+                currentTraceBookingId = bookingId;
+                closeFactoryBookingPicker();
+                showToast('Booking Linked', `${booking.booking_code} attached to ${currentTraceBatchCode}.`);
+                // Refresh the trace content
+                await loadTraceData(currentTraceBatchId);
+            } catch (err) {
+                showToast('Link Failed', err.message, 'error');
+            }
+        }
+
+        async function unlinkFactoryBooking() {
+            if (!currentTraceBatchId) return;
+            const code = currentTraceBookingId
+                ? (fbPickerCache.find(b => b.id === currentTraceBookingId)?.booking_code || 'this booking')
+                : 'this booking';
+            if (!confirm(`Unlink ${code} from batch ${currentTraceBatchCode}? The booking will not be deleted.`)) return;
+            try {
+                await window.erpSupabaseAPI({
+                    table: 'production_batches',
+                    operation: 'update',
+                    data: { factory_booking_id: null, updated_at: new Date().toISOString() },
+                    filters: { eq: { id: currentTraceBatchId } }
+                });
+                currentTraceBookingId = null;
+                showToast('Booking Unlinked', `${code} detached from ${currentTraceBatchCode}.`);
+                await loadTraceData(currentTraceBatchId);
+            } catch (err) {
+                showToast('Unlink Failed', err.message, 'error');
+            }
+        }
+
+        // Used by the deep-link <a> tag — let the browser navigate to factory-booking,
+        // but if we're already on that page in a future SPA-mode the function would
+        // highlight the row by id. Today it just no-ops the navigation target.
+        function highlightFactoryBookingRow(ev, bookingId) {
+            // Anchor href already handles navigation; this hook is for future SPA mode.
+            try {
+                sessionStorage.setItem('highlight_factory_booking_id', bookingId);
+            } catch (_) {}
+        }
+
+        // ============================================================
+        // Load production batches from production_batches table + merge factory booking data
+        // ============================================================
+        async function loadProductionBatches() {
+            if (!window.supabase) return [];
+            try {
+                const batchData = await window.erpSupabaseAPI({
+                    table: 'production_batches',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { order: { column: 'created_at', ascending: false } }
+                });
+
+                if (!batchData || batchData.length === 0) return [];
+
+                // Collect every booking id referenced by these batches (primary + secondary)
+                const bookingIds = new Set();
+                for (const b of batchData) {
+                    if (b.factory_booking_id) bookingIds.add(b.factory_booking_id);
+                    if (b.second_booking_id)  bookingIds.add(b.second_booking_id);
+                }
+
+                // Load all referenced bookings in one query
+                let bookingMap = {};
+                if (bookingIds.size > 0) {
+                    const bookings = await window.erpSupabaseAPI({
+                        table: 'factory_bookings',
+                        operation: 'select',
+                        columns: '*'
+                    }) || [];
+                    bookingMap = Object.fromEntries(bookings.map(fb => [fb.id, fb]));
+                }
+
+                return (batchData || []).map(batch => {
+                    batch.factory_booking       = batch.factory_booking_id ? bookingMap[batch.factory_booking_id]  || null : null;
+                    batch.second_factory_booking = batch.second_booking_id  ? bookingMap[batch.second_booking_id]   || null : null;
+                    return batch;
+                });
+            } catch (err) {
+                console.warn('loadProductionBatches exception:', err);
+                return [];
+            }
+        }
+
+        // ============================================================
+        // Load FG allocation rows from production_fg_allocation for this batch
+        // ============================================================
+        async function loadFGAllocations(batchCode) {
+            if (!window.supabase) return [];
+            try {
+                const client = window.supabase._client || window.supabase;
+                if (!client || !client.from) return [];
+                const { data, error } = await client
+                    .from('production_fg_allocation')
+                    .select('*')
+                    .eq('production_batch_code', batchCode)
+                    .order('fifo_order', { ascending: true });
+
+                if (error) { console.warn('loadFGAllocations error:', error); return []; }
+                return data || [];
+            } catch (err) {
+                console.warn('loadFGAllocations exception:', err);
+                return [];
+            }
+        }
+        async function loadTraceData(batchId) {
+            if (!window.supabase) return [];
+            const client = window.supabase._client || window.supabase;
+            if (!client || !client.from) return [];
+
+            console.log('[loadTraceData] called with batchId:', batchId, 'type:', typeof batchId);
+
+            // Resolve to the canonical { id, batch_code } record so downstream
+            // queries against UUID columns (view) and text columns (JSONB) both work.
+            let batch = batchList.find(b => b.id === batchId || b.batch_code === batchId);
+            let dbRow = null;
+            try {
+                if (batch) {
+                    dbRow = await client
+                        .from('production_batches')
+                        .select('id, batch_code, consumed_rm_batches, qty_produced, status, started_at, confirmed_at, created_at')
+                        .or(`id.eq.${batch.id}${batch.batch_code ? `,batch_code.eq.${batch.batch_code}` : ''}`)
+                        .limit(1)
+                        .maybeSingle();
+                }
+                if (!dbRow || !dbRow.data) {
+                    // Fallback: try by id, then by batch_code
+                    const byId = await client.from('production_batches').select('id, batch_code, consumed_rm_batches, qty_produced, status, started_at, confirmed_at, created_at').eq('id', batchId).maybeSingle();
+                    if (byId && byId.data) dbRow = byId;
+                    else if (typeof batchId === 'string' && batchId.length > 0) {
+                        const byCode = await client.from('production_batches').select('id, batch_code, consumed_rm_batches, qty_produced, status, started_at, confirmed_at, created_at').eq('batch_code', batchId).maybeSingle();
+                        if (byCode && byCode.data) dbRow = byCode;
+                    }
+                }
+            } catch (e) {
+                console.warn('[loadTraceData] production_batches lookup failed:', e);
+            }
+
+            const productionBatch = dbRow?.data || null;
+            const realUuid = productionBatch?.id || null;
+            const realBatchCode = productionBatch?.batch_code || (typeof batchId === 'string' ? batchId : null);
+            console.log('[loadTraceData] resolved UUID:', realUuid, 'batch_code:', realBatchCode, 'jsonb_len:', (productionBatch?.consumed_rm_batches || []).length);
+
+            // Step 1: read production_batches.consumed_rm_batches JSONB — this is the durable FIFO write
+            // and contains one entry per RM lot consumed (so 6 FIFO batches = 6 rows, not collapsed
+            // by any view-level join). The legacy batch_trace_view used to collapse distinct PO
+            // numbers into a single one whenever lots shared an inventory_id; the JSONB preserves
+            // every lot and lets us look up its real PO from inventory_batches.
+            const jsonbList = Array.isArray(productionBatch?.consumed_rm_batches)
+                ? productionBatch.consumed_rm_batches
+                : [];
+
+            if (jsonbList.length > 0) {
+                return await enrichJsonbWithSupplierInfo(jsonbList, productionBatch, realUuid, realBatchCode);
+            }
+
+            // Step 2: legacy fallback — view query keyed by UUID.
+            let viewRows = [];
+            if (realUuid) {
+                try {
+                    const { data, error } = await client
+                        .from('batch_trace_view')
+                        .select('*')
+                        .eq('batch_id', realUuid)
+                        .order('consumed_at', { ascending: true, nullsFirst: false });
+                    if (error) {
+                        console.warn('[loadTraceData] view query error:', error);
+                    } else if (Array.isArray(data)) {
+                        viewRows = data;
+                    }
+                } catch (err) {
+                    console.warn('[loadTraceData] view query exception:', err);
+                }
+            }
+            console.log('[loadTraceData] view returned', viewRows.length, 'rows');
+
+            // --- Per-lot PO overlay (fix duplicate PO column) ---
+            // The view joins on inventory_id which collapses distinct PO numbers when multiple
+            // RM lots of the same item share one inventory row. We re-fetch inventory_batches
+            // keyed by rm_lot_number (= batch_code) and overwrite supplier_invoice_ref /
+            // supplier_name with the per-lot values stamped at GRN time. When the lot's row is
+            // missing po_number (older records), we resolve the per-lot PO from
+            // raw_material_orders by timestamp + inventory_id so coffee lot A and coffee lot B
+            // both surface their actual POs.
+            if (viewRows.length > 0) {
+                const viewLotCodes = [...new Set(viewRows.map(r => r.rm_lot_number).filter(Boolean))];
+                const viewInvIds = [...new Set(viewRows.map(r => r.inventory_id).filter(Boolean))];
+                let ibByCode = {};
+                if (viewLotCodes.length > 0) {
+                    try {
+                        const { data: ibOverlay, error: ibErr } = await client
+                            .from('inventory_batches')
+                            .select('batch_code, inventory_id, reference_number, received_date, created_at')
+                            .in('batch_code', viewLotCodes);
+                        if (ibErr) {
+                            console.warn('[loadTraceData] inventory_batches overlay error:', ibErr);
+                        } else if (Array.isArray(ibOverlay) && ibOverlay.length > 0) {
+                            ibByCode = Object.fromEntries(ibOverlay.map(r => [r.batch_code, r]));
+                            console.log('[loadTraceData] overlaid', ibOverlay.length, 'inventory_batches rows');
+                        }
+                    } catch (e) {
+                        console.warn('[loadTraceData] inventory_batches overlay failed:', e);
+                    }
+                }
+
+                let rmoByInventory = {};
+                if (viewInvIds.length > 0) {
+                    try {
+                        const { data: rmoRows, error: rmoErr } = await client
+                            .from('raw_material_orders')
+                            .select('order_number, inventory_id, items, created_at')
+                            .in('inventory_id', viewInvIds);
+                        if (rmoErr) {
+                            console.warn('[loadTraceData] raw_material_orders overlay error:', rmoErr);
+                        } else if (Array.isArray(rmoRows)) {
+                            rmoByInventory = {};
+                            rmoRows.forEach(r => {
+                                if (!rmoByInventory[r.inventory_id]) rmoByInventory[r.inventory_id] = [];
+                                rmoByInventory[r.inventory_id].push(r);
+                            });
+                        }
+                    } catch (e) { console.warn('[loadTraceData] raw_material_orders overlay failed:', e); }
+                }
+
+                viewRows = viewRows.map(r => {
+                    const ib = ibByCode[r.rm_lot_number];
+                    let perLotPo = null;
+                    if (r.inventory_id && Array.isArray(rmoByInventory[r.inventory_id])) {
+                        const lotCreatedMs = ib?.created_at ? new Date(ib.created_at).getTime() : null;
+                        const itemCode = r.rm_item_code || r.rm_item_name || null;
+                        const candidates = rmoByInventory[r.inventory_id].filter(rmo => {
+                            if (lotCreatedMs != null && new Date(rmo.created_at).getTime() > lotCreatedMs) return false;
+                            if (Array.isArray(rmo.items) && itemCode) {
+                                return rmo.items.some(it => it && it.item_code === itemCode);
+                            }
+                            return true;
+                        });
+                        const pool = candidates.length > 0 ? candidates : rmoByInventory[r.inventory_id];
+                        pool.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        if (pool.length > 0) {
+                            perLotPo = pool[0].order_number || null;
+                        }
+                    }
+                    const finalPo = perLotPo
+                        || (ib ? ib.reference_number : null)
+                        || r.supplier_invoice_ref;
+                    console.log('[loadTraceData][PO overlay]', r.rm_lot_number, '→', finalPo,
+                        '(perLotPo=' + perLotPo + ', ib.reference_number=' + (ib?.reference_number ?? 'null') + ', view=' + r.supplier_invoice_ref + ')');
+                    return {
+                        ...r,
+                        supplier_invoice_ref: finalPo,
+                        supplier_name: r.supplier_name,
+                        material_intake_date: r.material_intake_date || ib?.received_date || null
+                    };
+                });
+                return viewRows;
+            }
+
+            return [];
+        }
+
+        // ============================================================
+        // Enrich consumed_rm_batches JSONB entries with per-lot supplier info.
+        // Source of truth for PO is the join between inventory_batches (per lot) and
+        // raw_material_orders (POs). When several POs hit the same inventory_id we pick
+        // the one whose created_at is the most recent at or before the lot's created_at
+        // — that's the PO the lot was actually received under.
+        // ============================================================
+        async function enrichJsonbWithSupplierInfo(jsonbList, productionBatch, realUuid, realBatchCode) {
+            const client = window.supabase?._client || window.supabase;
+            console.log('[enrichJsonb] processing', jsonbList.length, 'JSONB entries');
+
+            const invIds = [...new Set(jsonbList.map(e => e.inventory_id).filter(Boolean))];
+            const rmBatchCodes = [...new Set(jsonbList.map(e => e.rm_batch_code).filter(Boolean))];
+
+            // Fetch inventory_batches keyed by batch_code — this is the per-lot source of truth.
+            let inventoryBatchMap = {};
+            if (rmBatchCodes.length > 0) {
+                try {
+                    const { data: ibRows, error: ibErr } = await client
+                        .from('inventory_batches')
+                        .select('batch_code, inventory_id, received_date, expiry_date, reference_number, source, created_at')
+                        .in('batch_code', rmBatchCodes);
+                    if (ibErr) {
+                        console.warn('[enrichJsonb] inventory_batches error:', ibErr);
+                    } else if (Array.isArray(ibRows)) {
+                        inventoryBatchMap = Object.fromEntries(ibRows.map(r => [r.batch_code, r]));
+                    }
+                } catch (e) { console.warn('[enrichJsonb] inventory_batches lookup:', e); }
+            }
+
+            // Fetch purchase_records as a fallback for fields the batch row doesn't carry
+            // (supplier email, country, certifications, waybill).
+            let purchaseByInventory = {};
+            if (invIds.length > 0) {
+                try {
+                    const { data: prRows, error: prErr } = await client
+                        .from('purchase_records')
+                        .select('record_number, po_number, supplier_name, purchase_date, status, inventory_id, items')
+                        .in('inventory_id', invIds);
+                    if (prErr) {
+                        console.warn('[enrichJsonb] purchase_records error:', prErr);
+                    } else if (Array.isArray(prRows)) {
+                        purchaseByInventory = Object.fromEntries(prRows.map(r => [r.inventory_id, r]));
+                    }
+                } catch (e) { console.warn('[enrichJsonb] purchase_records lookup:', e); }
+            }
+
+            // Fetch raw_material_orders keyed by inventory_id so we can pick the right
+            // PO when multiple POs exist for the same inventory (per-lot PO).
+            let rmoByInventory = {};
+            if (invIds.length > 0) {
+                try {
+                    const { data: rmoRows, error: rmoErr } = await client
+                        .from('raw_material_orders')
+                        .select('id, order_number, inventory_id, items, created_at')
+                        .in('inventory_id', invIds);
+                    if (rmoErr) {
+                        console.warn('[enrichJsonb] raw_material_orders error:', rmoErr);
+                    } else if (Array.isArray(rmoRows)) {
+                        rmoByInventory = {};
+                        rmoRows.forEach(r => {
+                            if (!rmoByInventory[r.inventory_id]) rmoByInventory[r.inventory_id] = [];
+                            rmoByInventory[r.inventory_id].push(r);
+                        });
+                    }
+                } catch (e) { console.warn('[enrichJsonb] raw_material_orders lookup:', e); }
+            }
+
+            return jsonbList.map((entry) => {
+                const invId = entry.inventory_id || null;
+                const po = invId ? purchaseByInventory[invId] : null;
+                const ib = entry.rm_batch_code ? inventoryBatchMap[entry.rm_batch_code] : null;
+                let supplierLot = null, country = null, certs = [], waybill = null, waybillDate = null;
+                if (po && Array.isArray(po.items)) {
+                    const matchItem = po.items.find(it => it && (it.batch_code === entry.rm_batch_code || it.rm_batch_code === entry.rm_batch_code));
+                    if (matchItem) {
+                        supplierLot = matchItem.supplier_lot || matchItem.lot_number || null;
+                        country = matchItem.country_of_origin || matchItem.country || null;
+                        certs = Array.isArray(matchItem.certifications) ? matchItem.certifications : [];
+                        waybill = matchItem.waybill_number || matchItem.waybill || null;
+                        waybillDate = matchItem.waybill_date || null;
+                    }
+                }
+
+                // Pick the per-lot PO: most recent raw_material_orders row (matching item_code)
+                // whose created_at is ≤ the lot's inventory_batches.created_at. Falls back to
+                // inventory_batches.reference_number / purchase_records when no RMO matches.
+                let perLotPo = null;
+                if (invId && Array.isArray(rmoByInventory[invId])) {
+                    const lotCreatedMs = ib?.created_at ? new Date(ib.created_at).getTime() : null;
+                    const itemCode = entry.rm_item_code || entry.rm_item_name || null;
+                    const candidates = rmoByInventory[invId].filter(rmo => {
+                        if (lotCreatedMs != null && new Date(rmo.created_at).getTime() > lotCreatedMs) return false;
+                        if (Array.isArray(rmo.items)) {
+                            return !itemCode || rmo.items.some(it => it && it.item_code === itemCode);
+                        }
+                        return true;
+                    });
+                    const pool = candidates.length > 0 ? candidates : rmoByInventory[invId];
+                    pool.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    if (pool.length > 0) {
+                        perLotPo = pool[0].order_number || null;
+                    }
+                }
+
+                const invoiceRef = perLotPo
+                    || ib?.reference_number
+                    || po?.record_number
+                    || po?.po_number
+                    || null;
+                const supplierName = po?.supplier_name || null;
+                return {
+                    batch_id: realUuid,
+                    batch_code: realBatchCode,
+                    production_batch_code: realBatchCode,
+                    rm_lot_number: entry.rm_batch_code || null,
+                    rm_item_code: entry.rm_item_code || null,
+                    rm_item_name: entry.rm_item_name || null,
+                    qty_consumed: entry.quantity_consumed || 0,
+                    rm_unit_cost: entry.unit_cost_at_time || 0,
+                    rm_total_cost: (parseFloat(entry.quantity_consumed) || 0) * (parseFloat(entry.unit_cost_at_time) || 0),
+                    consumed_at: productionBatch?.started_at || productionBatch?.confirmed_at || productionBatch?.created_at || null,
+                    supplier_name: supplierName,
+                    supplier_email: po?.supplier_email || null,
+                    supplier_id: null,
+                    supplier_invoice_ref: invoiceRef,
+                    supplier_invoice_date: po?.purchase_date || null,
+                    material_intake_date: ib?.received_date || null,
+                    raw_expiry: ib?.expiry_date || null,
+                    raw_zone: null,
+                    supplier_lot: supplierLot,
+                    country_of_origin: country,
+                    certifications: certs,
+                    waybill_number: waybill,
+                    waybill_date: waybillDate,
+                    source: 'consumed_rm_batches_jsonb',
+                };
+            }).map(row => {
+                console.log('[loadTraceData][PO enrich]', row.rm_lot_number, '→', row.supplier_invoice_ref,
+                    '(rmos for inv=' + (rmoByInventory[row.inventory_id || '']?.length || 0) + ')');
+                return row;
+            });
+        }
+
+        // ============================================================
+        // Populate batch selector dropdown
+        // ============================================================
+        function populateSelector(batches) {
+            const sel = document.getElementById('batch-selector');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Select a production batch...</option>';
+            batches.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                const badge = b._gantt
+                    ? (b.status === 'completed' ? ' ✓ (Gantt)' : ' (Gantt)')
+                    : (b.status === 'completed' ? ' ✓' : '');
+                opt.textContent = `${b.batch_code} — ${b.product_name}${badge}`;
+                sel.appendChild(opt);
+            });
+        }
+
+        // ============================================================
+        // Select and load a batch
+        // ============================================================
+        async function selectBatch(batchId) {
+            if (!batchId) {
+                hide('trace-content');
+                show('empty-state');
+                return;
+            }
+            selectedBatchId = batchId;
+
+            show('loading-overlay');
+            hide('trace-content');
+            hide('empty-state');
+
+            const batch = batchList.find(b => b.id === batchId);
+            let rows = [];
+
+            if (batch) {
+                rows = await loadTraceData(batchId);
+            }
+            traceRows = rows;
+
+            // Load FG allocations for distribution tab (FIFO finished goods allocation)
+            fgAllocations = [];
+            if (batch && batch.batch_code) {
+                fgAllocations = await loadFGAllocations(batch.batch_code);
+            }
+
+            hide('loading-overlay');
+            show('trace-content');
+
+            try {
+                renderSummary(batch, rows);
+                renderBatchTrace(batch, rows);
+                renderIngredients(rows);
+                renderCustomers(batch, rows, fgAllocations);
+            } catch (err) {
+                console.warn('render error:', err);
+            }
+        }
+
+        // ============================================================
+        // Render Summary Bento Cards
+        // ============================================================
+        function renderSummary(batch, rows) {
+            // First row = batch data
+            txt('sum-batch-code', batch.batch_code);
+            txt('sum-product-name', batch.product_name);
+            txt('sum-operator', batch.operator_name || batch.produced_by || '--');
+            txt('sum-coordinator', '--');
+
+            // Finished Lot & Yield card removed — section deleted from bento board.
+            // const firstRow = rows[0] || {};
+            // txt('sum-lot-number', firstRow.finished_lot_number || '--');
+            // txt('sum-qty', batch.qty_produced ? `${batch.qty_produced} ${batch.unit || 'units'}` : '--');
+            // txt('sum-expiry', fmt(firstRow.finished_expiry) || '--');
+
+            // Primary Factory Booking — bind to a single factory_bookings record.
+            // Only one factory booking is allowed per production batch.
+            const fb = batch.factory_booking;
+            const fbId = batch.factory_booking_id || fb?.id || null;
+            txt('sum-factory-zone', fb?.space_name || batch.factory_zone || '--');
+            htm('sum-batch-status', batchStatusBadge(batch.status || batch.batch_status));
+            // "Batch ID" — show the production batch code (what this card is about).
+            // Falls back to the booking's code if the batch code is missing for some reason.
+            txt('sum-batch-id', batch.batch_code || fb?.booking_code || '--');
+
+            // Booking Ref → clickable link (deep-links to factory-booking page, scrolls to that booking)
+            const bookingRefEl = document.getElementById('sum-booking-ref-wrap');
+            if (bookingRefEl) {
+                const code = fb?.booking_code || fb?.booking_id || fb?.id || '--';
+                if (fb && fbId) {
+                    bookingRefEl.innerHTML = `
+                        <a href="/factory-booking/index.html?booking=${encodeURIComponent(fbId)}"
+                           onclick="highlightFactoryBookingRow(event, '${escapeAttr(fbId)}')"
+                           class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#f3e8ff] hover:bg-[#e9d5ff] border border-[#c084fc]/40 text-[#7c3aed] font-bold text-[11px] transition-colors"
+                           title="Open ${escapeAttr(code)} in Factory Booking">
+                            <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+                            ${escapeHtml(code)}
+                        </a>`;
+                } else {
+                    bookingRefEl.innerHTML = '<span class="text-[11px] font-bold text-slate-400">--</span>';
+                }
+            }
+
+            // Status badge + Attach/Unlink button visibility
+            const statusBadge = document.getElementById('sum-booking-status');
+            const attachBtn   = document.getElementById('sum-attach-booking');
+            const attachLabel = document.getElementById('sum-attach-booking-label');
+            const unlinkBtn   = document.getElementById('sum-unlink-booking');
+            if (fb && fbId) {
+                statusBadge.textContent = 'LINKED';
+                statusBadge.className   = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+                attachLabel.textContent = 'Replace Booking';
+                unlinkBtn.style.display = '';
+            } else {
+                statusBadge.textContent = 'UNLINKED';
+                statusBadge.className   = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500';
+                attachLabel.textContent = 'Attach Factory Booking';
+                unlinkBtn.style.display = 'none';
+            }
+
+            // Cache the active batch for the picker
+            currentTraceBatchId = batch.id || batch.batch_code || null;
+            currentTraceBatchCode = batch.batch_code || '--';
+            currentTraceBookingId = fbId;
+
+            // Secondary Factory Booking card removed — section deleted from bento board.
+            // const fb2 = batch.second_factory_booking;
+            // if (fb2) {
+            //     txt('sum-second-zone', fb2.space_name || '--');
+            //     txt('sum-second-line', fb2.production_line || fb2.machine_id || fb2.coordinator_name || '--');
+            //     const win = fb2.start_date && fb2.end_date ? `${fmt(fb2.start_date)} → ${fmt(fb2.end_date)}` : '--';
+            //     txt('sum-second-window', win);
+            //     txt('sum-second-booking-ref', fb2.booking_code || fb2.booking_id || '--');
+            // } else {
+            //     txt('sum-second-zone', '--');
+            //     txt('sum-second-line', '--');
+            //     txt('sum-second-window', '--');
+            //     txt('sum-second-booking-ref', '--');
+            // }
+
+            // Update ingredient count
+            const rmCount = rows.filter(r => r.rm_lot_number).length;
+            document.getElementById('tab-ingredient-count').textContent = rmCount;
+        }
+
+        // ============================================================
+        // Render Batch Trace Tab (Timeline + Factory Details)
+        // ============================================================
+        function renderBatchTrace(batch, rows) {
+            // --- Timeline ---
+            const tl = document.getElementById('trace-timeline');
+            tl.innerHTML = '';
+
+            const firstRow = rows[0] || {};
+            const statusOrder = ['pending', 'in_production', 'confirmed', 'completed'];
+            const statusLabel = {
+                'pending':         { label: 'Production Planned',     icon: 'schedule' },
+                'in_production':   { label: 'In Production',         icon: 'build' },
+                'confirmed':       { label: 'Batch Confirmed',       icon: 'check_circle' },
+                'completed':       { label: 'Completed',             icon: 'task_alt' },
+            };
+
+            const currentStatus = batch.status || batch.batch_status || 'pending';
+            const currentIdx = statusOrder.indexOf(currentStatus);
+
+            statusOrder.forEach((s, idx) => {
+                if (currentStatus !== 'cancelled' && idx > currentIdx) return;
+                const info = statusLabel[s] || { label: s, icon: 'circle' };
+                const isCompleted = currentStatus === 'cancelled' ? false : idx < currentIdx;
+                const isActive = idx === currentIdx && currentStatus !== 'cancelled';
+                const isCancelled = currentStatus === 'cancelled' && s === 'in_production';
+
+                const item = document.createElement('div');
+                item.className = `timeline-item ${isCompleted ? 'completed' : isActive ? 'active' : ''}`;
+
+                let dateVal = '--';
+                if (s === 'pending') dateVal = fmt(batch.created_at);
+                else if (s === 'in_production') dateVal = fmt(batch.factory_start_at);
+                else if (s === 'confirmed') dateVal = fmt(batch.confirmed_at);
+                else if (s === 'completed') dateVal = fmt(batch.updated_at);
+
+                item.innerHTML = `
+                    <div class="mb-1 flex justify-between items-start">
+                        <h4 class="text-sm font-bold ${isCancelled ? 'text-red-500' : 'text-[#1e40af]'}">${info.label}</h4>
+                        <span class="text-xs text-[#64748b] font-mono">${dateVal}</span>
+                    </div>
+                    <p class="text-xs text-[#64748b]">${isCancelled ? 'This batch was cancelled.' : (isActive ? 'Currently in this stage.' : 'Stage completed.')}</p>
+                `;
+                tl.appendChild(item);
+            });
+
+            // --- Warehouse Rack Placement ---
+            const rackSection = document.getElementById('trace-warehouse-placement');
+            const rightColumn = document.getElementById('trace-right-column');
+            const leftColumn = document.getElementById('trace-left-column');
+            if (rackSection) {
+                const hasRack = firstRow.finished_rack || firstRow.finished_bin;
+                if (hasRack) {
+                    rackSection.classList.remove('hidden');
+                    if (rightColumn) rightColumn.classList.remove('hidden');
+                    if (leftColumn) {
+                        leftColumn.classList.remove('lg:col-span-12');
+                        leftColumn.classList.add('lg:col-span-7', 'border-r', 'pr-6');
+                    }
+                    txt('trace-finished-zone', firstRow.finished_zone || '--');
+                    txt('trace-finished-section', firstRow.finished_section || '--');
+                    txt('trace-finished-rack', firstRow.finished_rack || '--');
+                    txt('trace-finished-slot', firstRow.finished_slot || '--');
+                    txt('trace-finished-bin', firstRow.finished_bin || '--');
+                } else {
+                    rackSection.classList.add('hidden');
+                    if (rightColumn) rightColumn.classList.add('hidden');
+                    if (leftColumn) {
+                        leftColumn.classList.remove('lg:col-span-7', 'border-r', 'pr-6');
+                        leftColumn.classList.add('lg:col-span-12');
+                    }
+                }
+            }
+
+            // --- FIFO Raw Material Consumption Summary ---
+            const rmRows = rows.filter(r => r.rm_lot_number);
+            const rmSummarySection = document.getElementById('trace-rm-summary');
+            if (rmRows.length > 0) {
+                if (rmSummarySection) rmSummarySection.classList.remove('hidden');
+
+                // Group by RM item
+                const byItem = {};
+                rmRows.forEach(r => {
+                    const key = r.rm_item_name || r.rm_item_code || 'Unknown';
+                    if (!byItem[key]) byItem[key] = [];
+                    byItem[key].push(r);
+                });
+
+                let rmHtml = '';
+                Object.entries(byItem).forEach(([itemName, itemRows]) => {
+                    const totalQty = itemRows.reduce((s, r) => s + parseFloat(r.qty_consumed || 0), 0);
+                    const lots = itemRows.filter(r => r.rm_lot_number);
+                    rmHtml += `<div class="mb-3">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-[11px] font-bold text-primary">${itemName}</span>
+                            <span class="text-[11px] font-extrabold text-[#1e40af] font-mono">${totalQty.toFixed(3)} kg total</span>
+                        </div>
+                        <div class="space-y-1">`;
+                    lots.forEach((r, i) => {
+                        rmHtml += `<div class="flex items-center justify-between bg-[#f8fafc] rounded-lg px-3 py-1.5">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-4 h-4 rounded-full ${i === 0 ? 'bg-[#10b981]' : 'bg-[#94a3b8]'} flex items-center justify-center">
+                                    <span class="text-white text-[7px] font-extrabold">${i + 1}</span>
+                                </span>
+                                <span class="text-[10px] font-mono text-[#64748b]">${r.rm_lot_number}</span>
+                            </div>
+                            <span class="text-[10px] font-bold font-mono text-[#1e40af]">${parseFloat(r.qty_consumed || 0).toFixed(3)}</span>
+                        </div>`;
+                    });
+                    rmHtml += `</div></div>`;
+                });
+
+                const rmBody = document.getElementById('trace-rm-summary-body');
+                if (rmBody) rmBody.innerHTML = rmHtml;
+            } else {
+                if (rmSummarySection) rmSummarySection.classList.add('hidden');
+            }
+
+        }
+
+        // ============================================================
+        // Render Raw Material Trace Tab
+        // ============================================================
+        function renderIngredients(rows) {
+            const tbody = document.getElementById('rm-table-body');
+            const empty = document.getElementById('rm-empty');
+            tbody.innerHTML = '';
+
+            const rmRows = rows.filter(r => r.rm_lot_number);
+
+            if (rmRows.length === 0) {
+                hide(tbody.parentElement);
+                show(empty);
+                return;
+            }
+            show(tbody.parentElement);
+            hide(empty);
+
+            rmRows.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = 'transition-colors';
+                tr.innerHTML = `
+                    <td class="p-4 font-bold text-[#1e40af] font-mono text-xs whitespace-nowrap">${r.rm_lot_number || '--'}</td>
+                    <td class="p-4"><div class="font-bold text-[#1e40af] text-xs">${r.rm_item_code || '--'}</div></td>
+                    <td class="p-4 text-right font-bold text-[#1e40af] font-mono">${parseFloat(r.qty_consumed || 0).toFixed(3)}</td>
+                    <td class="p-4 font-mono text-xs">${r.supplier_invoice_ref || '--'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ============================================================
+// Render Customer Distribution Tab (with FIFO FG allocation)
+// ============================================================
+        function renderCustomers(batch, rows, fgAllocations) {
+            const b2bBody = document.getElementById('b2b-table-body');
+            const b2bEmpty = document.getElementById('b2b-empty');
+            const b2cBody = document.getElementById('b2c-table-body');
+            const b2cEmpty = document.getElementById('b2c-empty');
+            b2bBody.innerHTML = '';
+            b2cBody.innerHTML = '';
+
+            // ── FIFO Summary Cards ──────────────────────────────────
+            const totalProduced = parseFloat(batch.qty_produced || 0);
+            const totalAllocated = fgAllocations.reduce((s, a) => s + parseFloat(a.qty_allocated || 0), 0);
+            const remaining = totalProduced - totalAllocated;
+
+            document.getElementById('fifo-batch-qty').textContent = totalProduced;
+            document.getElementById('fifo-allocated-qty').textContent = totalAllocated;
+            document.getElementById('fifo-remaining-qty').textContent = remaining;
+            document.getElementById('dist-alloc-count').textContent = fgAllocations.length;
+
+            const remEl = document.getElementById('fifo-remaining-qty');
+            if (remaining <= 0) {
+                remEl.parentElement.className = 'bg-[#FEF2F2] border border-[#FECACA] rounded-2xl p-4';
+                remEl.className = 'text-xl font-extrabold text-[#B91C1C]';
+            } else if (remaining < totalProduced * 0.2) {
+                remEl.parentElement.className = 'bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl p-4';
+                remEl.className = 'text-xl font-extrabold text-[#C2410C]';
+            }
+
+            // ── FIFO Allocation Chain Cards ────────────────────────
+            const fifoList = document.getElementById('fifo-alloc-list');
+            const fifoEmpty = document.getElementById('fifo-alloc-empty');
+            fifoList.innerHTML = '';
+
+            if (fgAllocations.length === 0) {
+                show(fifoEmpty);
+                fifoList.classList.add('hidden');
+            } else {
+                hide(fifoEmpty);
+                fifoList.classList.remove('hidden');
+
+                const byFulfillment = {};
+                fgAllocations.forEach(a => {
+                    const key = a.fulfillment_id;
+                    if (!byFulfillment[key]) byFulfillment[key] = [];
+                    byFulfillment[key].push(a);
+                });
+
+                Object.entries(byFulfillment).forEach(([fulfId, allocs]) => {
+                    const first = allocs[0];
+                    const totalQty = allocs.reduce((s, a) => s + parseFloat(a.qty_allocated || 0), 0);
+                    const segColor = first.segment === 'b2c' ? 'border-l-[#8b5cf6]' : 'border-l-[#3b82f6]';
+                    const segIcon = first.segment === 'b2c' ? 'shopping_bag' : 'business';
+                    const segLabel = first.segment === 'b2c' ? 'B2C' : 'B2B';
+                    const segBg = first.segment === 'b2c' ? 'bg-[#f3e8ff] text-[#7c3aed]' : 'bg-[#eff6ff] text-[#1d4ed8]';
+
+                    let allocRows = '';
+                    allocs.forEach(a => {
+                        const fifoBadge = a.fifo_order === 1
+                            ? `<span class="bg-[#ECFDF5] text-[#047857] text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-[#A7F3D0]">1st pick</span>`
+                            : `<span class="bg-[#FFF7ED] text-[#C2410C] text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-[#FED7AA]">#${a.fifo_order}</span>`;
+                        const shipBadge = a.shipping_status === 'Delivered'
+                            ? 'bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]'
+                            : a.shipping_status === 'Shipped'
+                            ? 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]'
+                            : 'bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]';
+                        const totalLine = a.line_total ? `$${parseFloat(a.line_total).toFixed(2)}` : '--';
+                        allocRows += `
+                            <tr class="bg-white hover:bg-[#f8fafc] transition-colors">
+                                <td class="p-3 font-mono text-[10px] text-[#1e40af] whitespace-nowrap">${a.production_batch_code || '--'}</td>
+                                <td class="p-3 text-center">${fifoBadge}</td>
+                                <td class="p-3 text-right font-extrabold text-[#1e40af] font-mono text-xs">${parseFloat(a.qty_allocated || 0).toFixed(0)}</td>
+                                <td class="p-3 text-right font-extrabold text-[#1e40af] font-mono text-xs">${parseFloat(a.qty_fulfilled || 0).toFixed(0)}</td>
+                                <td class="p-3 text-[10px]">${fmt(a.shipped_at)}</td>
+                                <td class="p-3"><span class="px-2 py-0.5 rounded border text-[9px] font-bold ${shipBadge}">${a.shipping_status || 'Pending'}</span></td>
+                                <td class="p-3 text-right font-bold text-[#1e40af] text-xs">${totalLine}</td>
+                            </tr>`;
+                    });
+
+                    fifoList.innerHTML += `
+                    <div class="bg-white border border-outline-variant rounded-2xl overflow-hidden border-l-4 ${segColor} shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between px-5 py-3.5 bg-surface-container-low border-b border-outline-variant/40">
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-primary">${segIcon}</span>
+                                    <span class="text-[10px] font-extrabold ${segBg} px-1.5 py-0.5 rounded">${segLabel}</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-extrabold text-[#1e40af] leading-tight">${first.source_order_number || fulfId}</p>
+                                    <p class="text-[9px] text-[#64748b]">${first.customer_name || '--'}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-right">
+                                    <p class="text-xs font-extrabold text-[#1e40af]">${totalQty} <span class="text-[9px] font-medium text-[#64748b]">units taken</span></p>
+                                    <p class="text-[9px] text-[#64748b]">${allocs.length} allocation${allocs.length > 1 ? 's' : ''}</p>
+                                </div>
+                                <span class="material-symbols-outlined text-[#94a3b8] text-[16px]">chevron_right</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-[#f8fafc] border-b border-outline-variant/20">
+                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Batch</th>
+                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-center">FIFO</th>
+                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Qty Taken</th>
+                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Shipped</th>
+                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Shipped Date</th>
+                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Status</th>
+                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Line Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-outline-variant/20">
+                                    ${allocRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`;
+                });
+            }
+
+            // ── B2B Table ──────────────────────────────────────────
+            const b2bAllocs = fgAllocations.filter(a => a.segment === 'b2b');
+            document.getElementById('b2b-count-badge').textContent = b2bAllocs.length;
+
+            if (b2bAllocs.length === 0) {
+                hide(b2bBody.parentElement);
+                show(b2bEmpty);
+            } else {
+                show(b2bBody.parentElement);
+                hide(b2bEmpty);
+
+                const b2bByFulfillment = {};
+                b2bAllocs.forEach(a => {
+                    if (!b2bByFulfillment[a.fulfillment_id]) b2bByFulfillment[a.fulfillment_id] = [];
+                    b2bByFulfillment[a.fulfillment_id].push(a);
+                });
+
+                Object.values(b2bByFulfillment).forEach(allocs => {
+                    const first = allocs[0];
+                    const totalQty = allocs.reduce((s, a) => s + parseFloat(a.qty_allocated || 0), 0);
+                    const totalShipped = allocs.reduce((s, a) => s + parseFloat(a.qty_fulfilled || 0), 0);
+                    const fulfilled = first.shipping_status === 'Delivered' ? 'Delivered'
+                        : first.shipping_status === 'Shipped' ? 'Shipped' : 'Allocated';
+                    const tr = document.createElement('tr');
+                    tr.className = 'transition-colors';
+                    tr.innerHTML = `
+                        <td class="p-4 font-mono text-xs font-bold text-[#1e40af] whitespace-nowrap">${first.source_order_number || '--'}</td>
+                        <td class="p-4 text-center">
+                            ${allocs.length > 1
+                                ? `<span class="bg-[#ECFDF5] text-[#047857] text-[10px] font-extrabold px-2 py-0.5 rounded border border-[#A7F3D0]">${allocs.length} batches</span>`
+                                : `<span class="bg-[#dbeafe] text-[#1D4ED8] text-[10px] font-extrabold px-2 py-0.5 rounded border border-[#BFDBFE]">1 batch</span>`
+                            }
+                        </td>
+                        <td class="p-4 font-medium text-xs">${first.customer_name || '--'}</td>
+                        <td class="p-4 text-right font-bold text-[#1e40af] font-mono text-xs">${totalQty.toFixed(0)}</td>
+                        <td class="p-4 text-right font-bold text-[#1e40af] font-mono text-xs">${totalShipped.toFixed(0)}</td>
+                        <td class="p-4 text-xs">${fmt(first.shipped_at)}</td>
+                        <td class="p-4 text-xs">${first.carrier || '--'}</td>
+                        <td class="p-4 font-mono text-xs">${first.tracking_number || '--'}</td>
+                        <td class="p-4 text-right font-bold text-[#1e40af] text-xs">${first.line_total ? '$' + parseFloat(first.line_total).toFixed(2) : '--'}</td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 text-[10px] font-bold rounded-lg ${
+                                first.payment_status === 'Paid' ? 'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]' :
+                                first.payment_status === 'Refunded' ? 'bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]' :
+                                'bg-[#FFF7ED] text-[#C2410C] border border-[#FED7AA]'
+                            }">${first.payment_status || '--'}</span>
+                        </td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 text-[10px] font-bold rounded-lg ${
+                                fulfilled === 'Delivered' ? 'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]' :
+                                fulfilled === 'Shipped' ? 'bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]' :
+                                'bg-[#FFF7ED] text-[#C2410C] border border-[#FED7AA]'
+                            }">${fulfilled}</span>
+                        </td>
+                    `;
+                    b2bBody.appendChild(tr);
+                });
+            }
+
+            // ── B2C Table ──────────────────────────────────────────
+            const b2cAllocs = fgAllocations.filter(a => a.segment === 'b2c');
+            document.getElementById('b2c-count-badge').textContent = b2cAllocs.length;
+
+            if (b2cAllocs.length === 0) {
+                hide(b2cBody.parentElement);
+                show(b2cEmpty);
+            } else {
+                show(b2cBody.parentElement);
+                hide(b2cEmpty);
+
+                const b2cByFulfillment = {};
+                b2cAllocs.forEach(a => {
+                    if (!b2cByFulfillment[a.fulfillment_id]) b2cByFulfillment[a.fulfillment_id] = [];
+                    b2cByFulfillment[a.fulfillment_id].push(a);
+                });
+
+                Object.values(b2cByFulfillment).forEach(allocs => {
+                    const first = allocs[0];
+                    const totalQty = allocs.reduce((s, a) => s + parseFloat(a.qty_allocated || 0), 0);
+                    const totalShipped = allocs.reduce((s, a) => s + parseFloat(a.qty_fulfilled || 0), 0);
+                    const fulfilled = first.shipping_status === 'Delivered' ? 'Delivered'
+                        : first.shipping_status === 'Shipped' ? 'Shipped' : 'Allocated';
+                    const tr = document.createElement('tr');
+                    tr.className = 'transition-colors';
+                    tr.innerHTML = `
+                        <td class="p-4 font-mono text-xs font-bold text-[#1e40af] whitespace-nowrap">${first.source_order_number || '--'}</td>
+                        <td class="p-4 text-center">
+                            ${allocs.length > 1
+                                ? `<span class="bg-[#f3e8ff] text-[#7c3aed] text-[10px] font-extrabold px-2 py-0.5 rounded border border-[#c4b5fd]">${allocs.length} batches</span>`
+                                : `<span class="bg-[#ede9fe] text-[#6d28d9] text-[10px] font-extrabold px-2 py-0.5 rounded border border-[#ddd6fe]">1 batch</span>`
+                            }
+                        </td>
+                        <td class="p-4 font-medium text-xs">${first.customer_name || '--'}</td>
+                        <td class="p-4 text-right font-bold text-[#1e40af] font-mono text-xs">${totalQty.toFixed(0)}</td>
+                        <td class="p-4 text-right font-bold text-[#1e40af] font-mono text-xs">${totalShipped.toFixed(0)}</td>
+                        <td class="p-4 text-xs">${fmt(first.shipped_at)}</td>
+                        <td class="p-4 text-xs">${first.carrier || '--'}</td>
+                        <td class="p-4 font-mono text-xs">${first.tracking_number || '--'}</td>
+                        <td class="p-4 text-right font-bold text-[#1e40af] text-xs">${first.line_total ? '$' + parseFloat(first.line_total).toFixed(2) : '--'}</td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 text-[10px] font-bold rounded-lg ${
+                                first.payment_status === 'Paid' ? 'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]' :
+                                first.payment_status === 'Refunded' ? 'bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]' :
+                                'bg-[#FFF7ED] text-[#C2410C] border border-[#FED7AA]'
+                            }">${first.payment_status || '--'}</span>
+                        </td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 text-[10px] font-bold rounded-lg ${
+                                fulfilled === 'Delivered' ? 'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]' :
+                                fulfilled === 'Shipped' ? 'bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]' :
+                                'bg-[#FFF7ED] text-[#C2410C] border border-[#FED7AA]'
+                            }">${fulfilled}</span>
+                        </td>
+                    `;
+                    b2cBody.appendChild(tr);
+                });
+            }
+        }
+
+        // ============================================================
+// Tab switching
+// ============================================================
+        function switchTab(tabName) {
+            ['trace', 'ingredients', 'customers'].forEach(t => {
+                document.getElementById(`panel-${t}`)?.classList.remove('active');
+                document.getElementById(`btn-tab-${t}`)?.classList.remove('active');
+            });
+            document.getElementById(`panel-${tabName}`)?.classList.add('active');
+            const activeBtn = document.getElementById(`btn-tab-${tabName}`);
+            activeBtn?.classList.add('active');
+        }
+
+        // ============================================================
+        // Reload batches
+        // ============================================================
+        async function reloadBatches() {
+            show('loading-overlay');
+            const supabaseRows = await loadProductionBatches();
+            const dbGanttBatches = await loadGanttBatchesFromSupabase();
+            if (supabaseRows.length > 0) {
+                batchList = supabaseRows;
+            } else {
+                batchList = dbGanttBatches.map(adaptGanttBatch);
+            }
+            populateSelector(batchList);
+            hide('loading-overlay');
+            if (selectedBatchId) {
+                document.getElementById('batch-selector').value = selectedBatchId;
+            }
+        }
+
+        // ============================================================
+        // Init
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+                const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+                if (typeof window.supabase !== 'undefined' && window.supabase.createClient && !window.supabase._client) {
+                    window.supabase._client = window.supabase.createClient(SB_URL, SB_KEY);
+                }
+
+                show('loading-overlay');
+
+                const supabaseRows = await loadProductionBatches();
+                const dbGanttBatches = await loadGanttBatchesFromSupabase();
+
+                if (supabaseRows.length > 0) {
+                    batchList = supabaseRows;
+                } else {
+                    batchList = dbGanttBatches.map(adaptGanttBatch);
+                }
+
+                populateSelector(batchList);
+                hide('loading-overlay');
+
+                const params = new URLSearchParams(window.location.search);
+                const urlBatchId = params.get('batch');
+                if (urlBatchId && batchList.find(b => b.id === urlBatchId)) {
+                    document.getElementById('batch-selector').value = urlBatchId;
+                    await selectBatch(urlBatchId);
+                }
+            } catch (err) {
+                console.warn('FATAL error in DOMContentLoaded:', err);
+                hide('loading-overlay');
+            }
+        });
+    </script>
+</body>
+</html>
