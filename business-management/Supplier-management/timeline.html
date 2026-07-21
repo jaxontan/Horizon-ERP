@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supplier Relations Timeline | EspressGo</title>
+    <!-- Tailwind CSS (Play CDN for quick runtime execution) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <!-- Google Material Symbols & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <!-- Custom Sidebar Component -->
+    <script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js" defer></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #F8FAFC;
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+
+<body class="font-body-md font-sans text-on-surface antialiased">
+    <!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">handshake</span>
+                Supplier Relationship Management
+            </h2>
+            <div class="flex items-center gap-4">
+                <button onclick="window.location.href='/settings/alert-center.html'" class="text-primary hover:opacity-80 transition-opacity relative">
+                    <span class="material-symbols-outlined text-2xl font-headline-md">notifications</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="ml-64 pt-20 min-h-[calc(100vh-80px)] p-margin flex flex-col gap-gutter">
+        <!-- Segmented Tab Navigation -->
+        <div class="bg-surface-container-lowest border border-outline-variant p-2 rounded-xl flex gap-1 shadow-sm overflow-x-auto shrink-0">
+            <a href="index.html" id="tab-overview" class="tab-btn px-5 py-2.5 text-on-surface-variant hover:bg-surface-container-low rounded-lg font-bold text-xs transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]">dashboard</span>
+                <span>Dashboard & Registry</span>
+            </a>
+            <a href="onboard.html" id="tab-onboard" class="tab-btn px-5 py-2.5 text-on-surface-variant hover:bg-surface-container-low rounded-lg font-bold text-xs transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]">person_add</span>
+                <span>Partner Onboarding</span>
+            </a>
+            <a href="timeline.html" id="tab-timeline" class="tab-btn px-5 py-2.5 bg-primary text-on-primary rounded-lg font-bold text-xs shadow-sm transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]">timeline</span>
+                <span>Supplier Timeline</span>
+            </a>
+        </div>
+
+        <!-- Page Header -->
+        <div class="flex justify-between items-center bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm shrink-0">
+            <div>
+                <h1 class="text-headline-md font-headline-md text-primary leading-tight tracking-tight">Procurement & Batch Tracing Timeline</h1>
+                <p class="text-body-md text-on-surface-variant mt-1">Real-time log of active supply cycles, quality controls, and validation triggers across all partners.</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="onboard.html" class="px-5 py-2.5 bg-primary text-on-primary rounded-lg text-label-md font-bold flex items-center gap-2 transition-all hover:opacity-90 shadow-sm">
+                    <span class="material-symbols-outlined text-[18px]">person_add</span>
+                    Onboard Partner
+                </a>
+            </div>
+        </div>
+
+        <!-- Filters Block -->
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-sm">
+            <div class="flex flex-col md:flex-row gap-4 w-full">
+                <div class="flex-1 flex flex-col gap-1.5">
+                    <label class="text-[11px] uppercase font-extrabold text-on-surface-variant tracking-wider">Filter by Supplier Partner</label>
+                    <select id="timeline-supplier-select" onchange="renderTimelineView()" class="bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2.5 text-label-md font-semibold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer w-full">
+                        <option value="all">All Supplier Partners</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col justify-end gap-1 shrink-0">
+                    <button onclick="resetTimelineFilters()" class="px-5 py-2.5 bg-surface-container-low text-on-surface border border-outline-variant rounded-lg text-label-md font-bold hover:bg-surface-container-high transition-colors flex items-center justify-center gap-1.5 active:scale-95">
+                        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                        <span>Reset Filters</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline Board Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+            <!-- Timeline Feed -->
+            <div class="lg:col-span-12 bg-surface-container-lowest p-6 md:p-8 rounded-xl border border-outline-variant shadow-sm flex flex-col gap-gutter">
+                <!-- Vertical Timeline Container -->
+                <div class="relative pl-8 border-l-2 border-outline-variant flex flex-col gap-8 ml-4 mt-2" id="timeline-events-feed">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Supabase integration & page rendering -->
+    <script>
+        // Edge Function API helper
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+
+        async function supabaseAPI({ table, operation, data, filters, columns, returning }) {
+            const resp = await fetch('/api/supabase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table, operation, data, filters, columns, returning })
+            });
+            const result = await resp.json();
+            if (result.error && result.data !== undefined) return result.data;
+            if (result.error) return [];
+            return result.data || [];
+        }
+
+        const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+
+        let timelineEvents = [];
+        let suppliersList = [];
+
+        function supplierDisplayId(value) {
+            if (value === undefined || value === null || value === '') return '';
+            const raw = String(value).trim();
+            if (/^SUP-/i.test(raw)) return raw.toUpperCase();
+            const numeric = raw.replace(/^0+/, '') || raw;
+            return /^\d+$/.test(numeric) ? `SUP-${numeric.padStart(3, '0')}` : raw;
+        }
+
+        function formatMoney(value) {
+            const amount = Number(value || 0);
+            return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        function formatDateParts(value) {
+            const dt = value ? new Date(value) : new Date();
+            if (Number.isNaN(dt.getTime())) return { date: '--', time: '--' };
+            return {
+                date: dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+                time: dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+        }
+
+        function statusBadge(status) {
+            const value = String(status || 'Pending').toLowerCase();
+            if (value.includes('received') || value.includes('confirmed') || value.includes('approved')) {
+                return 'bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]';
+            }
+            if (value.includes('cancel') || value.includes('reject')) {
+                return 'bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]';
+            }
+            if (value.includes('ship') || value.includes('transit')) {
+                return 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]';
+            }
+            return 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]';
+        }
+
+        function categoryIconStyle(category) {
+            if (category === 'delivery') return 'bg-[#EFF6FF] text-[#1D4ED8]';
+            if (category === 'compliance') return 'bg-[#ECFDF5] text-[#047857]';
+            return 'bg-primary-container text-primary';
+        }
+
+        async function loadTimelineEvents() {
+            const supplierById = new Map(suppliersList.map((supplier) => [String(supplier.dbId), supplier]));
+            const supplierByName = new Map(suppliersList.map((supplier) => [String(supplier.name || '').toLowerCase(), supplier]));
+
+            const [orders, records] = await Promise.all([
+                supabaseAPI({ table: 'raw_material_orders', operation: 'select', columns: '*' }).catch(() => []),
+                supabaseAPI({ table: 'purchase_records', operation: 'select', columns: '*' }).catch(() => [])
+            ]);
+
+            const events = [];
+
+            (orders || []).forEach((order) => {
+                const supplier = supplierById.get(String(order.supplier_id)) || supplierByName.get(String(order.supplier_name || '').toLowerCase());
+                const supplierId = supplier ? supplier.id : supplierDisplayId(order.supplier_id);
+                const supplierName = supplier?.name || order.supplier_name || 'Supplier Partner';
+                const parts = formatDateParts(order.created_at);
+                const category = /ship|transit|received|delivered/i.test(order.status || '') ? 'delivery' : 'contract';
+                events.push({
+                    supplierId,
+                    supplierName,
+                    category,
+                    title: `${order.purchase_record_id || 'PO'} - ${order.item_name || order.item_code || 'Raw material order'}`,
+                    description: `${Number(order.quantity || 0).toLocaleString()} ${order.unit || 'units'} requested from ${supplierName}. Status is ${order.status || 'Pending'}.`,
+                    value: formatMoney(order.total_amount),
+                    status: order.status || 'Pending',
+                    badgeClass: statusBadge(order.status),
+                    icon: category === 'delivery' ? 'local_shipping' : 'request_quote',
+                    iconColor: categoryIconStyle(category),
+                    date: parts.date,
+                    time: parts.time,
+                    timestamp: order.created_at || new Date().toISOString()
+                });
+            });
+
+            (records || []).forEach((record) => {
+                const supplier = supplierById.get(String(record.supplier_id)) || supplierByName.get(String(record.supplier_name || '').toLowerCase());
+                const supplierId = supplier ? supplier.id : supplierDisplayId(record.supplier_id);
+                const supplierName = supplier?.name || record.supplier_name || 'Supplier Partner';
+                const parts = formatDateParts(record.created_at || record.order_date);
+                events.push({
+                    supplierId,
+                    supplierName,
+                    category: 'compliance',
+                    title: `${record.record_number || record.purchase_order_number || 'Purchase Record'} archived`,
+                    description: `${record.item_name || record.product_name || 'Supplier purchase'} recorded for audit and traceability. Status is ${record.status || 'Logged'}.`,
+                    value: formatMoney(record.total_amount),
+                    status: record.status || 'Logged',
+                    badgeClass: statusBadge(record.status),
+                    icon: 'fact_check',
+                    iconColor: categoryIconStyle('compliance'),
+                    date: parts.date,
+                    time: parts.time,
+                    timestamp: record.created_at || record.order_date || new Date().toISOString()
+                });
+            });
+
+            timelineEvents = events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+
+        async function loadSuppliersList() {
+            try {
+                const data = await supabaseAPI({
+                    table: 'suppliers',
+                    operation: 'select',
+                    columns: '*'
+                });
+
+                suppliersList = (data || []).map((row, idx) => ({
+                    id: `SUP-${String(idx + 1).padStart(3, '0')}`,
+                    dbId: row.supplier_id,
+                    name: row.supplier_company,
+                    status: row.status_of_supplier,
+                    contactName: row.supplier_main_point_of_contact_name || "Account Executive",
+                    phone: row.supplier_main_point_of_contact_number || "Not specified",
+                    country: row.supplier_origin || "Global"
+                }));
+            } catch(e) {
+                console.warn('Error loading suppliers:', e);
+            }
+
+            await loadTimelineEvents();
+
+            // Build timeline dropdown list
+            const supplierSelect = document.getElementById('timeline-supplier-select');
+            if (supplierSelect) {
+                supplierSelect.innerHTML = `<option value="all">All Supplier Partners</option>`;
+                suppliersList.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.name;
+                    supplierSelect.appendChild(opt);
+                });
+            }
+
+            renderTimelineView();
+        }
+
+        function renderTimelineView() {
+            const feed = document.getElementById('timeline-events-feed');
+            if (!feed) return;
+
+            const selectedSupplier = document.getElementById('timeline-supplier-select').value;
+
+            let filtered = [...timelineEvents];
+
+            if (selectedSupplier !== 'all') {
+                filtered = filtered.filter(e => e.supplierId === selectedSupplier);
+            }
+
+            feed.innerHTML = '';
+
+            if (filtered.length === 0) {
+                feed.innerHTML = `
+                    <div class="p-8 text-center text-on-surface-variant font-bold bg-surface-container-low border border-dashed border-outline-variant rounded-xl flex flex-col items-center gap-2">
+                        <span class="material-symbols-outlined text-[32px] text-on-surface-variant">info</span>
+                        <span>No supply timeline events match your current filter settings.</span>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(evt => {
+                const item = document.createElement('div');
+                item.className = "relative flex gap-4 bg-surface-container-lowest hover:bg-surface-bright transition-all p-5 rounded-xl border border-outline-variant cursor-pointer group";
+                item.onclick = () => window.location.href = `details.html?id=${evt.supplierId}`;
+
+                item.innerHTML = `
+                    <div class="absolute -left-[45px] top-[26px] w-6 h-6 rounded-full bg-surface-container-lowest border-2 border-outline-variant flex items-center justify-center group-hover:border-primary group-hover:scale-110 transition-all z-10 shadow-sm">
+                        <span class="w-2.5 h-2.5 rounded-full bg-on-surface-variant group-hover:bg-primary transition-colors"></span>
+                    </div>
+
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border border-outline-variant ${evt.iconColor}">
+                        <span class="material-symbols-outlined text-[24px]">${evt.icon}</span>
+                    </div>
+
+                    <div class="flex-1 flex flex-col gap-1">
+                        <div class="flex justify-between items-start gap-4">
+                            <div>
+                                <h4 class="text-label-md font-bold text-primary group-hover:underline transition-all leading-tight">${evt.title}</h4>
+                                <p class="text-[11px] font-semibold text-on-surface-variant mt-0.5">${evt.supplierName}</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="text-[10px] font-bold font-mono tracking-tighter text-on-surface-variant block">${evt.date}</span>
+                                <span class="text-[9px] font-bold font-mono text-on-surface-variant block mt-0.5">${evt.time}</span>
+                            </div>
+                        </div>
+
+                        <p class="text-label-md text-on-surface leading-relaxed mt-1.5">${evt.description}</p>
+
+                        <div class="flex justify-between items-center mt-3 pt-3 border-t border-outline-variant">
+                            <span class="text-[11px] font-bold text-on-surface-variant flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">sell</span>
+                                Value: ${evt.value}
+                            </span>
+                            <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border ${evt.badgeClass}">
+                                ${evt.status}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                feed.appendChild(item);
+            });
+        }
+
+        function resetTimelineFilters() {
+            document.getElementById('timeline-supplier-select').value = 'all';
+            renderTimelineView();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSuppliersList();
+        });
+    </script>
+</body>
+
+</html>
