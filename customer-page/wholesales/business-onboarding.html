@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Corporate Onboarding & Verification | EspressGo B2B</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #fff8f0;
+            color: #2b1810;
+        }
+        .header-font {
+            font-family: 'Outfit', sans-serif;
+        }
+        .glass-nav { background: rgba(253, 250, 246, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(212, 165, 116, 0.25); }
+        .panel { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(212, 165, 116, 0.35); color: #2b1810; }
+        .step-transition {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        input, select, textarea {
+            background-color: #ffffff !important;
+            border-color: rgba(212, 165, 116, 0.50) !important;
+            color: #2b1810 !important;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: rgba(194, 65, 12, 0.50) !important;
+            box-shadow: 0 0 0 2px rgba(194, 65, 12, 0.12) !important;
+        }
+        /* Checkbox custom styling — replace the forms-plugin appearance: none so native click works */
+        #agree-declaration {
+            appearance: auto !important;
+            -webkit-appearance: auto !important;
+            width: 1rem !important;
+            height: 1rem !important;
+            min-width: 1rem !important;
+            min-height: 1rem !important;
+            border-radius: 0.25rem !important;
+            border: 1px solid rgba(212, 165, 116, 0.50) !important;
+            background-color: #ffffff !important;
+            cursor: pointer !important;
+            position: static !important;
+            margin-top: 0.125rem !important;
+            accent-color: #2b1810;
+        }
+        #agree-declaration:checked {
+            background-color: #2b1810 !important;
+            border-color: #2b1810 !important;
+        }
+        /* Banner 3-upload check states */
+        .banner-check-uploaded {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            border-color: rgba(16, 185, 129, 0.55) !important;
+        }
+        .banner-check-uploaded .banner-check-icon {
+            color: #10B981 !important;
+        }
+        .banner-check-uploaded span:last-child {
+            color: #ffffff !important;
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            main { padding-left: 1rem !important; padding-right: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .grid-cols-3 { grid-template-columns: 1fr !important; }
+            .gap-8 { gap: 1.5rem !important; }
+            .p-8 { padding: 1.5rem !important; }
+            .rounded-3xl { border-radius: 1rem !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding-left: 0.75rem !important; padding-right: 0.75rem !important; padding-top: 1rem !important; padding-bottom: 1rem !important; }
+            .gap-8 { gap: 1rem !important; }
+            .p-8 { padding: 1rem !important; }
+        }
+    </style>
+</head>
+
+<body class="font-customer-body text-[#2b1810] antialiased flex flex-col min-h-screen relative selection:bg-[#c2410c] selection:text-white">
+
+    <!-- Ambient Grid Background -->
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(109,76,65,0.08),rgba(0,0,0,0))] pointer-events-none z-0"></div>
+
+    <!-- Top Navigation Header -->
+    <nav class="glass-nav sticky top-0 z-50 px-8 h-16 flex items-center justify-between relative z-10">
+        <div class="flex items-center gap-3">
+            <a href="b2b-login.html" class="w-9 h-9 rounded-xl bg-[#fef3e2] border border-[#d4a574]/30 flex items-center justify-center text-[#2b1810] shadow-md hover:bg-[#fde7c8] transition-all">
+                <span class="material-symbols-outlined text-xl font-headline-sm">arrow_back</span>
+            </a>
+            <div>
+                <span class="font-extrabold text-sm header-font text-[#2b1810] tracking-widest block uppercase">Corporate Onboarding Portal</span>
+                <span class="text-[9px] text-[#6b4423] font-bold uppercase tracking-wider block -mt-0.5">Big Client Verification Gateway</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-6 text-xs font-bold text-[#6b4423]">
+            <span class="flex items-center gap-1.5 px-3 py-1.5 bg-[#fef3e2] border border-[#d4a574]/25 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-white animate-pulse" id="status-pulse"></span>
+                <span class="text-[#2b1810] uppercase tracking-wider text-[9px] font-extrabold" id="onboarding-badge-status">In Self-Registration</span>
+            </span>
+            <div class="h-6 w-px bg-white/10"></div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="relative z-10 flex-1 max-w-4xl mx-auto w-full px-8 py-10 space-y-8">
+        
+        <!-- Welcome banner -->
+        <div class="bg-gradient-to-r from-neutral-900 to-neutral-950 text-white rounded-3xl p-8 relative overflow-hidden border border-[#d4a574]/25 shadow-lg">
+            <div class="absolute right-0 bottom-0 top-0 opacity-10 pointer-events-none p-6">
+                <span class="material-symbols-outlined text-[180px] text-white">verified_user</span>
+            </div>
+            <div class="relative z-10 space-y-6 max-w-xl">
+                <div>
+                    <div class="inline-flex px-3 py-1 bg-white/10 border border-white/20 rounded-full text-[9px] font-extrabold uppercase tracking-wider text-white mb-3">
+                        B2B Wholesale Onboarding
+                    </div>
+                    <h1 class="text-3xl font-headline-lg font-extrabold header-font leading-tight uppercase tracking-tight text-white">Big Client ARCA Verification</h1>
+                    <p class="text-xs text-white/70 leading-relaxed font-normal mt-2">
+                        Submit your corporate account details, headquarters address, and required incorporation documents to activate high-limit wholesale lines and priority supply chains.
+                    </p>
+                </div>
+
+                <!-- 3 File Upload Checks -->
+                <div class="space-y-2 pt-2 border-t border-white/10">
+                    <p class="text-[9px] font-extrabold uppercase tracking-widest text-white/60">Required Document Uploads</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div id="banner-check-1" class="flex items-center gap-2 bg-white/5 border border-white/15 rounded-xl px-3 py-2 transition-all">
+                            <span class="material-symbols-outlined text-sm banner-check-icon text-white/40">radio_button_unchecked</span>
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-white/70 leading-tight">Tax Residency Certificate</span>
+                        </div>
+                        <div id="banner-check-2" class="flex items-center gap-2 bg-white/5 border border-white/15 rounded-xl px-3 py-2 transition-all">
+                            <span class="material-symbols-outlined text-sm banner-check-icon text-white/40">radio_button_unchecked</span>
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-white/70 leading-tight">DUN &amp; Bradstreet Profile</span>
+                        </div>
+                        <div id="banner-check-3" class="flex items-center gap-2 bg-white/5 border border-white/15 rounded-xl px-3 py-2 transition-all">
+                            <span class="material-symbols-outlined text-sm banner-check-icon text-white/40">radio_button_unchecked</span>
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-white/70 leading-tight">Incorporation License</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Stepper Navigation -->
+        <div class="panel border-[#d4a574]/25 bg-[#fde7c8]/60 rounded-2xl p-5 shadow-sm flex justify-between items-center relative overflow-hidden" id="stepper-nav">
+            <div class="flex items-center gap-3 w-1/2 justify-start relative z-10">
+                <div class="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center font-bold text-xs shadow" id="step-1-indicator">1</div>
+                <span class="text-[10px] font-extrabold text-[#2b1810] uppercase tracking-wider hidden sm:block">Corporate Account</span>
+            </div>
+            <div class="h-px bg-white/10 flex-1 relative z-0 mx-2" id="line-1">
+                <div class="h-full bg-white w-0 transition-all duration-300" id="progress-line-1"></div>
+            </div>
+            <div class="flex items-center gap-3 w-1/2 justify-end relative z-10">
+                <div class="w-8 h-8 rounded-full bg-[#ffffff] text-[#d4a574] flex items-center justify-center font-bold text-xs border border-[#d4a574]/20" id="step-2-indicator">2</div>
+                <span class="text-[10px] font-extrabold text-[#d4a574] uppercase tracking-wider hidden sm:block">Document Vault</span>
+            </div>
+        </div>
+
+        <!-- Onboarding Process Status Board (Locks when submitted) -->
+        <div class="hidden panel border-[#d4a574]/25 bg-[#fde7c8]/60 rounded-3xl p-8 text-center space-y-6 shadow-sm" id="submitted-success-card">
+            <div class="w-16 h-16 rounded-full bg-[#ffffff] border border-[#d4a574]/25 flex items-center justify-center mx-auto shadow-sm">
+                <span class="material-symbols-outlined text-3xl font-headline-lg text-[#2b1810]">verified_user</span>
+            </div>
+            <div class="max-w-md mx-auto space-y-2">
+                <h2 class="text-xl font-headline-sm font-bold header-font text-[#2b1810] uppercase tracking-wider">Application Under Manager Audit</h2>
+                <p class="text-xs text-[#6b4423] font-semibold leading-relaxed">
+                    Your wholesale credentials and tax certificates have been secured. The Supply Chain Manager is currently auditing your Dun & Bradstreet rating and operation parameters.
+                </p>
+            </div>
+
+            <!-- Login credentials card -->
+            <div class="bg-[#ffffff] border border-[#d4a574]/20 rounded-2xl p-5 max-w-md mx-auto space-y-3 text-left">
+                <div class="flex items-center gap-2 text-[#2b1810] font-extrabold text-xs uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-sm">key</span>
+                    Your Login Credentials
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-[#fef3e2] rounded-xl px-3 py-2">
+                        <div class="text-[8px] uppercase tracking-widest text-[#d4a574] font-extrabold">Email</div>
+                        <div id="success-email" class="font-bold text-[#2b1810] truncate">—</div>
+                    </div>
+                    <div class="bg-[#fef3e2] rounded-xl px-3 py-2">
+                        <div class="text-[8px] uppercase tracking-widest text-[#d4a574] font-extrabold">Password</div>
+                        <div class="font-bold text-[#2b1810]">Your chosen password</div>
+                    </div>
+                </div>
+                <p class="text-[10px] text-[#6b4423] font-semibold">Save these credentials. Use them to log in to the B2B Wholesale Portal.</p>
+            </div>
+
+            <!-- Verification Progress Bar -->
+            <div class="bg-[#ffffff] border border-[#d4a574]/20 rounded-2xl p-6 max-w-xl mx-auto space-y-4">
+                <div class="flex justify-between text-xs font-bold">
+                    <span class="text-[#d4a574] uppercase tracking-wider">Overall Audit Progress</span>
+                    <span class="text-[#2b1810]" id="audit-percentage-text">25%</span>
+                </div>
+                <div class="w-full h-3 bg-[#fef3e2] rounded-full overflow-hidden">
+                    <div class="h-full bg-white transition-all duration-700" style="width: 25%;" id="audit-progress-bar"></div>
+                </div>
+
+                <!-- Checked list simulation -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left pt-4 border-t border-[#d4a574]/20 text-[10px] font-bold text-[#6b4423]" id="audit-check-list">
+                    <div class="flex items-center gap-2" id="audit-check-account">
+                        <span class="material-symbols-outlined text-[#2b1810] text-sm">check_circle</span>
+                        <span>ACCOUNT CREATED</span>
+                    </div>
+                    <div class="flex items-center gap-2" id="audit-check-tax">
+                        <span class="material-symbols-outlined text-[#d4a574] text-sm audit-check-icon">schedule</span>
+                        <span>TAX RESIDENCY CERTIFICATE REVIEW</span>
+                    </div>
+                    <div class="flex items-center gap-2" id="audit-check-dnb">
+                        <span class="material-symbols-outlined text-[#d4a574] text-sm audit-check-icon">schedule</span>
+                        <span>DUN &amp; BRADSTREET PROFILE VERIFICATION</span>
+                    </div>
+                    <div class="flex items-center gap-2" id="audit-check-inc">
+                        <span class="material-symbols-outlined text-[#d4a574] text-sm audit-check-icon">schedule</span>
+                        <span>CORPORATE INCORPORATION LICENSE REVIEW</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Post-submit document uploads: lets the user upload the 3
+                 required certificates even if they submitted without them.
+                 Each row reuses the same /api/uploads endpoint and writes
+                 a fresh b2b_documents row keyed off the customer_accounts id. -->
+            <div class="bg-[#ffffff] border border-[#d4a574]/20 rounded-2xl p-6 max-w-xl mx-auto space-y-3 text-left">
+                <div class="flex items-center gap-2 text-[#2b1810] font-extrabold text-xs uppercase tracking-wider">
+                    <span class="material-symbols-outlined text-sm">cloud_upload</span>
+                    <span>Upload Outstanding Documents</span>
+                </div>
+                <p class="text-[10px] text-[#6b4423] font-semibold leading-relaxed">
+                    If you submitted with missing certificates, you can still upload them here. Your application will move to Verified once all three are received and approved by the manager.
+                </p>
+
+                <div class="space-y-2" id="post-submit-uploads">
+                    <!-- Tax Residency Certificate -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-[#d4a574]/25 bg-[#fef3e2]/50" id="post-row-1">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="material-symbols-outlined text-[#2b1810] text-sm">picture_as_pdf</span>
+                            <span class="text-[10px] font-extrabold text-[#2b1810] uppercase tracking-wider truncate">Tax Residency Certificate</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[9px] font-bold text-[#d4a574] uppercase tracking-wider" id="post-status-1">Status: Missing</span>
+                            <input type="file" id="post-file-1" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="handlePostSubmitUpload(1, this)" />
+                            <button type="button" data-slot="1" class="post-upload-btn px-3 py-1.5 bg-[#fef3e2] hover:bg-[#fde7c8] text-[#2b1810] text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-colors border border-[#d4a574]/25" id="post-btn-1">
+                                Upload
+                            </button>
+                        </div>
+                    </div>
+                    <!-- DUN & Bradstreet Profile -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-[#d4a574]/25 bg-[#fef3e2]/50" id="post-row-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="material-symbols-outlined text-[#2b1810] text-sm">picture_as_pdf</span>
+                            <span class="text-[10px] font-extrabold text-[#2b1810] uppercase tracking-wider truncate">DUN &amp; Bradstreet Profile</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[9px] font-bold text-[#d4a574] uppercase tracking-wider" id="post-status-2">Status: Missing</span>
+                            <input type="file" id="post-file-2" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="handlePostSubmitUpload(2, this)" />
+                            <button type="button" data-slot="2" class="post-upload-btn px-3 py-1.5 bg-[#fef3e2] hover:bg-[#fde7c8] text-[#2b1810] text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-colors border border-[#d4a574]/25" id="post-btn-2">
+                                Upload
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Corporate Incorporation License -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-[#d4a574]/25 bg-[#fef3e2]/50" id="post-row-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="material-symbols-outlined text-[#2b1810] text-sm">picture_as_pdf</span>
+                            <span class="text-[10px] font-extrabold text-[#2b1810] uppercase tracking-wider truncate">Incorporation License</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[9px] font-bold text-[#d4a574] uppercase tracking-wider" id="post-status-3">Status: Missing</span>
+                            <input type="file" id="post-file-3" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="handlePostSubmitUpload(3, this)" />
+                            <button type="button" data-slot="3" class="post-upload-btn px-3 py-1.5 bg-[#fef3e2] hover:bg-[#fde7c8] text-[#2b1810] text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-colors border border-[#d4a574]/25" id="post-btn-3">
+                                Upload
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-[9px] text-[#6b4423] font-semibold pt-1" id="post-submit-help">Accepted formats: PDF, JPG, PNG. Each upload is sent to the same secure vault used in Step 3.</p>
+            </div>
+
+            <div class="pt-4 flex flex-col sm:flex-row justify-center gap-3">
+                <a href="b2b.html" class="px-6 py-2.5 bg-[#c2410c] hover:bg-[#9a330a] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-sm">storefront</span>
+                    Go to Wholesale Portal
+                </a>
+                <a href="b2b-login.html" class="px-6 py-2.5 bg-[#fef3e2] border border-[#d4a574]/25 text-[#c2410c] text-xs font-bold rounded-xl transition-all hover:bg-[#fde7c8]">
+                    Back to Gateway
+                </a>
+            </div>
+        </div>
+
+        <!-- Master Form Wrapper -->
+        <form id="onboarding-form" onsubmit="handleOnboardingSubmit(event)" class="space-y-6">
+            
+            <!-- STEP 1 PANEL -->
+            <div class="panel border-[#d4a574]/25 bg-[#fde7c8]/60 rounded-3xl p-8 space-y-6 shadow-sm step-transition block" id="panel-1">
+                <div class="border-b border-[#d4a574]/20 pb-4">
+                    <h2 class="text-lg font-bold header-font text-[#2b1810] flex items-center gap-2 uppercase tracking-wider">
+                        <span class="material-symbols-outlined text-[#2b1810]">business</span>
+                        <span>Step 1: Corporate Account</span>
+                    </h2>
+                    <p class="text-xs text-[#6b4423] font-semibold mt-1">Set up your company name, headquarters address, and the credentials you'll use to access the B2B wholesale portal.</p>
+                </div>
+
+                <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-[#6b4423] uppercase tracking-widest block">Headquarters Official Address</label>
+                        <input type="text" id="hq-address" required placeholder="e.g. 742 Evergreen Terrace, Suite 500, Premium District, SG" class="w-full border border-[#d4a574]/25 rounded-xl px-4 py-2.5 text-xs text-[#2b1810] bg-[#ffffff]/80 font-medium" />
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-[#6b4423] uppercase tracking-widest block">Legal Entity Name</label>
+                        <input type="text" id="company-name" required placeholder="e.g. Artisanal Bites Deli & Roasteries LLC" class="w-full border border-[#d4a574]/25 rounded-xl px-4 py-2.5 text-xs text-[#2b1810] bg-[#ffffff]/80 font-medium" />
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-[#6b4423] uppercase tracking-widest block">Contact Person Name</label>
+                        <input type="text" id="rep-name" required placeholder="e.g. Sarah Jenkins" class="w-full border border-[#d4a574]/25 rounded-xl px-4 py-2.5 text-xs text-[#2b1810] bg-[#ffffff]/80 font-medium" />
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-[#6b4423] uppercase tracking-widest block">Corporate Email (Login ID)</label>
+                        <input type="email" id="corporate-email" required placeholder="e.g. operations@artisanalbites.com" class="w-full border border-[#d4a574]/25 rounded-xl px-4 py-2.5 text-xs text-[#2b1810] bg-[#ffffff]/80 font-medium" />
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-[#6b4423] uppercase tracking-widest block">Contact Phone Number</label>
+                        <input type="tel" id="contact-phone" autocomplete="tel" placeholder="e.g. +65 9123 4567" class="w-full border border-[#d4a574]/25 rounded-xl px-4 py-2.5 text-xs text-[#2b1810] bg-[#ffffff]/80 font-medium" />
+                    </div>
+
+                    <div class="space-y-1.5 md:col-span-2">
+                        <label class="text-[10px] font-extrabold text-[#6b4423] uppercase tracking-widest block">Account Password (min 6 chars)</label>
+                        <input type="password" id="account-password" required placeholder="Create a password" minlength="6" class="w-full border border-[#d4a574]/25 rounded-xl px-4 py-2.5 text-xs text-[#2b1810] bg-[#ffffff]/80 font-medium" />
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4 border-t border-[#d4a574]/20">
+                    <button type="button" onclick="navigateStep(2)" class="px-6 py-2.5 bg-white text-black text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-sm transition-all hover:bg-neutral-200 flex items-center gap-2">
+                        <span>Next Step</span>
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2 PANEL -->
+            <div class="panel border-[#d4a574]/25 bg-[#fde7c8]/60 rounded-3xl p-8 space-y-6 shadow-sm step-transition hidden" id="panel-2">
+                <div class="border-b border-[#d4a574]/20 pb-4">
+                    <h2 class="text-lg font-bold header-font text-[#2b1810] flex items-center gap-2 uppercase tracking-wider">
+                        <span class="material-symbols-outlined text-[#2b1810]">folder_shared</span>
+                        <span>Step 2: Document Upload & Regulatory Submission</span>
+                    </h2>
+                    <p class="text-xs text-[#6b4423] font-semibold mt-1">Upload PDF certificates to comply with wholesale legal requirements.</p>
+                </div>
+
+                <!-- Document Zone Grid -->
+                <div class="space-y-5">
+                    
+                    <!-- Document slot 1: Tax Residency Certificate -->
+                    <div class="border border-[#d4a574]/20 hover:border-white/15 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors bg-[#ffffff]">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 bg-[#fef3e2] text-[#2b1810] rounded-xl flex items-center justify-center border border-[#d4a574]/25">
+                                <span class="material-symbols-outlined">picture_as_pdf</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-extrabold text-[#2b1810]">Tax Residency Certificate</h3>
+                                <p class="text-[10px] text-[#6b4423] font-semibold mt-0.5">Required for B2B wholesale tax-exempt status (Form EU-88 / W-9 equivalent)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="file" id="file-tax-cert" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="handleFileUpload(1, this)" />
+                            <div id="upload-status-1" class="flex items-center gap-2">
+                                <span class="text-[9px] font-bold text-[#d4a574] uppercase tracking-wider">Status: Missing</span>
+                            </div>
+                            <button type="button" onclick="document.getElementById('file-tax-cert').click()" class="px-4 py-2 bg-[#fef3e2] hover:bg-[#fde7c8] text-[#2b1810] text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-colors border border-[#d4a574]/25">
+                                Upload Certificate
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Document slot 2: DUN & Bradstreet Credential Profile -->
+                    <div class="border border-[#d4a574]/20 hover:border-white/15 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors bg-[#ffffff]">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 bg-[#fef3e2] text-[#2b1810] rounded-xl flex items-center justify-center border border-[#d4a574]/25">
+                                <span class="material-symbols-outlined">picture_as_pdf</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-extrabold text-[#2b1810]">DUN & Bradstreet Credential Profile</h3>
+                                <p class="text-[10px] text-[#6b4423] font-semibold mt-0.5">Commercial financial and operating credit assessment profile documentation</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="file" id="file-dnb-profile" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="handleFileUpload(2, this)" />
+                            <div id="upload-status-2" class="flex items-center gap-2">
+                                <span class="text-[9px] font-bold text-[#d4a574] uppercase tracking-wider">Status: Missing</span>
+                            </div>
+                            <button type="button" onclick="document.getElementById('file-dnb-profile').click()" class="px-4 py-2 bg-[#fef3e2] hover:bg-[#fde7c8] text-[#2b1810] text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-colors border border-[#d4a574]/25">
+                                Upload Profile
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Document slot 3: Corporate Incorporation License -->
+                    <div class="border border-[#d4a574]/20 hover:border-white/15 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors bg-[#ffffff]">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 bg-[#fef3e2] text-[#2b1810] rounded-xl flex items-center justify-center border border-[#d4a574]/25">
+                                <span class="material-symbols-outlined">picture_as_pdf</span>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-extrabold text-[#2b1810]">Corporate Incorporation License</h3>
+                                <p class="text-[10px] text-[#6b4423] font-semibold mt-0.5">Official registration license from ACRA registry for wholesale trade authentication</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="file" id="file-inc-license" accept=".pdf,.jpg,.jpeg,.png" class="hidden" onchange="handleFileUpload(3, this)" />
+                            <div id="upload-status-3" class="flex items-center gap-2">
+                                <span class="text-[9px] font-bold text-[#d4a574] uppercase tracking-wider">Status: Missing</span>
+                            </div>
+                            <button type="button" onclick="document.getElementById('file-inc-license').click()" class="px-4 py-2 bg-[#fef3e2] hover:bg-[#fde7c8] text-[#2b1810] text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-colors border border-[#d4a574]/25">
+                                Upload License
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terms and Declaration Check -->
+                <div class="bg-[#ffffff] border border-[#d4a574]/20 rounded-2xl p-4 flex items-start gap-3">
+                    <input type="checkbox" required id="agree-declaration" class="border-[#d4a574]/25 bg-[#fff8f0] rounded text-[#2b1810] focus:ring-white w-4.5 h-4.5 mt-0.5" />
+                    <div>
+                        <h4 class="text-xs font-extrabold text-[#2b1810]">Corporate Truth & Liability Declaration</h4>
+                        <p class="text-[10px] text-[#6b4423] font-semibold mt-0.5 leading-relaxed">
+                            We declare under wholesale trade penalty that all legal incorporation details, headquarters information, and regulatory files submitted represent non-repudiated company parameters.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between pt-4 border-t border-[#d4a574]/20">
+                    <button type="button" onclick="navigateStep(1)" class="px-6 py-2.5 bg-[#fef3e2] border border-[#d4a574]/25 text-[#c2410c] text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all hover:bg-neutral-855 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">arrow_back</span>
+                        <span>Back</span>
+                    </button>
+                    <button type="submit" class="px-8 py-2.5 bg-[#c2410c] hover:bg-[#9a330a] text-white text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-sm transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">cloud_upload</span>
+                        <span>Submit Registration</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </main>
+
+    <!-- Visual Footer Accent -->
+    <footer class="bg-[#ffffff] border-t border-[#d4a574]/20 mt-auto py-8 text-center text-xs font-bold text-[#d4a574] uppercase tracking-wider">
+        <span>© 2026 EspressGo Coffee Roastery. Secure Wholesale Audit Gateway.</span>
+    </footer>
+
+    <!-- Verification Logic Stepper Scripts -->
+    <script>
+        // Supabase Setup
+        const supabaseUrl = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const supabaseClient = (window.supabase && window.supabase._client)
+            ? window.supabase._client
+            : window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function getAccessToken() {
+            const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase ? window.supabase : null);
+            if (client) {
+                const { data: { session } } = await client.auth.getSession();
+                return session ? session.access_token : null;
+            }
+            return null;
+        }
+
+        async function supabaseAPI({ table, operation, data, filters, columns, returning, onConflict }) {
+            if (typeof window.erpSupabaseAPI === 'function') {
+                return window.erpSupabaseAPI({ table, operation, data, filters, columns, returning, onConflict });
+            }
+
+            const resp = await fetch('/api/supabase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table, operation, data, filters, columns, returning, onConflict })
+            });
+            const result = await resp.json();
+            if (result.error && result.data !== undefined) return result.data;
+            if (result.error || !resp.ok) return [];
+            return result.data || [];
+        }
+
+        let currentStep = 1;
+        const uploadedDocs = { 1: false, 2: false, 3: false };
+
+        // Document type mapping
+        const docTypeMap = {
+            1: 'Tax Residency Certificate',
+            2: 'DUN & Bradstreet Credential Profile',
+            3: 'Corporate Incorporation License'
+        };
+
+        async function restInsert(table, rows) {
+            return supabaseAPI({
+                table,
+                operation: 'insert',
+                data: Array.isArray(rows) ? rows : [rows],
+                columns: '*'
+            });
+        }
+
+        async function syncPublicCustomerIdentity(corporateEmail, repName, companyName) {
+            const customerRow = {
+                email: corporateEmail,
+                name: repName,
+                company_name: companyName,
+                segment: 'b2b',
+                is_active: true,
+                verification_status: 'pending',
+                document_status: 'Pending'
+            };
+
+            const result = await supabaseAPI({
+                table: 'customer_accounts',
+                operation: 'upsert',
+                data: customerRow,
+                returning: '*',
+                onConflict: 'email'
+            });
+
+            const savedRows = await supabaseAPI({
+                table: 'customer_accounts',
+                operation: 'select',
+                columns: 'id,email,segment,verification_status',
+                filters: { eq: { email: corporateEmail } }
+            });
+
+            if (!savedRows || savedRows.length === 0) {
+                return null;
+            }
+
+            return savedRows[0];
+        }
+
+        async function syncToB2BRecords(payload, enterpriseId) {
+            try {
+                // Upsert customer_accounts with full B2B data
+                await supabaseAPI({
+                    table: 'customer_accounts',
+                    operation: 'upsert',
+                    data: {
+                        email: payload.corporateEmail,
+                        name: payload.repName,
+                        company_name: payload.companyName,
+                        segment: 'b2b',
+                        customer_type: 'B2B',
+                        account_id: enterpriseId,
+                        phone: payload.contactPhone || null,
+                        address: payload.hqAddress,
+                        is_active: true,
+                        document_status: 'Pending',
+                        verification_status: 'pending'
+                    },
+                    returning: '*',
+                    onConflict: 'email'
+                });
+
+                // Fetch customer_accounts.id for document linking
+                const savedRows = await supabaseAPI({
+                    table: 'customer_accounts',
+                    operation: 'select',
+                    columns: 'id',
+                    filters: { eq: { email: payload.corporateEmail } }
+                });
+                const customerId = savedRows?.[0]?.id;
+
+                // Insert document records with actual uploaded file URLs.
+                // Normalize publicUrl to an absolute URL so the link survives any
+                // reverse-proxy / CDN setup and works in admin previews.
+                const toAbsolute = (url) => {
+                    if (!url) return url;
+                    if (/^https?:\/\//i.test(url)) return url;
+                    return window.location.origin + url;
+                };
+                for (const [slotId, fileInfo] of Object.entries(uploadedFiles)) {
+                    if (!fileInfo || !customerId) continue;
+                    await restInsert('b2b_documents', {
+                        customer_id: customerId,
+                        document_type: fileInfo.docType,
+                        file_url: toAbsolute(fileInfo.publicUrl),
+                        upload_date: new Date().toISOString().split('T')[0],
+                        verification_status: 'Pending',
+                        notes: fileInfo.docName
+                    });
+                }
+
+                return { success: true, enterpriseId };
+            } catch (err) {
+                console.warn('Sync to B2B records failed:', err);
+                return { success: false, error: err.message };
+            }
+        }
+
+        function navigateStep(step) {
+            if (step === 2 && currentStep === 1) {
+                // Ensure Step 1 inputs are filled (company + address + credentials)
+                const missing = [];
+                if (!document.getElementById('company-name').value) missing.push('Company Name');
+                if (!document.getElementById('hq-address').value) missing.push('Headquarters Address');
+                if (!document.getElementById('rep-name').value) missing.push('Contact Person Name');
+                if (!document.getElementById('corporate-email').value) missing.push('Corporate Email');
+                if (!document.getElementById('account-password').value) missing.push('Password');
+                if (document.getElementById('account-password').value && document.getElementById('account-password').value.length < 6) {
+                    alert('Password must be at least 6 characters.');
+                    return;
+                }
+                const phoneRaw = document.getElementById('contact-phone').value.trim();
+                // Phone is optional, but if the user typed something, require
+                // at least 8 digits so we don't store junk like "—" or " ".
+                if (phoneRaw) {
+                    const digitCount = (phoneRaw.match(/\d/g) || []).length;
+                    if (digitCount < 8) {
+                        alert('Contact phone must contain at least 8 digits (e.g. +65 9123 4567). Leave blank to skip.');
+                        return;
+                    }
+                }
+                if (missing.length > 0) {
+                    alert('Please fill in: ' + missing.join(', '));
+                    return;
+                }
+            }
+
+            // Hide all panels
+            document.getElementById('panel-1').className = "hidden";
+            document.getElementById('panel-2').className = "hidden";
+
+            // Show target step panel
+            document.getElementById(`panel-${step}`).className = "panel border-[#d4a574]/25 bg-[#fde7c8]/60 rounded-3xl p-8 space-y-6 shadow-sm step-transition block";
+
+            // Stepper indicator styles
+            updateStepperIndicators(step);
+            currentStep = step;
+        }
+
+        function updateStepperIndicators(step) {
+            // Single connector line between the two step chips
+            const progressLine1 = document.getElementById('progress-line-1');
+
+            if (step === 1) {
+                progressLine1.style.width = '0%';
+
+                setStepIndicatorState(1, 'active');
+                setStepIndicatorState(2, 'inactive');
+            } else if (step === 2) {
+                progressLine1.style.width = '100%';
+
+                setStepIndicatorState(1, 'completed');
+                setStepIndicatorState(2, 'active');
+            }
+        }
+
+        function setStepIndicatorState(num, state) {
+            const ind = document.getElementById(`step-${num}-indicator`);
+            const label = ind.nextElementSibling;
+
+            if (state === 'active') {
+                ind.className = "w-8 h-8 rounded-full bg-white text-black flex items-center justify-center font-bold text-xs shadow";
+                if(label) label.className = "text-[10px] font-extrabold text-[#2b1810] uppercase tracking-wider hidden sm:block";
+            } else if (state === 'completed') {
+                ind.className = "w-8 h-8 rounded-full bg-white text-black flex items-center justify-center font-bold text-xs shadow";
+                ind.innerHTML = `<span class="material-symbols-outlined text-sm font-extrabold">check</span>`;
+                if(label) label.className = "text-[10px] font-extrabold text-[#2b1810] uppercase tracking-wider hidden sm:block";
+            } else if (state === 'inactive') {
+                ind.className = "w-8 h-8 rounded-full bg-[#ffffff] text-[#d4a574] flex items-center justify-center font-bold text-xs border border-[#d4a574]/20";
+                ind.innerText = num;
+                if(label) label.className = "text-[10px] font-extrabold text-[#d4a574] uppercase tracking-wider hidden sm:block";
+            }
+        }
+
+        const uploadedFiles = { 1: null, 2: null, 3: null };
+
+        const fileDocMap = {
+            1: { fileId: 'file-tax-cert', docName: 'Tax Residency Certificate', docType: 'tax_certificate' },
+            2: { fileId: 'file-dnb-profile', docName: 'DUN & Bradstreet Credential Profile', docType: 'credit_profile' },
+            3: { fileId: 'file-inc-license', docName: 'Corporate Incorporation License', docType: 'incorporation_license' }
+        };
+
+        async function handleFileUpload(slotId, fileInput) {
+            const file = fileInput.files[0];
+            if (!file) return;
+            const slot = document.getElementById('upload-status-' + slotId);
+            slot.innerHTML = '<span class="text-[9px] font-bold text-[#2b1810] uppercase tracking-wider animate-pulse flex items-center gap-1"><span class="material-symbols-outlined text-xs animate-spin font-extrabold">sync</span><span>Uploading...</span></span>';
+            try {
+                // Multipart upload to the local /api/uploads route. The server stores
+                // the file under ./uploads/documents/<YYYY-MM-DD>/<ts>-<rand>-<safe-name>
+                // and returns { data: { publicUrl, path, ... } } — same shape we used
+                // to get from Supabase, so the rest of the form is unchanged.
+                const fd = new FormData();
+                fd.append('file', file, file.name);
+                fd.append('category', 'documents');
+                fd.append('filename', file.name);
+                const uploadResp = await fetch('/api/uploads', {
+                    method: 'POST',
+                    body: fd
+                });
+                if (!uploadResp.ok) {
+                    slot.innerHTML = '<span class="text-[9px] font-bold text-red-600">Upload failed</span>';
+                    return;
+                }
+                const uploadResult = await uploadResp.json();
+                const publicUrl = uploadResult.data?.publicUrl;
+                if (!publicUrl) {
+                    slot.innerHTML = '<span class="text-[9px] font-bold text-red-600">Upload failed</span>';
+                    return;
+                }
+                const fileName = uploadResult.data?.path || file.name;
+                uploadedFiles[slotId] = { fileName, publicUrl, originalName: file.name, docName: fileDocMap[slotId].docName, docType: fileDocMap[slotId].docType };
+                uploadedDocs[slotId] = true;
+                updateBannerChecks();
+                const fileSize = file.size < 1024 * 1024 ? (file.size / 1024).toFixed(1) + ' KB' : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+                slot.innerHTML = '<span class="text-[9px] font-bold text-[#2b1810] uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-xs font-extrabold" style="color:#2b1810">check_circle</span><span>' + file.name + ' (' + fileSize + ')</span></span><button type="button" onclick="document.getElementById(\'' + fileDocMap[slotId].fileId + '\').value=\'\';document.getElementById(\'' + fileDocMap[slotId].fileId + '\').onchange=null;handleFileUpload(' + slotId + ', document.getElementById(\'' + fileDocMap[slotId].fileId + '\'))" class="text-[#6b4423] hover:text-[#2b1810] text-[10px] font-bold transition-colors">Replace</button>';
+            } catch (err) {
+                console.warn('Upload failed:', err);
+                slot.innerHTML = '<span class="text-[9px] font-bold text-red-600 uppercase tracking-wider flex items-center gap-1"><span class="material-symbols-outlined text-xs font-extrabold">error</span><span>Upload failed</span></span><button type="button" onclick="document.getElementById(\'' + fileDocMap[slotId].fileId + '\').click()" class="px-4 py-2 bg-[#fef3e2] hover:bg-[#fde7c8] text-[#2b1810] text-[9px] font-extrabold uppercase tracking-wider rounded-lg transition-colors border border-[#d4a574]/25 ml-2">Retry</button>';
+            }
+        }
+
+        function simulateUpload(id) {
+            document.getElementById(fileDocMap[id].fileId).click();
+        }
+
+        function updateBannerChecks() {
+            for (let i = 1; i <= 3; i++) {
+                const card = document.getElementById('banner-check-' + i);
+                const icon = card ? card.querySelector('.banner-check-icon') : null;
+                if (!card || !icon) continue;
+                if (uploadedDocs[i]) {
+                    card.classList.add('banner-check-uploaded');
+                    icon.textContent = 'check_circle';
+                } else {
+                    card.classList.remove('banner-check-uploaded');
+                    icon.textContent = 'radio_button_unchecked';
+                }
+            }
+        }
+
+        // Recompute the overall audit percentage (1 of 4 = ACCOUNT CREATED, plus
+        // up to 3 of 4 for Tax / D&B / Incorporation uploads) and reflect it in
+        // both the success card's progress bar and the audit-check icons.
+        function refreshAuditSummary() {
+            const auditChecks = [
+                { id: 'audit-check-tax', slot: 1 },
+                { id: 'audit-check-dnb', slot: 2 },
+                { id: 'audit-check-inc', slot: 3 }
+            ];
+            let completed = 1;
+            auditChecks.forEach(({ id, slot }) => {
+                const wrap = document.getElementById(id);
+                if (!wrap) return;
+                const icon = wrap.querySelector('.audit-check-icon');
+                const isUploaded = !!uploadedDocs[slot];
+                if (icon) icon.textContent = isUploaded ? 'check_circle' : 'schedule';
+                if (icon) icon.className = 'material-symbols-outlined text-sm audit-check-icon ' + (isUploaded ? 'text-[#2b1810]' : 'text-[#d4a574]');
+                if (isUploaded) completed += 1;
+            });
+            const pct = Math.round((completed / 4) * 100);
+            const pctText = document.getElementById('audit-percentage-text');
+            const pctBar = document.getElementById('audit-progress-bar');
+            if (pctText) pctText.innerText = pct + '%';
+            if (pctBar) pctBar.style.width = pct + '%';
+
+            // Mirror the same state to the post-submit upload pills so the
+            // user sees which docs they've already added.
+            for (let i = 1; i <= 3; i++) {
+                const status = document.getElementById('post-status-' + i);
+                const btn = document.getElementById('post-btn-' + i);
+                if (!status || !btn) continue;
+                if (uploadedDocs[i]) {
+                    status.textContent = 'Status: Received';
+                    status.className = 'text-[9px] font-bold text-[#047857] uppercase tracking-wider';
+                    btn.textContent = 'Replace';
+                } else {
+                    status.textContent = 'Status: Missing';
+                    status.className = 'text-[9px] font-bold text-[#d4a574] uppercase tracking-wider';
+                    btn.textContent = 'Upload';
+                }
+            }
+        }
+
+        // Click delegation for post-submit upload buttons. Centralising this
+        // lets us reset the file input's value before opening the picker, so
+        // re-uploading the *same* file still fires `change` (browsers normally
+        // skip the event when the value hasn't changed).
+        function wirePostSubmitUploadButtons() {
+            document.querySelectorAll('.post-upload-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const slotId = btn.getAttribute('data-slot');
+                    const input = document.getElementById('post-file-' + slotId);
+                    if (!input) return;
+                    input.value = '';
+                    input.click();
+                });
+            });
+        }
+
+        // Handle a file picked from the post-submit upload area. Reuses the same
+        // /api/uploads endpoint as Step 3, then writes a row to b2b_documents
+        // for the currently-logged-in customer. If the user is not signed in
+        // (no /api/session/me email), we still keep the file locally and mark
+        // the slot as uploaded in this session, so the audit summary reflects
+        // what they've added even before sync to the server.
+        async function handlePostSubmitUpload(slotId, fileInput) {
+            const file = fileInput.files[0];
+            if (!file) return;
+            const slot = document.getElementById('post-status-' + slotId);
+            const btn = document.getElementById('post-btn-' + slotId);
+            if (slot) slot.innerHTML = '<span class="flex items-center gap-1 text-[#2b1810]"><span class="material-symbols-outlined text-xs animate-spin">sync</span><span class="text-[9px] font-bold uppercase tracking-wider">Uploading...</span></span>';
+            if (btn) { btn.disabled = true; btn.textContent = 'Uploading...'; }
+            try {
+                const fd = new FormData();
+                fd.append('file', file, file.name);
+                fd.append('category', 'documents');
+                fd.append('filename', file.name);
+                const uploadResp = await fetch('/api/uploads', { method: 'POST', body: fd });
+                if (!uploadResp.ok) throw new Error('upload-failed');
+                const uploadResult = await uploadResp.json();
+                const publicUrl = uploadResult.data?.publicUrl;
+                if (!publicUrl) throw new Error('upload-failed');
+                const toAbsolute = (url) => {
+                    if (!url) return url;
+                    if (/^https?:\/\//i.test(url)) return url;
+                    return window.location.origin + url;
+                };
+                const fileName = uploadResult.data?.path || file.name;
+                const fileInfo = {
+                    fileName,
+                    publicUrl: toAbsolute(publicUrl),
+                    originalName: file.name,
+                    docName: fileDocMap[slotId].docName,
+                    docType: fileDocMap[slotId].docType
+                };
+                uploadedFiles[slotId] = fileInfo;
+                uploadedDocs[slotId] = true;
+
+                // Persist to Supabase: write a b2b_documents row keyed off the
+                // customer_accounts.id for the currently signed-in user. If the
+                // user submitted without an active session, we still mark the
+                // doc as uploaded locally — the next /api/session/me refresh
+                // can re-sync, but at least the UI is consistent.
+                let synced = false;
+                try {
+                    const me = await fetch('/api/session/me', { credentials: 'same-origin', cache: 'no-store' })
+                        .then(r => r.ok ? r.json() : { session: null })
+                        .catch(() => ({ session: null }));
+                    const sessionEmail = me?.session?.email || null;
+                    if (sessionEmail) {
+                        const rows = await supabaseAPI({
+                            table: 'customer_accounts',
+                            operation: 'select',
+                            columns: 'id',
+                            filters: { eq: { email: sessionEmail } }
+                        });
+                        const customerId = rows?.[0]?.id;
+                        if (customerId) {
+                            await supabaseAPI({
+                                table: 'b2b_documents',
+                                operation: 'insert',
+                                data: {
+                                    customer_id: customerId,
+                                    document_type: fileInfo.docType,
+                                    file_url: fileInfo.publicUrl,
+                                    upload_date: new Date().toISOString().split('T')[0],
+                                    verification_status: 'Pending',
+                                    notes: fileInfo.originalName
+                                },
+                                returning: '*'
+                            });
+                            synced = true;
+                        }
+                    }
+                } catch (persistErr) {
+                    console.warn('Post-submit doc persist note:', persistErr);
+                }
+
+                updateBannerChecks();
+                refreshAuditSummary();
+
+                const fileSize = file.size < 1024 * 1024
+                    ? (file.size / 1024).toFixed(1) + ' KB'
+                    : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+                if (slot) slot.innerHTML = '<span class="flex items-center gap-1 text-[#047857]"><span class="material-symbols-outlined text-xs">check_circle</span><span class="text-[9px] font-bold uppercase tracking-wider">' + (synced ? 'Received & Synced' : 'Received') + ' · ' + fileInfo.originalName + ' (' + fileSize + ')</span></span>';
+                if (btn) { btn.disabled = false; btn.textContent = 'Replace'; }
+                // Clear the input value so a follow-up Replace click on the
+                // same file still fires `change` (browsers skip the event
+                // when the value is unchanged).
+                try { fileInput.value = ''; } catch (_) { /* ignore */ }
+            } catch (err) {
+                console.warn('Post-submit upload failed:', err);
+                if (slot) slot.innerHTML = '<span class="flex items-center gap-1 text-red-600"><span class="material-symbols-outlined text-xs">error</span><span class="text-[9px] font-bold uppercase tracking-wider">Upload failed</span></span>';
+                if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+                try { fileInput.value = ''; } catch (_) { /* ignore */ }
+            }
+        }
+
+        async function handleOnboardingSubmit(e) {
+            e.preventDefault();
+
+            // Show loading state
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            // If docs are missing, we still allow submission and the success
+            // card will expose an upload area for the missing files. The user
+            // does not have to make a destructive "continue anyway?" choice.
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">sync</span> Submitting...`;
+
+            const corporateEmail = document.getElementById('corporate-email').value.trim().toLowerCase();
+            const accountPassword = document.getElementById('account-password').value;
+            const repName = document.getElementById('rep-name').value.trim();
+            const companyName = document.getElementById('company-name').value.trim();
+
+            // Validate password
+            if (accountPassword.length < 6) {
+                alert('Password must be at least 6 characters.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                return;
+            }
+
+            // Build payload
+            const payload = {
+                companyName,
+                hqAddress: document.getElementById('hq-address').value,
+                corporateEmail,
+                repName,
+                contactPhone: document.getElementById('contact-phone').value.trim() || null,
+                submitted: true,
+                status: 'Pending Audit'
+            };
+
+            try {
+                // Generate enterprise ID. Prefer the standard crypto.randomUUID() but
+                // fall back to crypto.getRandomValues() — some browsers expose
+                // crypto.subtle yet not randomUUID, and the page is served over
+                // plain HTTP on the local network where UUID isn't always
+                // available. Without this fallback every submit crashed with
+                // "crypto.randomUUID is not a function".
+                const fallbackUuid = () => {
+                    const bytes = new Uint8Array(16);
+                    (crypto || window.msCrypto).getRandomValues(bytes);
+                    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+                    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
+                    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+                    return (
+                        hex.substring(0, 8) + '-' +
+                        hex.substring(8, 12) + '-' +
+                        hex.substring(12, 16) + '-' +
+                        hex.substring(16, 20) + '-' +
+                        hex.substring(20, 32)
+                    );
+                };
+                const enterpriseId =
+                    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+                        ? crypto.randomUUID()
+                        : fallbackUuid();
+                payload.enterpriseId = enterpriseId;
+
+                // Save to customer_accounts for session recovery
+                await supabaseAPI({
+                    table: 'customer_accounts',
+                    operation: 'upsert',
+                    data: {
+                        email: corporateEmail,
+                        name: repName,
+                        company_name: companyName,
+                        segment: 'b2b',
+                        customer_type: 'B2B',
+                        account_id: enterpriseId,
+                        is_active: true,
+                        verification_status: 'pending',
+                        document_status: 'Pending',
+                        phone: payload.contactPhone,
+                        address: payload.hqAddress
+                    },
+                    onConflict: 'email'
+                }).catch(err => console.warn('Could not save onboarding payload:', err));
+
+                // Step 1: Create the auth account + customer_accounts row through the
+                // server. The server is the only authority that can hand us a
+                // session cookie, and it will also reject if the email is
+                // already taken.
+                let authError = null;
+                try {
+                    const resp = await fetch('/api/session/register', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: corporateEmail,
+                            password: accountPassword,
+                            name: repName,
+                            company: companyName,
+                            segment: 'b2b',
+                            phone: payload.contactPhone || null,
+                            address: payload.hqAddress || null,
+                        }),
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok || data.error) {
+                        authError = new Error(data.error || `Sign-up failed (HTTP ${resp.status})`);
+                    }
+                } catch (err) {
+                    authError = err;
+                }
+
+                if (authError) {
+                    let msg = authError.message;
+                    if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('already been registered')) {
+                        alert('This email is already registered. Please use a different email address, or contact support to recover your account.');
+                    } else if (msg.toLowerCase().includes('invalid')) {
+                        alert('Registration failed: ' + msg + '. Please check your email and password format.');
+                    } else {
+                        alert('Registration failed: ' + msg);
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    return;
+                }
+
+                // Step 2: Create/update the customer identity used by B2B portal login and verification status.
+                await syncPublicCustomerIdentity(corporateEmail, repName, companyName);
+
+                // Step 3: Sync B2B records to Supabase
+                let syncResult;
+                try {
+                    syncResult = await syncToB2BRecords(payload, enterpriseId);
+                } catch (err) {
+                    console.warn('B2B records sync note:', err);
+                    syncResult = { success: false, error: err.message };
+                }
+
+                // Step 4: The session cookie was already set by /api/session/register
+                // above. Redirect the user to the B2B portal — it will read the
+                // cookie via /api/session/me and render the logged-in state.
+
+                // Show brief success, then redirect
+                submitBtn.innerHTML = `<span class="material-symbols-outlined text-sm">check</span> Account created! Redirecting...`;
+                submitBtn.classList.add('bg-green-700');
+
+                const redirectParams = new URLSearchParams({
+                    email: corporateEmail,
+                    registered: '1'
+                });
+
+                // Small delay so user sees success state
+                await new Promise(r => setTimeout(r, 800));
+                window.location.href = `b2b.html?${redirectParams.toString()}`;
+
+            } catch (err) {
+                console.warn('Submission error:', err);
+                alert('Submission failed: ' + (err.message || 'An unexpected error occurred. Your data has been saved locally and you can retry.'));
+                renderSubmittedOnboarding(payload);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        }
+
+        function renderSubmittedOnboarding(submittedPayload = {}) {
+            // Hide stepper, forms and show audit status board
+            document.getElementById('onboarding-form').className = "hidden";
+            document.getElementById('stepper-nav').className = "hidden";
+
+            document.getElementById('submitted-success-card').className = "panel border-[#d4a574]/25 bg-[#fde7c8]/60 rounded-3xl p-8 text-center space-y-6 shadow-sm block";
+
+            // Populate email from saved payload
+            const emailEl = document.getElementById('success-email');
+            if (emailEl) {
+                emailEl.textContent = submittedPayload.corporateEmail || submittedPayload.email || '';
+            }
+
+            // Update badge status
+            const badgeText = document.getElementById('onboarding-badge-status');
+            const statusPulse = document.getElementById('status-pulse');
+
+            badgeText.innerText = "Under Corporate Audit";
+            badgeText.className = "text-[#2b1810] uppercase tracking-wider text-[9px] font-extrabold";
+            statusPulse.className = "w-2 h-2 rounded-full bg-white animate-pulse";
+
+            // Recompute audit checklist + percentage + post-submit pill state
+            // in one place so the success card, banner, and upload widgets all
+            // stay in sync.
+            refreshAuditSummary();
+        }
+
+        async function checkExistingOnboarding() {
+            try {
+                const me = await fetch('/api/session/me', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                }).then(r => r.ok ? r.json() : { session: null }).catch(() => ({ session: null }));
+                const sessionEmail = me?.session?.email || null;
+                if (!sessionEmail) return;
+
+                // Load from customer_accounts by email
+                const records = await supabaseAPI({
+                    table: 'customer_accounts',
+                    operation: 'select',
+                    columns: '*',
+                    filters: { eq: { email: sessionEmail } }
+                });
+
+                if (records && records.length > 0) {
+                    const row = records[0];
+                    const verStatus = row.verification_status;
+                    const docStatus = row.document_status;
+
+                    // Pre-fill form from session/localStorage (payload fields not stored in new schema)
+                    renderSubmittedOnboarding({ corporateEmail: sessionEmail, repName: row.name, companyName: row.company_name });
+
+                    // Pull existing b2b_documents for this customer so the audit
+                    // summary and post-submit upload area reflect what they've
+                    // already submitted on a prior visit. We map each doc by its
+                    // document_type back to the slot id used in the form.
+                    try {
+                        const docs = await supabaseAPI({
+                            table: 'b2b_documents',
+                            operation: 'select',
+                            columns: 'document_type,verification_status',
+                            filters: { eq: { customer_id: row.id } }
+                        });
+                        const docTypeToSlot = {
+                            'tax_certificate': 1,
+                            'credit_profile': 2,
+                            'incorporation_license': 3
+                        };
+                        (docs || []).forEach(d => {
+                            const slot = docTypeToSlot[d.document_type];
+                            if (slot && d.verification_status !== 'rejected') {
+                                uploadedDocs[slot] = true;
+                            }
+                        });
+                        refreshAuditSummary();
+                    } catch (docErr) {
+                        console.warn('Could not load existing b2b_documents:', docErr);
+                    }
+
+                    // Set verification status based on stored data
+                    if (docStatus === 'Verified' || verStatus === 'verified') {
+                        document.getElementById('onboarding-badge-status').innerText = "Verified & Active";
+                        document.getElementById('audit-percentage-text').innerText = "100%";
+                        document.getElementById('audit-progress-bar').style.width = '100%';
+                    } else if (verStatus === 'rejected') {
+                        document.getElementById('onboarding-badge-status').innerText = "Application Rejected";
+                    }
+                }
+            } catch (err) {
+                console.warn('Session restore skipped:', err);
+            }
+        }
+
+        async function unlockSelfRegistration() {
+            if (confirm("Are you sure you want to reset your corporate verification? This will discard the current manager audit logs.")) {
+                try {
+                    const me = await fetch('/api/session/me', {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                    }).then(r => r.ok ? r.json() : { session: null }).catch(() => ({ session: null }));
+                    const sessionEmail = me?.session?.email || null;
+                    if (sessionEmail) {
+                        // Deactivate the customer account for reset
+                        await supabaseAPI({
+                            table: 'customer_accounts',
+                            operation: 'update',
+                            data: { is_active: false },
+                            filters: { eq: { email: sessionEmail } }
+                        }).catch(() => {});
+                    }
+                } catch (err) {
+                    console.warn('Could not reset from Supabase:', err);
+                }
+                window.location.reload();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            wirePostSubmitUploadButtons();
+            checkExistingOnboarding();
+        });
+    </script>
+</body>
+</html>

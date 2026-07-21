@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>EspressGo — Customer Experiences</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #fff8f0;
+            color: #2b1810;
+        }
+        .header-font {
+            font-family: 'Outfit', sans-serif;
+        }
+        .serif-font {
+            font-family: 'Playfair Display', serif;
+        }
+        .mono-border { border-color: rgba(212, 165, 116, 0.35); }
+        .mono-card {
+            background: #ffffff;
+            border: 1px solid rgba(212, 165, 116, 0.35);
+            box-shadow: 0 4px 20px rgba(194, 65, 12, 0.06);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .mono-card:hover {
+            border-color: rgba(194, 65, 12, 0.35);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(194, 65, 12, 0.14);
+        }
+        .premium-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .premium-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+            transition: 0.5s;
+        }
+        .premium-btn:hover::before {
+            left: 100%;
+        }
+    </style>
+    <!-- Supabase Auth -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function signOutAll() {
+            // Hit the server-side logout so the httpOnly session cookie is
+            // cleared, then drop the local Supabase SDK session for good
+            // measure and reload the gateway page.
+            try {
+                await fetch('/api/session/logout', { method: 'POST', credentials: 'same-origin' });
+            } catch (_) {
+                /* network failure is fine — cookie may already be gone */
+            }
+            await supabaseClient.auth.signOut().catch(() => {});
+            window.location.reload();
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            const btn = document.getElementById('sign-out-btn');
+            // Show the sign-out button whenever *either* the legacy Supabase
+            // SDK has a session, or our server-cookie session is active.
+            let hasSession = false;
+            try {
+                const resp = await fetch('/api/session/me', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                });
+                if (resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    hasSession = Boolean(data?.session);
+                }
+            } catch {
+                hasSession = false;
+            }
+            if (!hasSession) {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                hasSession = Boolean(session);
+            }
+            if (hasSession) {
+                btn.classList.remove('hidden');
+                btn.addEventListener('click', signOutAll);
+            }
+        });
+    </script>
+</head>
+
+<body class="font-customer-body antialiased flex flex-col min-h-screen relative selection:bg-[#c2410c] selection:text-white">
+
+    <!-- Absolute minimalist ambient grid -->
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(194,65,12,0.10),rgba(0,0,0,0))] pointer-events-none z-0"></div>
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(212,165,116,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(212,165,116,0.10)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#fff_70%,transparent_100%)] pointer-events-none z-0"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="relative z-10 px-8 lg:px-16 h-20 flex items-center justify-between border-b border-[#d4a574]/40 backdrop-blur-md bg-[#fff8f0]/80">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-full border border-[#d4a574]/50 flex items-center justify-center text-[#c2410c] bg-[#fef3e2] transition-transform duration-300 hover:rotate-45">
+                <span class="material-symbols-outlined text-xl font-headline-sm">local_cafe</span>
+            </div>
+            <div>
+                <span class="font-extrabold text-sm header-font text-[#2b1810] tracking-widest block uppercase">EspressGo</span>
+                <span class="text-[9px] text-[#8b4513] font-bold uppercase tracking-widest block mt-0.5">Gateway &bull; Premium Portal Suite</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button id="sign-out-btn" class="hidden px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 text-[9px] font-bold uppercase tracking-widest transition-all">
+                Sign Out
+            </button>
+            <span class="flex items-center gap-2 px-3 py-1.5 bg-[#fde7c8]/70 rounded-full border border-[#d4a574]/50 text-[9px] font-bold uppercase tracking-widest text-[#8b4513]">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#c2410c] animate-pulse"></span>
+                <span>Active Server Sync Status: Live</span>
+            </span>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="relative z-10 flex-1 max-w-5xl mx-auto w-full px-6 lg:px-12 py-16 flex flex-col justify-center space-y-16">
+        
+        <!-- Header Section -->
+        <div class="text-center space-y-6 max-w-3xl mx-auto">
+            <div class="inline-flex px-4 py-1.5 bg-[#fef3e2] border border-[#d4a574]/60 rounded-full text-[10px] font-extrabold uppercase tracking-widest text-[#c2410c]">
+                Digital Interface Gateway
+            </div>
+            <h1 class="text-5xl font-headline-lg lg:text-7xl font-extrabold header-font text-[#2b1810] leading-tight tracking-tight uppercase">
+                Choose Your <br/>
+                <span class="serif-font italic font-normal text-[#c2410c] lowercase">experience</span>.
+            </h1>
+            <p class="text-sm text-[#6b4423] leading-relaxed max-w-xl mx-auto font-normal">
+                Select between our high-performance client portals. Engage in retail shopper experiences, or launch business onboarding & wholesale supply verification.
+            </p>
+        </div>
+
+        <!-- Options Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+
+            <!-- Retail Experience Card (Button 1) -->
+            <div class="mono-card rounded-3xl p-8 flex flex-col justify-between h-[340px] relative overflow-hidden group">
+                <!-- Decorative background layout -->
+                <div class="absolute right-0 bottom-0 translate-x-1/4 translate-y-1/4 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-500 pointer-events-none text-[#c2410c]">
+                    <span class="material-symbols-outlined text-[240px]">shopping_bag</span>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="w-12 h-12 rounded-2xl border border-[#d4a574]/60 bg-[#fef3e2] flex items-center justify-center text-[#c2410c]">
+                        <span class="material-symbols-outlined text-2xl font-headline-md">shopping_cart</span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h3 class="text-xl font-headline-sm font-bold text-[#2b1810] header-font uppercase tracking-wide">Retail Shopper Portal</h3>
+                        <span class="text-[9px] font-extrabold text-[#8b4513] uppercase tracking-widest block">Customer Shop &bull; Orders &bull; Support</span>
+                    </div>
+
+                    <p class="text-xs text-[#6b4423] leading-relaxed font-normal pr-4">
+                        Experience retail ordering, customize coffee cart selections, monitor immediate shipping streams, and connect with live specialists.
+                    </p>
+                </div>
+
+                <a href="Retail/b2c-login.html" class="premium-btn w-full py-4 bg-[#c2410c] hover:bg-[#9a330a] text-white rounded-2xl text-xs font-bold uppercase tracking-widest text-center transition-all duration-300 shadow-lg shadow-[#c2410c]/30 active:scale-[0.98] block">
+                    Retail Shopper Experiences &rarr;
+                </a>
+            </div>
+
+            <!-- Business Experience Card (Button 2) -->
+            <div class="mono-card rounded-3xl p-8 flex flex-col justify-between h-[340px] relative overflow-hidden group">
+                <!-- Decorative background layout -->
+                <div class="absolute right-0 bottom-0 translate-x-1/4 translate-y-1/4 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity duration-500 pointer-events-none text-[#8b4513]">
+                    <span class="material-symbols-outlined text-[240px]">corporate_fare</span>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="w-12 h-12 rounded-2xl border border-[#d4a574]/60 bg-[#fef3e2] flex items-center justify-center text-[#8b4513]">
+                        <span class="material-symbols-outlined text-2xl font-headline-md">verified_user</span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h3 class="text-xl font-headline-sm font-bold text-[#2b1810] header-font uppercase tracking-wide">Corporate Wholesale Portal</h3>
+                        <span class="text-[9px] font-extrabold text-[#8b4513] uppercase tracking-widest block">Onboarding &bull; Credit Limit &bull; Procurement</span>
+                    </div>
+
+                    <p class="text-xs text-[#6b4423] leading-relaxed font-normal pr-4">
+                        Submit credentials for official corporate verification, claim bulk pricing models, and oversee verified wholesale supply chain targets.
+                    </p>
+                </div>
+
+                <a href="wholesales/b2b-login.html" class="premium-btn w-full py-4 bg-[#fef3e2] border border-[#d4a574]/60 hover:border-[#c2410c] hover:bg-[#fde7c8] text-[#2b1810] rounded-2xl text-xs font-bold uppercase tracking-widest text-center transition-all duration-300 shadow-md active:scale-[0.98] block">
+                    Business Onboarding Experiences &rarr;
+                </a>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Visual Footer -->
+    <footer class="relative z-10 text-center text-[9px] font-bold text-[#8b4513] uppercase tracking-widest py-10 mt-auto border-t border-[#d4a574]/40 bg-[#fff8f0]">
+        <span>&copy; 2026 EspressGo Coffee Roasters. Systems Synchronized &bull; All Rights Reserved.</span>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>B2C Customer Portal | EspressGo</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fff8f0; color: #2b1810; }
+        .header-font { font-family: 'Outfit', sans-serif; }
+        .serif-font { font-family: 'Playfair Display', serif; }
+        .glass-nav { background: rgba(253, 250, 246, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(212, 165, 116, 0.25); }
+        .panel { background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(212, 165, 116, 0.35); color: #2b1810; }
+        input, select, textarea {
+            background-color: #ffffff !important;
+            border-color: rgba(212, 165, 116, 0.50) !important;
+            color: #2b1810 !important;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: rgba(194, 65, 12, 0.50) !important;
+            box-shadow: 0 0 0 2px rgba(194, 65, 12, 0.12) !important;
+        }
+        /* ===== RESPONSIVE: customer portal ===== */
+        @media (max-width: 768px) {
+            nav { padding-left: 1rem !important; padding-right: 1rem !important; }
+            main { padding-left: 1rem !important; padding-right: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .grid-cols-3 { grid-template-columns: repeat(2, 1fr) !important; }
+            .gap-8 { gap: 1.5rem !important; }
+            .p-8 { padding: 1.5rem !important; }
+            .rounded-3xl { border-radius: 1rem !important; }
+            .text-5xl { font-size: 2.5rem !important; }
+            .text-7xl { font-size: 3rem !important; }
+        }
+        @media (max-width: 480px) {
+            nav { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+            main { padding-left: 0.75rem !important; padding-right: 0.75rem !important; padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+            .grid-cols-3 { grid-template-columns: 1fr !important; }
+            .gap-8 { gap: 1rem !important; }
+            .p-8 { padding: 1rem !important; }
+            .text-5xl { font-size: 2rem !important; }
+            .text-7xl { font-size: 2.5rem !important; }
+        }
+        /* Chat drawer full-screen on mobile */
+        @media (max-width: 768px) {
+            #chat-drawer {
+                width: 100% !important;
+                max-width: 100% !important;
+                border-radius: 0 !important;
+                bottom: 0 !important;
+                top: auto !important;
+                right: 0 !important;
+                left: 0 !important;
+                transform: translateY(100%) !important;
+            }
+            #chat-drawer:not(.opacity-0) {
+                transform: translateY(0) !important;
+            }
+        }
+        /* Order list + detail: stack on mobile */
+        @media (max-width: 1024px) {
+            .flex-1.flex.items-start.gap-8 {
+                flex-direction: column !important;
+                gap: 1rem !important;
+            }
+            #order-list { max-height: 300px !important; overflow-y: auto !important; }
+        }
+        /* ===== Retail support chat: red theme ===== */
+        #chat-thread > div.flex {
+            margin-bottom: 0.75rem;
+        }
+        /* Customer bubble ("me") — red background, black text */
+        #chat-thread > div.flex.justify-end > div > div:last-of-type {
+            background-color: #dc2626 !important;
+            color: #000000 !important;
+            border-color: transparent !important;
+        }
+        /* Staff bubble — red background, white text */
+        #chat-thread > div.flex.justify-start > div > div:last-of-type {
+            background-color: #dc2626 !important;
+            color: #ffffff !important;
+            border-color: transparent !important;
+        }
+        /* Failed customer bubble keeps red/white contrast for visibility */
+        #chat-thread > div.flex.justify-end > div > div.bg-red-50 {
+            background-color: #dc2626 !important;
+            color: #000000 !important;
+            border-color: transparent !important;
+        }
+        /* Customer name label ("You" side) — black on red bubble */
+        #chat-thread > div.flex.justify-end > div > div.flex > span:first-child {
+            color: #000000 !important;
+        }
+        #chat-thread > div.flex.justify-end > div > div.flex > span:last-of-type {
+            color: #000000 !important;
+            background-color: rgba(0, 0, 0, 0.15) !important;
+        }
+        /* Staff name label — white on red bubble */
+        #chat-thread > div.flex.justify-start > div > div.flex > span:first-child {
+            color: #ffffff !important;
+        }
+        #chat-thread > div.flex.justify-start > div > div.flex > span:last-of-type {
+            color: #ffffff !important;
+            background-color: rgba(255, 255, 255, 0.25) !important;
+        }
+        /* Timestamp — soften on red backgrounds */
+        #chat-thread > div.flex > div > div.flex > span:nth-child(2) {
+            color: rgba(0, 0, 0, 0.55) !important;
+        }
+        #chat-thread > div.flex.justify-start > div > div.flex > span:nth-child(2) {
+            color: rgba(255, 255, 255, 0.75) !important;
+        }
+        /* System info pill stays neutral but tinted */
+        #chat-thread > div.flex.justify-center > div {
+            background-color: #fee2e2 !important;
+            color: #7f1d1d !important;
+            border-color: #fecaca !important;
+        }
+    </style>
+</head>
+<body class="font-customer-body text-[#2b1810] antialiased flex flex-col min-h-screen relative selection:bg-[#c2410c] selection:text-white">
+    <!-- Ambient grid background -->
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(109,76,65,0.08),rgba(0,0,0,0))] pointer-events-none z-0"></div>
+
+    <nav class="glass-nav sticky top-0 z-50 px-8 h-16 flex items-center justify-between relative z-10">
+        <a href="../index.html" class="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <div class="w-9 h-9 rounded-xl border border-[#d4a574]/30 bg-[#fef3e2] flex items-center justify-center text-[#2b1810] shadow-md">
+                <span class="material-symbols-outlined text-xl font-headline-sm">local_cafe</span>
+            </div>
+            <div>
+                <span class="font-extrabold text-sm header-font text-[#2b1810] tracking-widest block uppercase">EspressGo Retail</span>
+                <span class="text-[9px] text-[#6b4423] font-bold uppercase tracking-wider block -mt-0.5">B2C customer portal</span>
+            </div>
+        </a>
+        <div class="flex items-center gap-2 text-xs font-bold">
+            <a href="../index.html" class="px-4 py-2 rounded-xl bg-[#fef3e2] border border-[#d4a574]/25 text-[#2b1810] hover:bg-[#fde7c8] transition-all">Home</a>
+            <a href="../wholesales/b2b-login.html" class="px-4 py-2 rounded-xl bg-white text-black hover:bg-neutral-200 transition-all">B2B portal &rarr;</a>
+        </div>
+    </nav>
+
+    <main class="relative z-10 flex-1 w-full max-w-[1600px] mx-auto px-8 py-10 space-y-8">
+        <section class="bg-white text-[#2b1810] rounded-3xl p-8 border border-[#d4a574]/40 shadow-sm relative overflow-hidden">
+            <div class="absolute right-0 top-0 bottom-0 opacity-[0.06] p-6 pointer-events-none text-[#c2410c]">
+                <span class="material-symbols-outlined text-[180px]">shopping_bag</span>
+            </div>
+            <div class="relative z-10 grid md:grid-cols-2 gap-8 items-start">
+                <div class="space-y-4 max-w-2xl">
+                    <div class="inline-flex px-3 py-1 bg-[#ffffff] border border-[#d4a574]/25 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-[#c2410c]">
+                        B2C shopping workspace
+                    </div>
+                    <h1 class="text-4xl font-headline-lg font-extrabold header-font leading-tight uppercase tracking-tight">Shop coffee, and track your retail deliveries</h1>
+                    <p class="text-xs text-[#6b4423] leading-relaxed font-normal">
+                        Pilot Phase: New customers can create accounts directly. Sign in with your registered email to access your orders.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    <div id="auth-panel" class="panel rounded-3xl p-5 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] uppercase tracking-widest text-[#6b4423] font-extrabold">New customers</div>
+                                <div class="text-lg font-extrabold header-font text-[#2b1810] mt-1">Create your account</div>
+                            </div>
+                        </div>
+                        <form id="register-form" class="mt-4 space-y-3">
+                            <input id="register-name" type="text" autocomplete="name" class="w-full rounded-xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810]" placeholder="Full name" required />
+                            <input id="register-email" type="email" autocomplete="email" class="w-full rounded-xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810]" placeholder="Email address" required />
+                            <input id="register-password" type="password" autocomplete="new-password" class="w-full rounded-xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810]" placeholder="Password (min 6 characters)" required minlength="6" />
+                            <input id="register-company" type="text" class="w-full rounded-xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810]" placeholder="Company name (optional)" />
+                            <input id="register-phone" type="tel" autocomplete="tel" class="w-full rounded-xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810]" placeholder="Phone number (for delivery)" />
+                            <textarea id="register-address" rows="2" class="w-full rounded-xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810] resize-none" placeholder="Delivery address"></textarea>
+                            <button type="submit" class="w-full rounded-xl bg-[#c2410c] hover:bg-[#9a330a] text-white px-4 py-3 text-xs font-extrabold uppercase tracking-wider transition-all">Create account</button>
+                        </form>
+                        <div class="mt-3 flex items-center justify-center">
+                            <button id="back-to-login-btn" type="button" class="text-[10px] font-bold text-[#d4a574] hover:text-[#2b1810] transition-colors">Back to sign in</button>
+                        </div>
+                        <p id="register-hint" class="mt-2 text-[10px] font-bold text-[#d4a574]"></p>
+                    </div>
+
+                    <!-- Login Panel -->
+                    <div id="login-panel" class="panel rounded-3xl p-5 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] uppercase tracking-widest text-[#6b4423] font-extrabold">Returning customers</div>
+                                <div class="text-lg font-extrabold header-font text-[#2b1810] mt-1">Sign in</div>
+                            </div>
+                            <button id="show-register-btn" type="button" class="px-3 py-1.5 rounded-xl bg-[#fde7c8] text-[#2b1810] hover:bg-[#c2410c] hover:text-white text-[10px] font-bold transition-all">New signup</button>
+                        </div>
+
+                        <form id="login-form" class="mt-4 space-y-3">
+                            <input id="login-email" type="email" autocomplete="email" class="w-full rounded-xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810]" placeholder="Email" />
+                            <input id="login-password" type="password" autocomplete="current-password" class="w-full rounded-xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810]" placeholder="Password" />
+                            <button type="submit" class="w-full rounded-xl bg-[#c2410c] hover:bg-[#9a330a] text-white px-4 py-3 text-xs font-extrabold uppercase tracking-wider transition-all">Login</button>
+                        </form>
+                        <p id="auth-hint" class="mt-3 text-[10px] font-bold text-[#d4a574]"></p>
+                    </div>
+
+                    <div id="session-panel" class="panel hidden rounded-3xl p-5 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] uppercase tracking-widest text-[#c2410c] font-extrabold">Logged in</div>
+                                <div id="session-name" class="text-lg font-extrabold header-font text-[#2b1810] mt-1"></div>
+                                <div id="session-company" class="text-xs font-semibold text-[#6b4423] mt-1"></div>
+                            </div>
+                            <button id="logout-btn" class="px-4 py-2 rounded-xl bg-[#fde7c8] text-[#2b1810] hover:bg-[#c2410c] hover:text-white text-xs font-bold transition-all">Logout</button>
+                        </div>
+                        <div id="login-summary" class="mt-3 text-xs font-semibold text-[#6b4423]"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="panel rounded-3xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-bold header-font text-[#2b1810] uppercase tracking-wider">Retail catalog</h2>
+                            <p class="text-xs text-[#6b4423] font-semibold">Login first, then add products to your cart.</p>
+                        </div>
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#6b4423]">Live backend sync</span>
+                    </div>
+                    <div id="catalog-grid" class="grid md:grid-cols-2 gap-4 mt-5"></div>
+                </div>
+
+                <div class="panel rounded-3xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-bold header-font text-[#2b1810] uppercase tracking-wider">Cart & checkout</h2>
+                            <p class="text-xs text-[#6b4423] font-semibold">Checkout saves a new order number to the backend.</p>
+                        </div>
+                        <span class="text-xs font-bold text-[#2b1810]">Sync: <span id="sync-label" class="text-[#6b4423]">waiting</span></span>
+                    </div>
+                    <div id="cart-list" class="space-y-3 mt-5"></div>
+                    <div class="mt-5 pt-4 border-t border-[#d4a574]/25 flex items-center justify-between">
+                        <div class="text-xs font-bold text-[#6b4423] uppercase tracking-wider">Total</div>
+                        <div id="cart-total" class="text-2xl font-headline-md font-extrabold text-[#2b1810]">$0.00</div>
+                    </div>
+                    <div class="mt-4 flex items-center justify-between">
+                        <div id="cart-count" class="text-xs font-bold text-[#d4a574]">0 items</div>
+                        <button id="checkout-btn" data-requires-session="true" class="rounded-xl bg-[#c2410c] hover:bg-[#9a330a] text-white px-5 py-3 text-xs font-extrabold uppercase tracking-wider transition-all">Checkout</button>
+                    </div>
+                </div>
+
+                <div class="panel rounded-3xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-bold header-font text-[#2b1810] uppercase tracking-wider">Orders</h2>
+                            <p class="text-xs text-[#6b4423] font-semibold">Select an order to inspect its delivery timeline.</p>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6 mt-5">
+                        <div id="order-list" class="space-y-3"></div>
+                        <div class="bg-[#fde7c8]/60 rounded-2xl border border-[#d4a574]/20 p-5 space-y-4">
+                            <div>
+                                <div class="text-[10px] uppercase tracking-widest text-[#d4a574] font-extrabold">Selected order</div>
+                                <h3 id="detail-id" class="text-xl font-headline-sm font-extrabold text-[#2b1810] mt-1"></h3>
+                                <p id="detail-client" class="text-xs text-[#6b4423] font-semibold mt-1"></p>
+                                <p id="detail-meta" class="text-[10px] text-[#d4a574] font-semibold mt-2"></p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div class="bg-[#ffffff] rounded-xl p-3 border border-[#d4a574]/20">
+                                    <div class="uppercase tracking-wider text-[#d4a574] font-extrabold text-[10px]">Tracking</div>
+                                    <div id="detail-tracking" class="font-mono font-bold text-[#2b1810] mt-1"></div>
+                                </div>
+                                <div class="bg-[#ffffff] rounded-xl p-3 border border-[#d4a574]/20">
+                                    <div class="uppercase tracking-wider text-[#d4a574] font-extrabold text-[10px]">Status</div>
+                                    <div id="detail-status" class="font-bold text-[#2b1810] mt-1"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-widest text-[#d4a574] font-extrabold mb-3">Backend timeline</div>
+                                <div id="detail-timeline" class="space-y-3"></div>
+                            </div>
+                            <button id="refund-btn" data-requires-session="true" class="hidden w-full mt-4 border border-[#d4a574]/25 bg-red-950 text-[#ffdad6] hover:bg-red-900 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50 text-center">
+                                Raise Refund
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <button id="chat-launcher" data-requires-session="true" type="button" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-[#c2410c] hover:bg-[#9a330a] text-white px-5 py-3 text-xs font-extrabold uppercase tracking-wider shadow-2xl transition-all">
+        <span class="material-symbols-outlined text-[18px]">chat</span>
+        <span>Open support chat</span>
+    </button>
+
+    <div id="chat-backdrop" class="hidden fixed inset-0 z-40 bg-[#ffffff]/80 backdrop-blur-[2px]"></div>
+
+    <section id="chat-drawer" class="space-y-6 fixed bottom-6 right-6 z-50 w-[min(92vw,420px)] max-h-[calc(100vh-3rem)] overflow-hidden opacity-0 translate-y-4 pointer-events-none transition-all duration-200">
+        <div class="panel rounded-3xl p-6 shadow-2xl h-full flex flex-col">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 id="chat-title" class="text-lg font-bold header-font text-[#2b1810] uppercase tracking-wider">B2C support chat</h2>
+                    <p id="chat-subtitle" class="text-xs text-[#6b4423] font-semibold">Select an order to open the support thread.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
+                    <button id="chat-close" type="button" class="rounded-full bg-[#fde7c8] p-2 text-[#2b1810] hover:bg-[#c2410c] hover:text-white transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                </div>
+            </div>
+            <div id="chat-thread" class="space-y-3 mt-5 max-h-[420px] overflow-y-auto pr-1 flex-1"></div>
+            <div class="mt-4 space-y-3">
+                <textarea id="chat-input" data-requires-session="true" rows="4" class="w-full rounded-2xl border border-[#d4a574]/25 bg-[#ffffff]/80 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c2410c]/30 text-[#2b1810]" placeholder="Message retail support..."></textarea>
+                <button id="chat-send" data-requires-session="true" class="w-full rounded-xl bg-[#c2410c] hover:bg-[#9a330a] text-white px-4 py-3 text-xs font-extrabold uppercase tracking-wider transition-all">Send message</button>
+            </div>
+        </div>
+
+        <div class="panel rounded-3xl p-6 shadow-sm">
+            <div class="text-[10px] uppercase tracking-widest text-[#6b4423] font-extrabold">Dedicated staff</div>
+            <div class="text-lg font-extrabold text-[#2b1810] mt-1">Retail Support Team</div>
+            <div class="text-xs font-semibold text-[#6b4423] mt-1">Customer Care</div>
+            <div class="mt-4 rounded-2xl bg-[#ffffff] border border-[#d4a574]/20 p-4 text-xs font-semibold text-[#c2410c]">
+                Backend updates refresh this portal automatically when your order status changes.
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center text-[10px] font-bold text-[#d4a574] uppercase tracking-widest mt-auto py-8">
+        <span>© 2026 EspressGo Coffee Roastery. B2C customer portal.</span>
+    </footer>
+
+    <div id="success-modal" class="hidden fixed inset-0 z-50 bg-[#fff8f0]/80 backdrop-blur-sm flex items-center justify-center px-4">
+        <div class="w-full max-w-md rounded-3xl bg-[#fef3e2] border border-[#d4a574]/25 p-6 shadow-2xl">
+            <div class="w-14 h-14 rounded-2xl bg-[#ffffff] text-[#2b1810] border border-[#d4a574]/25 flex items-center justify-center">
+                <span class="material-symbols-outlined text-3xl font-headline-lg">check_circle</span>
+            </div>
+            <h3 class="text-2xl font-headline-md font-extrabold text-[#2b1810] mt-4 uppercase tracking-wider">Checked out</h3>
+            <p id="success-text" class="text-sm text-[#6b4423] font-semibold mt-2"></p>
+            <div class="mt-4 rounded-2xl bg-[#ffffff] border border-[#d4a574]/20 p-4">
+                <div class="text-[10px] uppercase tracking-widest text-[#d4a574] font-extrabold">New order number</div>
+                <div id="success-order" class="text-xl font-headline-sm font-extrabold text-[#2b1810] mt-1"></div>
+            </div>
+            <button id="success-close" class="mt-5 w-full rounded-xl bg-[#c2410c] hover:bg-[#9a330a] text-white px-4 py-3 text-xs font-extrabold uppercase tracking-wider transition-all">Close</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script defer type="module" src="../customer-portal.js?v=7"></script></script>
+    <script>
+        window.PORTAL_CONFIG = {
+            segment: 'b2c',
+            staff: {
+                name: 'Retail Support',
+                role: 'Retail Support Specialist'
+            },
+            chat: {
+                title: 'B2C support chat',
+                threadLabel: 'support thread',
+                placeholder: 'Message retail support...',
+                emptyState: 'Select a retail order to open the support chat.'
+            },
+            products: []
+        };
+        function bootCustomerPortal() {
+            if (window.EspressGoCustomerPortal) {
+                window.EspressGoCustomerPortal.init(window.PORTAL_CONFIG);
+                // If user came from Sign In button on b2c-login, switch to login panel
+                if (localStorage.getItem('espressgo-show-login') === '1') {
+                    localStorage.removeItem('espressgo-show-login');
+                    const showLoginBtn = document.getElementById('show-register-btn');
+                    if (showLoginBtn) showLoginBtn.click();
+                }
+            } else {
+                setTimeout(bootCustomerPortal, 25);
+            }
+        }
+        window.addEventListener('DOMContentLoaded', bootCustomerPortal);
+    </script>
+</body>
+</html>

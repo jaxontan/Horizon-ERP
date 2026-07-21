@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Customer Timeline & LTV Board | Supply Chain Manager</title>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2?v=20260705b"></script>
+    <script src="/public/js/erp-supabase.js?v=20260705b"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries&v=20260705b"></script>
+    <script src="/components/tailwind-config.js?v=20260705b"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js"></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+
+        body {
+            background-color: #F8FAFC;
+        }
+
+        .timeline-line::before {
+            content: '';
+            position: absolute;
+            top: 24px;
+            bottom: 0;
+            left: 23px;
+            width: 2px;
+            background-color: #E2E8F0;
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+
+<body class="font-body-md text-on-surface">
+
+    <!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top Navigation Header -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">timeline</span>
+                Customer Timeline
+            </h2>
+            <div class="flex items-center gap-4">
+                <button onclick="openNewTicketModal()" class="px-4 py-2 bg-primary text-white hover:bg-opacity-90 rounded-lg text-xs font-bold flex items-center gap-2 transition-all">
+                    <span class="material-symbols-outlined text-[18px]">support_agent</span>
+                    Create Ticket
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="ml-64 pt-20 min-h-[calc(100vh-80px)] p-margin flex flex-col gap-gutter">
+        
+        <!-- Mode Selection Tabs (B2B vs B2C) -->
+        <div class="grid grid-cols-2 gap-4 w-full bg-slate-100/50 p-2 rounded-2xl border border-slate-200 shadow-sm">
+            <button id="tab-b2b" onclick="switchCustomerMode('b2b')" class="flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-headline-sm font-bold text-sm transition-all focus:outline-none">
+                <span class="material-symbols-outlined text-2xl font-headline-md">business</span>
+                <div class="text-left">
+                    <span class="block text-[9px] uppercase tracking-widest opacity-60">Enterprise Portal</span>
+                    <span class="block text-sm">Business</span>
+                </div>
+            </button>
+            <button id="tab-b2c" onclick="switchCustomerMode('b2c')" class="flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-headline-sm font-bold text-sm transition-all focus:outline-none">
+                <span class="material-symbols-outlined text-2xl font-headline-md">person</span>
+                <div class="text-left">
+                    <span class="block text-[9px] uppercase tracking-widest opacity-60">Retail Registry</span>
+                    <span class="block text-sm">Customer</span>
+                </div>
+            </button>
+        </div>
+
+        <!-- Customer Summary Header Profile -->
+        <section class="bg-white border border-outline-variant rounded-xl p-6 shadow-sm">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                <div class="flex items-center gap-5">
+                    <div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center text-primary border-2 border-slate-100 shadow-sm overflow-hidden">
+                        <img id="company-logo" alt="Company Logo" class="w-full h-full object-cover hidden" />
+                        <span id="company-initial" class="text-headline-md font-bold">C</span>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <h2 id="company-name" class="text-headline-md font-headline-md text-primary">Loading Customer...</h2>
+                            <span id="status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                Loading
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap gap-4 mt-2 text-on-surface-variant text-xs font-semibold">
+                            <span class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[16px] text-slate-400">fingerprint</span>
+                                ID: <span id="business-id">...</span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[16px] text-slate-400">mail</span>
+                                <span id="company-email">...</span>
+                            </span>
+                            <span id="phone-container" class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[16px] text-slate-400">call</span>
+                                <span id="company-phone">...</span>
+                            </span>
+                            <span id="address-container" class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[16px] text-slate-400">location_on</span>
+                                <span id="company-address">...</span>
+                            </span>
+                            <span id="sector-container" class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[16px] text-slate-400">category</span>
+                                <span id="company-sector">...</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Customer Selection Dropdown & Quick Navigation Links -->
+                <div class="flex flex-wrap gap-3 items-center">
+                    <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm">
+                        <span class="material-symbols-outlined text-slate-400 text-[18px]">supervised_user_circle</span>
+                        <select id="customer-select" onchange="loadSelectedCustomer(this.value)" class="bg-transparent border-none focus:ring-0 focus:outline-none text-xs font-bold text-slate-700 pr-8 cursor-pointer py-1">
+                            <!-- Options filled dynamically -->
+                        </select>
+                    </div>
+
+                    <a id="link-verification" href="#" class="px-4 py-2 border border-outline-variant hover:bg-slate-50 text-primary font-bold text-xs rounded-xl transition-all flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[18px]">verified</span>
+                        <span>Compliance Status</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Customer Health Scoreboard (LTV Dashboard Metrics) -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-6 w-full">
+            
+            <!-- Lifetime Value (LTV) -->
+            <div class="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex items-center justify-between group transition-all hover:shadow-md">
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Lifetime Value (LTV)</p>
+                    <h3 id="ltv-value" class="text-2xl font-headline-md font-extrabold text-primary">$0.00</h3>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center group-hover:scale-105 transition-all">
+                    <span class="material-symbols-outlined text-[24px]">payments</span>
+                </div>
+            </div>
+
+            <!-- Average Spend / Order -->
+            <div class="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex items-center justify-between group transition-all hover:shadow-md">
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Order Value</p>
+                    <h3 id="aov-value" class="text-2xl font-headline-md font-extrabold text-primary">$0.00</h3>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center group-hover:scale-105 transition-all">
+                    <span class="material-symbols-outlined text-[24px]">analytics</span>
+                </div>
+            </div>
+
+            <!-- Total Orders Volume -->
+            <div class="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex items-center justify-between group transition-all hover:shadow-md">
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Orders</p>
+                    <h3 id="total-orders-count" class="text-2xl font-headline-md font-extrabold text-primary">0</h3>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center group-hover:scale-105 transition-all">
+                    <span class="material-symbols-outlined text-[24px]">shopping_bag</span>
+                </div>
+            </div>
+
+            <!-- Active Support Tickets -->
+            <div class="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex items-center justify-between group transition-all hover:shadow-md">
+                <div class="space-y-1">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Support Alerts</p>
+                    <h3 id="active-tickets-count" class="text-2xl font-headline-md font-extrabold text-slate-700">0 Active</h3>
+                </div>
+                <div id="tickets-badge-icon" class="w-11 h-11 rounded-xl bg-slate-50 text-slate-600 border border-slate-100 flex items-center justify-center group-hover:scale-105 transition-all">
+                    <span class="material-symbols-outlined text-[24px]">contact_support</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Main Work Split: Left (Timeline Feed), Right (Secondary Metadata card) -->
+        <div id="customer-detail-grid" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Side: Interactive Timeline (8 Columns) -->
+            <div class="lg:col-span-8 space-y-6">
+                
+                <!-- Filters and Quick Tabs Header -->
+                <div id="timeline-filters" class="hidden bg-white border border-outline-variant p-4 rounded-xl shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex gap-1.5 w-full sm:w-auto overflow-x-auto">
+                        <button onclick="filterTimeline('all', this)" class="px-4 py-2 bg-primary text-on-primary font-bold text-xs rounded-lg shadow-sm transition-all whitespace-nowrap">
+                            All Events
+                        </button>
+                        <button onclick="filterTimeline('orders', this)" class="px-4 py-2 text-on-surface-variant hover:bg-slate-50 font-bold text-xs rounded-lg transition-all whitespace-nowrap">
+                            Orders
+                        </button>
+                        <button onclick="filterTimeline('tickets', this)" class="px-4 py-2 text-on-surface-variant hover:bg-slate-50 font-bold text-xs rounded-lg transition-all whitespace-nowrap">
+                            Support Tickets
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
+                        <button onclick="openNewTicketModal()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-lg transition-all flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">add_circle</span>
+                            <span>Log Support Ticket</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Core Vertical Timeline Feed -->
+                <div class="relative timeline-line space-y-8 hidden" id="timeline-container">
+                    <!-- Renders timeline feed dynamically -->
+                </div>
+
+            </div>
+
+            <!-- Right Side: Roster overview / details (4 Columns) -->
+            <div class="lg:col-span-4 space-y-6">
+                
+                <!-- Customer Details card -->
+                <div class="bg-white border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-outline-variant bg-slate-50 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[20px]">info</span>
+                        <h3 class="font-extrabold text-xs text-primary uppercase tracking-wider">Account Overview</h3>
+                    </div>
+                    
+                    <div class="p-5 space-y-4 text-xs font-semibold text-on-surface-variant">
+                        <div>
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Legal Entity</span>
+                            <span class="text-primary font-bold text-sm mt-0.5 block" id="legal-entity-type">...</span>
+                        </div>
+                        <div>
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Registration Code</span>
+                            <span class="text-primary font-bold text-sm mt-0.5 block" id="registration-code">...</span>
+                        </div>
+                        <div>
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Headquarters Location</span>
+                            <span class="text-primary font-bold text-sm mt-0.5 block leading-relaxed" id="hq-location">...</span>
+                        </div>
+                        <div>
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Address</span>
+                            <span class="text-primary font-bold text-sm mt-0.5 block leading-relaxed flex items-start gap-1.5" id="customer-address">
+                                <span class="material-symbols-outlined text-[16px] text-slate-400 mt-0.5 flex-shrink-0">location_on</span>
+                                <span id="customer-address-text">...</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Empty State: No Customer Selected -->
+        <div id="timeline-empty-state" class="flex flex-col items-center justify-center py-24 text-center">
+            <div class="w-20 h-20 rounded-full bg-surface-container-low flex items-center justify-center mb-4">
+                <span class="material-symbols-outlined text-[48px] text-outline">person_search</span>
+            </div>
+            <h3 class="text-headline-sm font-headline-sm text-primary mb-2">Select a Customer</h3>
+            <p class="text-body-md text-on-surface-variant max-w-sm">Choose a customer from the dropdown above to view their timeline, order history, and support activity.</p>
+        </div>
+
+    </main>
+
+    <!-- Modal 1: Register Support Ticket -->
+    <div id="new-ticket-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white border border-outline-variant rounded-2xl w-full max-w-md overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col">
+            <div class="px-6 py-4 border-b border-outline-variant bg-[#031635] text-white flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-white text-[20px]">support_agent</span>
+                    <h3 class="font-extrabold text-sm font-headline-sm">Create Support Ticket</h3>
+                </div>
+                <button onclick="closeNewTicketModal()" class="text-white/80 hover:text-white hover:bg-white/10 p-1 rounded transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <form onsubmit="submitNewTicket(event)" class="p-6 space-y-4 text-xs font-bold">
+                <div>
+                    <label class="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">Subject</label>
+                    <input type="text" id="ticket-subject" required placeholder="e.g. Delayed coffee batch delivery" 
+                           class="w-full rounded-xl border-outline-variant focus:border-primary focus:ring-primary text-xs font-bold" />
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">Severity / Priority</label>
+                    <select id="ticket-priority" class="w-full rounded-xl border-outline-variant focus:border-primary focus:ring-primary text-xs font-bold cursor-pointer">
+                        <option value="Critical">Critical Priority</option>
+                        <option value="High" selected>High Priority</option>
+                        <option value="Medium">Medium Priority</option>
+                        <option value="Low">Low Priority</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-500 uppercase tracking-wider mb-1">Detailed Description</label>
+                    <textarea id="ticket-desc" required rows="3" placeholder="Explain support request parameters..." 
+                              class="w-full rounded-xl border-outline-variant focus:border-primary focus:ring-primary text-xs font-bold"></textarea>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-2 border-t border-outline-variant/40">
+                    <button type="button" onclick="closeNewTicketModal()" class="px-4 py-2 border border-outline-variant text-slate-700 hover:bg-slate-50 rounded-lg">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-primary text-white rounded-lg hover:bg-opacity-95 shadow-sm">Log Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: View Invoice details -->
+    <div id="invoice-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white border border-outline-variant rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col">
+            <div class="px-6 py-4 border-b border-outline-variant bg-[#031635] text-white flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-white text-[20px]">receipt</span>
+                    <h3 class="font-extrabold text-sm font-headline-sm">Invoice Audit Sheet</h3>
+                </div>
+                <button onclick="closeInvoiceModal()" class="text-white/80 hover:text-white hover:bg-white/10 p-1 rounded transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 text-xs font-semibold" id="invoice-modal-content">
+                <!-- Filled dynamically -->
+            </div>
+
+            <div class="px-6 py-4 border-t border-outline-variant bg-slate-50 flex justify-end">
+                <button onclick="closeInvoiceModal()" class="px-5 py-2 bg-primary text-white rounded-lg hover:bg-opacity-95 font-bold shadow-sm">Close Audit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Logic Script -->
+    <script>
+        // Supabase Endpoint parameters
+        const supabaseUrl = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseB2CClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let businessId = urlParams.get('id') || '';
+        let customerType = urlParams.get('type') || 'b2b'; // 'b2b' or 'b2c'
+        
+        let customerData = null;
+        let timelineData = [];
+        let currentFilter = 'all';
+
+        let activeB2BList = [];
+        let activeB2CList = [];
+
+        // Map a raw customer_accounts row to the shape the timeline page
+        // expects. The schema has both legacy (arca_number, entity_type,
+        // hq_address, contact) and modern (customer_type, address,
+        // verification_status, document_status) columns, and not every row
+        // populates every field. This helper tolerates either shape.
+        function mapB2BRow(b) {
+            const idKeys = [b.enterprise_id, b.account_id, b.id].filter(Boolean);
+            const statusRaw = (b.status || '').toString().trim();
+            let status = 'Pending';
+            if (statusRaw === 'Active' || b.verification_status === 'verified' || b.verification_status === 'approved' || b.document_status === 'Verified') {
+                status = 'Verified';
+            } else if (statusRaw === 'Rejected' || b.verification_status === 'rejected') {
+                status = 'Rejected';
+            } else if (statusRaw) {
+                status = 'Pending';
+            }
+            return {
+                id: idKeys[0] || b.id,
+                idFallbacks: idKeys,
+                company_name: b.company_name || b.name || 'Unnamed Company',
+                business_id_string: b.arca_number || b.account_id || (b.id ? String(b.id).substring(0, 8).toUpperCase() : ''),
+                email: b.email || '',
+                phone: b.phone || b.contact || '',
+                address: b.address || b.hq_address || b.headquarters_address || '',
+                industry_sector: null,
+                status: status,
+                legal_entity_type: b.entity_type || b.customer_type || 'Wholesale Partner',
+                registration_number: b.arca_number || b.account_id || 'N/A',
+                annual_revenue: 0,
+                headquarters_address: b.hq_address || b.address || 'Singapore'
+            };
+        }
+
+        async function loadCustomerLists() {
+            // Use the server proxy for both list fetches so RLS doesn't strip
+            // rows that the anon key can't see (the proxy uses service-role).
+            try {
+                let data = null;
+                if (typeof window.erpSupabaseAPI === 'function') {
+                    data = await window.erpSupabaseAPI({
+                        table: 'customer_accounts',
+                        operation: 'select',
+                        columns: '*'
+                    });
+                    if (Array.isArray(data)) {
+                        data.sort((a, b) => {
+                            const ta = new Date(a.added_date || a.created_at || 0).getTime();
+                            const tb = new Date(b.added_date || b.created_at || 0).getTime();
+                            return tb - ta;
+                        });
+                    }
+                } else {
+                    const r = await supabaseClient
+                        .from('customer_accounts')
+                        .select('*')
+                        .order('added_date', { ascending: false });
+                    data = r.data;
+                }
+                if (data && data.length > 0) {
+                    activeB2BList = data.map(b => mapB2BRow(b));
+                }
+            } catch (e) {
+                console.warn("Supabase B2B listings failed:", e);
+            }
+
+            try {
+                let data = null;
+                if (typeof window.erpSupabaseAPI === 'function') {
+                    data = await window.erpSupabaseAPI({
+                        table: 'retail_buyers',
+                        operation: 'select',
+                        columns: '*'
+                    });
+                } else {
+                    const r = await supabaseB2CClient.from('retail_buyers').select('*');
+                    data = r.data;
+                }
+                if (data && data.length > 0) {
+                    activeB2CList = data.map(d => {
+                        const idValue = String(d.id || d.email || 'retail-buyer');
+                        const platform = d.platform || 'Retail';
+                        const loyaltyPoints = Number(d.loyalty_points || 0);
+                        return {
+                            id: d.id || idValue,
+                            company_name: d.name || d.email || 'Retail Buyer',
+                            business_id_string: 'B2C-' + idValue.substring(0, 8).toUpperCase(),
+                            email: d.email,
+                            phone: d.phone || '+1 (555) 420-' + idValue.substring(0, 4).toUpperCase(),
+                            address: d.address || d.shipping_address || '',
+                            industry_sector: platform + ' Member',
+                            status: d.status === 'Flagged' ? 'Rejected' : 'Verified',
+                            legal_entity_type: "Individual Retail Buyer",
+                            registration_number: `LOYALTY-${platform.toUpperCase()}-${loyaltyPoints}`,
+                            annual_revenue: loyaltyPoints,
+                            headquarters_address: platform + " Integration Portal",
+                            avatar_url: d.avatar_url
+                        };
+                    });
+                }
+            } catch (e) {
+                console.warn("Supabase B2C listings failed:", e);
+            }
+        }
+
+        // Switch modes between Business (B2B) and Customer (B2C)
+        async function switchCustomerMode(type) {
+            customerType = type;
+
+            const tabB2B = document.getElementById('tab-b2b');
+            const tabB2C = document.getElementById('tab-b2c');
+
+            if (type === 'b2b') {
+                tabB2B.className = "flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-headline-sm font-bold text-sm transition-all shadow-sm bg-primary text-on-primary";
+                tabB2C.className = "flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-headline-sm font-bold text-sm transition-all text-on-surface-variant hover:bg-slate-50";
+
+                const found = activeB2BList.some(b => matchesCustomerId(b, businessId));
+                if (!found && activeB2BList.length > 0) {
+                    businessId = activeB2BList[0].id;
+                }
+            } else {
+                tabB2B.className = "flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-headline-sm font-bold text-sm transition-all text-on-surface-variant hover:bg-slate-50";
+                tabB2C.className = "flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-headline-sm font-bold text-sm transition-all shadow-sm bg-primary text-on-primary";
+
+                const found = activeB2CList.some(s => s.id === businessId);
+                if (!found && activeB2CList.length > 0) {
+                    businessId = activeB2CList[0].id;
+                }
+            }
+
+            await populateCustomerSelectOptions();
+            const ok = await loadCustomerTimelineData();
+
+            if (ok) {
+                document.getElementById('customer-detail-grid').classList.remove('hidden');
+                document.getElementById('timeline-empty-state').classList.add('hidden');
+            }
+        }
+
+        // Compare against any of the row's known identifier columns
+        function matchesCustomerId(row, id) {
+            if (!row || !id) return false;
+            if (row.id === id) return true;
+            if (Array.isArray(row.idFallbacks) && row.idFallbacks.includes(id)) return true;
+            return false;
+        }
+
+        // Show explicit "no match" state when the requested id cannot be resolved
+        function showCustomerNotFound(reason) {
+            const detail = document.getElementById('customer-detail-grid');
+            const empty = document.getElementById('timeline-empty-state');
+            if (detail) detail.classList.add('hidden');
+            if (empty) {
+                empty.classList.remove('hidden');
+                empty.innerHTML = `
+                    <div class="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-4">
+                        <span class="material-symbols-outlined text-[48px] text-red-400">error</span>
+                    </div>
+                    <h3 class="text-headline-sm font-headline-sm text-primary mb-2">Customer not found</h3>
+                    <p class="text-body-md text-on-surface-variant max-w-sm">${reason || 'The requested customer could not be located in this segment.'}</p>
+                    <a href="index.html" class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-opacity-90 transition-all">
+                        <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+                        <span>Back to Customer Directory</span>
+                    </a>
+                `;
+            }
+        }
+
+        // Populate drop-down selector options in real-time
+        async function populateCustomerSelectOptions() {
+            const selectEl = document.getElementById('customer-select');
+            selectEl.innerHTML = '';
+            
+            if (customerType === 'b2b') {
+                activeB2BList.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.innerText = `${b.company_name} (${b.business_id_string})`;
+                    if (b.id === businessId) {
+                        opt.selected = true;
+                    }
+                    selectEl.appendChild(opt);
+                });
+            } else {
+                activeB2CList.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.innerText = `${s.company_name} (${s.business_id_string})`;
+                    if (s.id === businessId) {
+                        opt.selected = true;
+                    }
+                    selectEl.appendChild(opt);
+                });
+            }
+        }
+
+        // Fetch / Load data for specific customer
+        async function loadCustomerTimelineData() {
+            timelineData = [];
+
+            try {
+                if (customerType === 'b2c') {
+                    const buyer = activeB2CList.find(s => s.id === businessId);
+                    if (!buyer) {
+                        showCustomerNotFound(`No B2C buyer matched id "${businessId}".`);
+                        return false;
+                    }
+                    customerData = buyer;
+                    populateHeader(buyer);
+                    
+                    // Fetch real retail_purchases by customer_email
+                    let purchases = [];
+                    try {
+                        let dbPurchases = null;
+                        if (typeof window.erpSupabaseAPI === 'function') {
+                            dbPurchases = await window.erpSupabaseAPI({
+                                table: 'retail_purchases',
+                                operation: 'select',
+                                columns: '*',
+                                filters: { eq: { customer_email: buyer.email } }
+                            });
+                            if (Array.isArray(dbPurchases)) {
+                                dbPurchases.sort((a, b) => {
+                                    const ta = new Date(a.purchase_date || 0).getTime();
+                                    const tb = new Date(b.purchase_date || 0).getTime();
+                                    return tb - ta;
+                                });
+                            }
+                        } else {
+                            const { data } = await supabaseB2CClient
+                                .from('retail_purchases')
+                                .select('*')
+                                .eq('customer_email', buyer.email)
+                                .order('purchase_date', { ascending: false });
+                            dbPurchases = data;
+                        }
+                        if (dbPurchases && dbPurchases.length > 0) {
+                            purchases = dbPurchases;
+                        }
+                    } catch (e) {
+                        console.log("Supabase purchases fetch failed:", e);
+                    }
+                    
+                    if (purchases.length > 0) {
+                        purchases.forEach((p) => {
+                            const dateObj = new Date(p.purchase_date);
+                            const dateStr = dateObj.toISOString().split('T')[0];
+                            const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                            timelineData.push({
+                                id: p.id,
+                                type: 'order',
+                                status: p.status === 'Completed' ? 'Delivered' : 'Active',
+                                step: p.status === 'Completed' ? 4 : 3,
+                                ref: p.purchase_number || '#RET-2026-' + p.id.substring(0, 4).toUpperCase(),
+                                items: p.notes || 'Retail Purchase',
+                                value: Number(p.total_amount) || 0,
+                                date: dateStr,
+                                time: timeStr,
+                                timestamp: p.purchase_date
+                            });
+                        });
+                    } else {
+                        generateB2CTimeline(buyer);
+                    }
+
+                    renderTimeline();
+                    renderHealthCounters();
+                } else {
+                    // Try the in-memory list first
+                    let data = activeB2BList.find(b => matchesCustomerId(b, businessId));
+                    // Fall back to a direct DB query that checks id, account_id
+                    // and enterprise_id in one shot — mirrors what
+                    // customer-verification.html already does, and resolves URLs
+                    // whose id lives in a column the list mapping didn't pick.
+                    if (!data) {
+                        try {
+                            // Prefer the server proxy (service-role key) so RLS
+                            // doesn't strip rows the anon client can't see.
+                            // Try each id column independently since the proxy
+                            // doesn't support OR filters.
+                            console.log('[timeline] trying direct B2B lookup for id:', businessId);
+                            let b = null;
+                            const tryColumn = async (column) => {
+                                if (typeof window.erpSupabaseAPI === 'function') {
+                                    const rows = await window.erpSupabaseAPI({
+                                        table: 'customer_accounts',
+                                        operation: 'select',
+                                        columns: '*',
+                                        filters: { eq: { [column]: businessId } }
+                                    });
+                                    console.log(`[timeline] proxy lookup by ${column}:`, rows);
+                                    return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+                                }
+                                const { data: rows } = await supabaseClient
+                                    .from('customer_accounts')
+                                    .select('*')
+                                    .eq(column, businessId)
+                                    .limit(1);
+                                console.log(`[timeline] anon lookup by ${column}:`, rows);
+                                return rows && rows.length > 0 ? rows[0] : null;
+                            };
+                            b = await tryColumn('account_id')
+                              || await tryColumn('id')
+                              || await tryColumn('enterprise_id');
+                            if (b) {
+                                console.log('[timeline] B2B customer resolved:', b);
+                                data = mapB2BRow(b);
+                            }
+                        } catch (e) {
+                            console.warn("Direct B2B lookup failed:", e);
+                        }
+                    }
+                    if (!data) {
+                        showCustomerNotFound(`No B2B customer matched id "${businessId}".`);
+                        return false;
+                    }
+                    customerData = data;
+                    populateHeader(data);
+                    
+                    // Fetch real B2B orders from Supabase (use server proxy so RLS
+                    // doesn't strip rows the anon key can't see)
+                    let b2bOrders = [];
+                    try {
+                        let dbOrders = null;
+                        const normalizedEmail = String(data.email || '').trim().toLowerCase();
+                        if (typeof window.erpSupabaseAPI === 'function') {
+                            // The proxy `eq` filter is exact-match only; try the canonical
+                            // email first and fall back to a case-insensitive search.
+                            dbOrders = await window.erpSupabaseAPI({
+                                table: 'orders',
+                                operation: 'select',
+                                columns: '*',
+                                filters: { eq: { customer_email: normalizedEmail } }
+                            });
+                            if (Array.isArray(dbOrders) && dbOrders.length === 0 && data.email && data.email !== normalizedEmail) {
+                                dbOrders = await window.erpSupabaseAPI({
+                                    table: 'orders',
+                                    operation: 'select',
+                                    columns: '*',
+                                    filters: { eq: { customer_email: data.email } }
+                                });
+                            }
+                            // The proxy doesn't honor order(); sort client-side.
+                            if (Array.isArray(dbOrders)) {
+                                dbOrders.sort((a, b) => {
+                                    const ta = new Date(a.created_at || 0).getTime();
+                                    const tb = new Date(b.created_at || 0).getTime();
+                                    return tb - ta;
+                                });
+                            }
+                        } else {
+                            let query = supabaseClient
+                                .from('orders')
+                                .select('*')
+                                .ilike('customer_email', normalizedEmail)
+                                .order('created_at', { ascending: false });
+                            const { data: rows } = await query;
+                            dbOrders = rows;
+                        }
+                        if (dbOrders && dbOrders.length > 0) {
+                            b2bOrders = dbOrders;
+                        }
+                    } catch (e) {
+                        console.log("Supabase B2B orders fetch failed:", e);
+                    }
+                    
+                    if (b2bOrders.length > 0) {
+                        b2bOrders.forEach(o => {
+                            const dateObj = new Date(o.created_at);
+                            const dateStr = dateObj.toISOString().split('T')[0];
+                            const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            timelineData.push({
+                                id: o.id,
+                                type: 'order',
+                                status: o.status || 'Active',
+                                step: 4,
+                                ref: o.order_number || '#B2B-' + o.id.substring(0, 4).toUpperCase(),
+                                items: o.items_summary || 'B2B Order',
+                                value: Number(o.total_amount) || 0,
+                                date: dateStr,
+                                time: timeStr,
+                                timestamp: o.created_at
+                            });
+                        });
+                    } else {
+                        generateTimelineHistory(data);
+                    }
+
+                    renderTimeline();
+                    renderHealthCounters();
+                }
+                
+                document.getElementById('timeline-filters').classList.remove('hidden');
+                document.getElementById('timeline-container').classList.remove('hidden');
+                return true;
+            } catch (err) {
+                console.warn("Timeline load failed:", err);
+                return false;
+            }
+        }
+
+        // Dropdown option selected handler
+        function loadSelectedCustomer(id) {
+            businessId = id;
+            Promise.resolve(loadCustomerTimelineData()).then((ok) => {
+                if (ok) {
+                    document.getElementById('customer-detail-grid').classList.remove('hidden');
+                    document.getElementById('timeline-empty-state').classList.add('hidden');
+                }
+            });
+        }
+
+        // Initialize Customer Board
+        async function initPage() {
+            document.getElementById('customer-detail-grid').classList.add('hidden');
+            document.getElementById('timeline-empty-state').classList.remove('hidden');
+            await loadCustomerLists();
+            if (!businessId && activeB2BList.length === 0 && activeB2CList.length > 0) {
+                customerType = 'b2c';
+            }
+            // The ?type= URL param is authoritative when supplied; otherwise
+            // fall back to the heuristic (B2C prefixes, B2C list match).
+            let isB2C;
+            if (customerType === 'b2b') {
+                isB2C = false;
+            } else if (customerType === 'b2c') {
+                isB2C = true;
+            } else {
+                isB2C = activeB2CList.some(s => s.id === businessId)
+                      || businessId.startsWith('B2C_')
+                      || businessId.startsWith('B2C-');
+            }
+            if (isB2C) {
+                await switchCustomerMode('b2c');
+            } else {
+                await switchCustomerMode('b2b');
+            }
+            if (activeB2BList.length === 0 && activeB2CList.length === 0) {
+                document.getElementById('customer-detail-grid').classList.add('hidden');
+                document.getElementById('timeline-empty-state').classList.remove('hidden');
+            } else {
+                document.getElementById('customer-detail-grid').classList.remove('hidden');
+                document.getElementById('timeline-empty-state').classList.add('hidden');
+            }
+        }
+
+        // Display Header properties
+        function populateHeader(b) {
+            document.getElementById('company-name').innerText = b.company_name;
+            document.getElementById('business-id').innerText = b.business_id_string;
+            document.getElementById('company-email').innerText = b.email || 'N/A';
+
+            // Phone chip — hide entirely when missing so we don't show a blank icon
+            const phoneContainer = document.getElementById('phone-container');
+            if (phoneContainer) {
+                if (b.phone && String(b.phone).trim()) {
+                    document.getElementById('company-phone').innerText = b.phone;
+                    phoneContainer.style.display = 'inline-flex';
+                } else {
+                    phoneContainer.style.display = 'none';
+                }
+            }
+
+            // Address chip — same hide-when-empty rule
+            const addressContainer = document.getElementById('address-container');
+            if (addressContainer) {
+                if (b.address && String(b.address).trim()) {
+                    document.getElementById('company-address').innerText = b.address;
+                    addressContainer.style.display = 'inline-flex';
+                } else {
+                    addressContainer.style.display = 'none';
+                }
+            }
+
+            const sectorContainer = document.getElementById('sector-container');
+            if (customerType === 'b2b') {
+                sectorContainer.style.display = 'none';
+            } else {
+                sectorContainer.style.display = 'inline-flex';
+                document.getElementById('company-sector').innerText = b.industry_sector || 'N/A';
+            }
+
+            // Address row in Account Overview
+            const addressBlock = document.getElementById('customer-address');
+            const addressText = document.getElementById('customer-address-text');
+            if (addressBlock && addressText) {
+                if (b.address && String(b.address).trim()) {
+                    addressText.innerText = b.address;
+                    addressBlock.style.display = 'flex';
+                    addressBlock.classList.remove('opacity-50');
+                } else {
+                    addressText.innerText = 'Not provided';
+                    addressBlock.style.display = 'flex';
+                    addressBlock.classList.add('opacity-50');
+                }
+            }
+            
+            // Backlink checks
+            const verificationLink = document.getElementById('link-verification');
+            if (customerType === 'b2c') {
+                verificationLink.href = 'index.html';
+                verificationLink.innerHTML = `<span class="material-symbols-outlined text-[18px]">arrow_back</span><span>Back to Registry</span>`;
+            } else {
+                verificationLink.href = `big-business/customer-verification.html?id=${b.id}`;
+                verificationLink.innerHTML = `<span class="material-symbols-outlined text-[18px]">verified</span><span>Compliance Status</span>`;
+            }
+
+            const logoImg = document.getElementById('company-logo');
+            const logoInitial = document.getElementById('company-initial');
+
+            if (b.logo_url) {
+                logoImg.src = b.logo_url;
+                logoImg.classList.remove('hidden');
+                logoInitial.classList.add('hidden');
+            } else {
+                logoImg.classList.add('hidden');
+                logoInitial.innerText = b.company_name.charAt(0).toUpperCase();
+                logoInitial.classList.remove('hidden');
+            }
+
+            // Compliance status badge
+            const badge = document.getElementById('status-badge');
+            if (b.status === 'Verified') {
+                badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified Shopper`;
+            } else if (b.status === 'Rejected') {
+                badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border uppercase tracking-wider bg-red-50 text-red-700 border-red-200 flex items-center gap-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Account Flagged`;
+            } else {
+                badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border uppercase tracking-wider bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1";
+                badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pending Audit`;
+            }
+
+            // Account overview customization for B2C vs B2B
+            if (customerType === 'b2c') {
+                document.getElementById('legal-entity-type').innerText = "Direct Individual Buyer (B2C)";
+                document.getElementById('registration-code').innerText = "N/A (Retail Shopper)";
+                document.getElementById('hq-location').innerText = b.headquarters_address || 'N/A';
+            } else {
+                document.getElementById('legal-entity-type').innerText = b.legal_entity_type || 'Private Ltd';
+                document.getElementById('registration-code').innerText = b.registration_number || 'N/A';
+                document.getElementById('hq-location').innerText = b.headquarters_address || 'N/A';
+            }
+        }
+
+        // Health Board LTV Metrics calculation
+        function renderHealthCounters() {
+            const orders = timelineData.filter(t => t.type === 'order');
+            const totalSpend = orders.reduce((sum, o) => sum + o.value, 0);
+            const aov = orders.length > 0 ? (totalSpend / orders.length) : 0;
+            const activeTickets = timelineData.filter(t => t.type === 'ticket' && t.status === 'Open').length;
+
+            document.getElementById('ltv-value').innerText = '$' + totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('aov-value').innerText = '$' + aov.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('total-orders-count').innerText = orders.length;
+
+            const tCount = document.getElementById('active-tickets-count');
+            const tBadge = document.getElementById('tickets-badge-icon');
+            tCount.innerText = activeTickets === 0 ? "0 Alerts" : `${activeTickets} Open`;
+            
+            if (activeTickets > 0) {
+                tBadge.className = "w-11 h-11 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center animate-pulse";
+            } else {
+                tBadge.className = "w-11 h-11 rounded-xl bg-slate-50 text-slate-600 border border-slate-100 flex items-center justify-center";
+            }
+        }
+
+        // Generate Custom chronological order B2B history
+        // B2B orders are now fetched from Supabase in loadCustomerTimelineData()
+        function generateTimelineHistory(b) {
+            // No fallback mock data - shows empty state when no orders exist in Supabase
+        }
+
+        // Generate dynamic timeline for B2C Shoppers
+        // B2C purchases are fetched from Supabase retail_purchases table
+        function generateB2CTimeline(b) {
+            // No fallback mock data - shows empty state when no purchases exist in Supabase
+        }
+
+        // (Refund / RMA timeline events removed: returns page no longer exists;
+        // refund coordination happens in the support chat only.)
+
+        // Render Vertical Timeline Feed
+        function renderTimeline() {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+
+            const filtered = timelineData.filter(event => {
+                if (currentFilter === 'all') return true;
+                if (currentFilter === 'orders') return event.type === 'order';
+                if (currentFilter === 'tickets') return event.type === 'ticket';
+                return true;
+            });
+
+            // Sort newest first
+            filtered.sort((a, b) => {
+                const ta = new Date(a.timestamp || (a.date + 'T' + (a.time || '00:00'))).getTime();
+                const tb = new Date(b.timestamp || (b.date + 'T' + (b.time || '00:00'))).getTime();
+                return tb - ta;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white border border-outline-variant p-8 text-center rounded-2xl shadow-sm relative z-10">
+                        <span class="material-symbols-outlined text-[40px] text-slate-400">event_busy</span>
+                        <p class="text-xs font-bold text-slate-500 mt-2">No matching timeline events found.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(event => {
+                const dateObj = new Date(event.timestamp || (event.date + 'T' + (event.time || '00:00')));
+                const formattedDate = isNaN(dateObj.getTime())
+                    ? (event.date || '—')
+                    : dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
+                const cardNode = document.createElement('div');
+                cardNode.className = "flex gap-6 relative z-10 items-start group";
+
+                if (event.type === 'order') {
+                    if (event.status === 'Active') {
+                        // Render Active Order card (interactive progress stepper)
+                        cardNode.innerHTML = `
+                            <div class="w-12 h-12 rounded-full bg-emerald-500 text-white border-4 border-white flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.3)] shrink-0 group-hover:scale-105 transition-all">
+                                <span class="material-symbols-outlined text-[20px]">local_shipping</span>
+                            </div>
+                            
+                            <div class="flex-1 bg-white border-2 border-emerald-500/35 rounded-2xl shadow-md p-5 space-y-4">
+                                <div class="flex justify-between items-start flex-wrap gap-2">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">Active Order</span>
+                                            <span class="text-xs font-bold text-primary">${event.ref}</span>
+                                        </div>
+                                        <h4 class="text-sm font-extrabold text-primary header-font mt-2 leading-snug">${event.items}</h4>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-lg font-extrabold text-emerald-600 block">$${event.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        <span class="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">${formattedDate} • ${event.time}</span>
+                                    </div>
+                                </div>
+ 
+                                <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl space-y-3.5">
+                                    <div class="flex justify-between text-[10px] font-bold text-slate-400">
+                                        <span>Tracking progress</span>
+                                        <span class="text-emerald-600">IN TRANSIT</span>
+                                    </div>
+                                    
+                                    <div class="relative flex items-center justify-between">
+                                        <div class="absolute left-0 right-0 h-1 bg-slate-200 -z-10 rounded"></div>
+                                        <div class="absolute left-0 w-3/4 h-1 bg-emerald-500 -z-10 rounded"></div>
+                                        
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8px] font-extrabold ring-4 ring-emerald-100">✓</div>
+                                            <span class="text-[8px] font-extrabold text-primary mt-1 uppercase">Checkout</span>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8px] font-extrabold ring-4 ring-emerald-100">✓</div>
+                                            <span class="text-[8px] font-extrabold text-primary mt-1 uppercase">Process</span>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8px] font-extrabold ring-4 ring-emerald-100">✓</div>
+                                            <span class="text-[8px] font-extrabold text-primary mt-1 uppercase">Courier</span>
+                                        </div>
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-4 h-4 rounded-full bg-slate-200 border-2 border-slate-300 text-slate-400 flex items-center justify-center text-[8px] font-extrabold">4</div>
+                                            <span class="text-[8px] font-bold text-slate-400 mt-1 uppercase">Delivered</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Render Completed Past Order
+                        cardNode.innerHTML = `
+                            <div class="w-12 h-12 rounded-full bg-blue-500 text-white border-4 border-white flex items-center justify-center shadow-[0_0_8px_rgba(59,130,246,0.2)] shrink-0 group-hover:scale-105 transition-all">
+                                <span class="material-symbols-outlined text-[20px]">task_alt</span>
+                            </div>
+                            
+                            <div class="flex-1 bg-white border border-outline-variant rounded-2xl shadow-sm p-5 hover:border-slate-300 hover:shadow-md transition-all flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-800 border border-blue-200">Completed Purchase</span>
+                                        <span class="text-xs font-bold text-slate-400">${event.ref}</span>
+                                    </div>
+                                    <h4 class="text-xs font-extrabold text-primary header-font mt-2 leading-snug">${event.items}</h4>
+                                    <p class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[12px]">schedule</span>
+                                        <span>Ordered on ${formattedDate} • Stripe Online checkout</span>
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
+                                    <div class="sm:text-right">
+                                        <span class="text-sm font-extrabold text-primary">$${event.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <button onclick="viewInvoiceDetail('${event.ref}', '${event.items}', ${event.value}, '${formattedDate}')" 
+                                            class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-[10px] rounded-lg transition-colors flex items-center gap-0.5 uppercase tracking-wider">
+                                        Receipt
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else if (event.type === 'ticket') {
+                    // Render Support Ticket layout node
+                    const pClass = event.priority === 'Critical' ? 'bg-red-500/10 text-red-500 border-red-500/30'
+                                 : event.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                                 : 'bg-blue-500/10 text-blue-500 border-blue-500/30';
+
+                    const dotBg = event.status === 'Open' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'bg-slate-400';
+
+                    cardNode.innerHTML = `
+                        <div class="w-12 h-12 rounded-full ${dotBg} text-white border-4 border-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-all">
+                            <span class="material-symbols-outlined text-[20px]">${event.status === 'Open' ? 'warning' : 'support_agent'}</span>
+                        </div>
+                        
+                        <div class="flex-1 bg-white border border-outline-variant rounded-2xl shadow-sm p-5 space-y-4 hover:shadow-md transition-all">
+                            <div class="flex justify-between items-start flex-wrap gap-2">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider bg-red-50 text-red-800 border border-red-200">Support Request</span>
+                                        <span class="px-2 py-0.5 rounded text-[8px] font-extrabold border uppercase ${pClass}">${event.priority} Severity</span>
+                                        <span class="text-xs font-bold text-slate-400">${event.ref}</span>
+                                    </div>
+                                    <h4 class="text-sm font-extrabold text-primary header-font mt-2 leading-snug">${event.subject}</h4>
+                                </div>
+                                <div class="text-right">
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold border uppercase ${event.status === 'Open' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-600 border-slate-200'}">
+                                        ${event.status}
+                                    </span>
+                                    <span class="text-[9px] font-bold text-slate-400 block uppercase tracking-wider mt-1.5">${formattedDate} • ${event.time}</span>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-on-surface-variant font-medium leading-relaxed bg-slate-50 border border-slate-100/50 p-3 rounded-xl">
+                                ${event.desc}
+                            </p>
+
+                            <div class="flex justify-between items-center flex-wrap gap-3 border-t border-outline-variant/40 pt-3 text-[10px] font-bold text-slate-500">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[15px]">badge</span>
+                                    <span>Agent Log: <b class="text-primary font-bold">${event.agentNotes || 'No notes yet'}</b></span>
+                                </div>
+                                ${event.status === 'Open' ? `
+                                    <button onclick="resolveSupportTicket('${event.id}')"
+                                            class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-colors flex items-center gap-0.5">
+                                        <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                                        <span>Mark Resolved</span>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                container.appendChild(cardNode);
+            });
+        }
+
+        // Filter timeline events
+        function filterTimeline(type, button) {
+            currentFilter = type;
+
+            const buttons = button.parentNode.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.className = "px-4 py-2 text-on-surface-variant hover:bg-slate-50 font-bold text-xs rounded-lg transition-all whitespace-nowrap";
+            });
+
+            button.className = "px-4 py-2 bg-primary text-on-primary font-bold text-xs rounded-lg shadow-sm transition-all whitespace-nowrap";
+            renderTimeline();
+        }
+
+        // Show Invoice / Receipt Details Modal
+        function viewInvoiceDetail(ref, items, value, date) {
+            const content = document.getElementById('invoice-modal-content');
+            const hq = customerData.headquarters_address || "Customer Address";
+
+            if (customerType === 'b2c') {
+                content.innerHTML = `
+                    <div class="flex justify-between border-b border-slate-200 pb-4">
+                        <div>
+                            <h4 class="text-sm font-extrabold text-primary header-font">EspressGo D2C Store</h4>
+                            <p class="text-[9px] text-slate-500 font-semibold mt-1">Stripe Online checkout Gateway<br/>shop@espressgo.com</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-lg font-extrabold text-slate-400 block">RECEIPT</span>
+                            <span class="text-[10px] font-bold text-slate-800 block mt-1">Ref: ${ref}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Customer Details:</span>
+                        <h5 class="font-extrabold text-primary text-xs mt-0.5">${customerData.company_name}</h5>
+                        <p class="text-[9px] text-slate-500 font-semibold leading-relaxed mt-1">${hq}</p>
+                    </div>
+
+                    <table class="w-full border-t border-b border-slate-200 py-3 text-left">
+                        <thead>
+                            <tr class="text-[9px] uppercase font-bold text-slate-400">
+                                <th class="py-2">Item Details</th>
+                                <th class="py-2 text-right">Quantity</th>
+                                <th class="py-2 text-right">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="text-xs font-semibold text-primary">
+                                <td class="py-2.5 max-w-[240px] truncate">${items}</td>
+                                <td class="py-2.5 text-right font-bold text-slate-500">1x</td>
+                                <td class="py-2.5 text-right font-extrabold">$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="flex justify-between pt-2">
+                        <div class="text-[10px] text-emerald-600 font-extrabold">
+                            +${Math.floor(value / 2)} Loyalty Points accrued
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Total Paid</span>
+                            <span class="text-xl font-headline-sm font-extrabold text-primary block">$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })} USD</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const taxCode = customerData.registration_number || "REG-991244";
+                content.innerHTML = `
+                    <div class="flex justify-between border-b border-slate-200 pb-4">
+                        <div>
+                            <h4 class="text-sm font-extrabold text-primary header-font">EspressGo Wholesale Shipping</h4>
+                            <p class="text-[9px] text-slate-500 font-semibold mt-1">74 Barista Lane, Seattle, WA 98101<br/>invoices@espressgo.com</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-lg font-extrabold text-slate-400 block">INVOICE</span>
+                            <span class="text-[10px] font-bold text-slate-800 block mt-1">Ref: ${ref}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Billed To:</span>
+                            <h5 class="font-extrabold text-primary text-xs mt-0.5">${customerData.company_name}</h5>
+                            <p class="text-[9px] text-slate-500 font-semibold leading-relaxed mt-1">${hq}<br/>VAT Code: ${taxCode}</p>
+                        </div>
+                        <div class="text-right text-[10px]">
+                            <p class="text-slate-400 font-bold">Issue Date: <span class="text-primary font-extrabold">${date}</span></p>
+                            <p class="text-slate-400 font-bold mt-1">Payment Method: <span class="text-primary font-extrabold">B2B Corporate Net-30</span></p>
+                        </div>
+                    </div>
+
+                    <table class="w-full border-t border-b border-slate-200 py-3 text-left">
+                        <thead>
+                            <tr class="text-[9px] uppercase font-bold text-slate-400">
+                                <th class="py-2">Description of Supply</th>
+                                <th class="py-2 text-right">Fulfillment</th>
+                                <th class="py-2 text-right">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="text-xs font-semibold text-primary">
+                                <td class="py-2.5">${items}</td>
+                                <td class="py-2.5 text-right font-extrabold text-blue-600">Standard Bulk</td>
+                                <td class="py-2.5 text-right font-extrabold">$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="flex justify-end pt-2">
+                        <div class="text-right">
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Subtotal Due</span>
+                            <span class="text-xl font-headline-sm font-extrabold text-primary block">$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })} USD</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const modal = document.getElementById('invoice-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.transform').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeInvoiceModal() {
+            const modal = document.getElementById('invoice-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('.transform').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function openNewTicketModal() {
+            const modal = document.getElementById('new-ticket-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.transform').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeNewTicketModal() {
+            const modal = document.getElementById('new-ticket-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('.transform').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function submitNewTicket(e) {
+            e.preventDefault();
+
+            const subject = document.getElementById('ticket-subject').value;
+            const priority = document.getElementById('ticket-priority').value;
+            const desc = document.getElementById('ticket-desc').value;
+
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const eventTimestamp = `${dateStr} ${timeStr}`;
+
+            const newTicket = {
+                id: 'TCK_NEW_' + Date.now(),
+                type: 'ticket',
+                status: 'Open',
+                ref: '#TCK-2026-99' + String(timelineData.length).padStart(2, '0'),
+                subject: subject,
+                desc: desc,
+                priority: priority,
+                agentNotes: "Awaiting support agent pickup",
+                date: dateStr,
+                time: timeStr,
+                timestamp: eventTimestamp
+            };
+
+            timelineData.unshift(newTicket);
+            renderTimeline();
+            renderHealthCounters();
+            closeNewTicketModal();
+            
+            document.getElementById('ticket-subject').value = '';
+            document.getElementById('ticket-desc').value = '';
+        }
+
+        function resolveSupportTicket(ticketId) {
+            timelineData = timelineData.map(event => {
+                if (event.id === ticketId) {
+                    return { ...event, status: 'Resolved', agentNotes: 'Resolved instantly by HR/Manager Override' };
+                }
+                return event;
+            });
+
+            renderTimeline();
+            renderHealthCounters();
+        }
+
+        // Load Page
+        window.addEventListener('DOMContentLoaded', () => {
+            initPage();
+        });
+    </script>
+</body>
+
+</html>

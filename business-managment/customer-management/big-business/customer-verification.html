@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Customer Master File &amp; Verification | Supply Chain Manager</title>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800"
+        rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js"></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+
+        body {
+            background-color: #F8FAFC;
+        }
+
+        .sidebar-active {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 0.75rem !important; }
+        }
+    </style>
+</head>
+
+<body class="font-body-md text-on-surface">
+    <!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">verified_user</span>
+                Customer Verification
+            </h2>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2 text-[11px] font-bold text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    KYC Verification · Live
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="ml-64 pt-20 min-h-[calc(100vh-80px)] p-margin flex flex-col gap-gutter">
+        <!-- Customer Profile Header -->
+        <section class="bg-white border border-outline-variant rounded-xl p-stack-lg shadow-sm">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-stack-md">
+                <div class="flex items-center gap-stack-lg">
+                    <div
+                        class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center text-primary border-2 border-white shadow-sm overflow-hidden">
+                        <img id="company-logo" alt="Company Logo" class="w-full h-full object-cover" src=""
+                            style="display:none;" />
+                        <span id="company-initial" class="text-headline-md font-bold hidden"></span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h2 id="company-name" class="text-headline-md font-headline-md text-primary">Loading...</h2>
+                            <span id="status-badge-container"
+                                class="px-3 py-1 bg-surface-variant text-on-surface-variant rounded-xl text-label-md font-label-md flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]" data-icon="sync">sync</span>
+                                Loading
+                            </span>
+                        </div>
+                        <div class="flex gap-stack-lg mt-1 text-on-surface-variant">
+                            <span class="flex items-center gap-1 text-label-md font-label-md">
+                                <span class="material-symbols-outlined text-[16px]"
+                                    data-icon="fingerprint">fingerprint</span>
+                                ID: <span id="business-id">...</span>
+                            </span>
+                            <span class="flex items-center gap-1 text-label-md font-label-md">
+                                <span class="material-symbols-outlined text-[16px]" data-icon="mail">mail</span>
+                                <span id="company-email">...</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="window.location.href=`../customer-timeline.html?id=${businessId}`"
+                        class="px-4 py-2 bg-primary text-on-primary font-bold text-xs rounded-xl hover:bg-opacity-95 shadow-sm transition-all flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[18px]">timeline</span>
+                        <span>View Customer Timeline</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+        <!-- Two Column Layout: Details and Checklist -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter items-start">
+            <!-- Left: Company Details -->
+            <div class="lg:col-span-2 space-y-gutter">
+                <!-- Recent Documents Section -->
+                <div class="bg-white border border-outline-variant rounded-xl overflow-hidden">
+                    <div class="px-stack-lg py-4 border-b border-outline-variant bg-surface-container-low">
+                        <h3 class="text-label-md font-label-md text-primary flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[20px]"
+                                data-icon="folder_shared">folder_shared</span>
+                            UPLOADED DOCUMENTATION
+                        </h3>
+                    </div>
+                    <div id="document-list" class="divide-y divide-outline-variant">
+                        <div class="p-4 text-center text-on-surface-variant font-bold">Loading documents...</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Right: Verification Procedure -->
+            <div class="bg-white border border-outline-variant rounded-xl shadow-sm flex flex-col">
+                <div class="p-stack-lg border-b border-outline-variant bg-primary text-on-primary">
+                    <h3 class="text-headline-sm font-headline-sm">Verification Logic</h3>
+                    <p class="text-label-md font-label-md opacity-80">Audit required by 18 Oct 2024</p>
+                </div>
+                <div class="p-stack-lg space-y-gutter flex-1">
+                    <!-- Checklist Item 1 -->
+                    <div class="flex gap-4 group">
+                        <div class="flex flex-col items-center">
+                            <div class="w-6 h-6 rounded-full border-2 border-outline flex items-center justify-center transition-colors"
+                                id="check-1-dot">
+                                <span class="material-symbols-outlined text-[16px] hidden" data-icon="check"
+                                    id="check-1-icon">check</span>
+                            </div>
+                            <div class="w-[2px] flex-1 bg-outline-variant/30 my-2"></div>
+                        </div>
+                        <div class="flex-1 pb-gutter">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-body-md font-bold text-primary">Credit Score Check</p>
+                                    <p class="text-label-md font-label-md text-on-surface-variant">Reference: Dun &amp;
+                                        Bradstreet</p>
+                                </div>
+                                <span class="text-label-md font-label-md text-on-surface-variant"
+                                    id="status-1">Pending</span>
+                            </div>
+                            <button
+                                class="mt-2 px-3 py-1 border border-primary text-primary text-label-md font-label-md rounded-lg hover:bg-primary/5 transition-colors"
+                                onclick="toggleVerification(1)">Mark as Checked</button>
+                        </div>
+                    </div>
+                    <!-- Checklist Item 2 -->
+                    <div class="flex gap-4 group">
+                        <div class="flex flex-col items-center">
+                            <div class="w-6 h-6 rounded-full border-2 border-outline flex items-center justify-center transition-colors"
+                                id="check-2-dot">
+                                <span class="material-symbols-outlined text-[16px] hidden" data-icon="check"
+                                    id="check-2-icon">check</span>
+                            </div>
+                            <div class="w-[2px] flex-1 bg-outline-variant/30 my-2"></div>
+                        </div>
+                        <div class="flex-1 pb-gutter">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-body-md font-bold text-primary">Normal Company Operation Audit</p>
+                                    <p class="text-label-md font-label-md text-on-surface-variant">Physical site visit
+                                        or digital footprint</p>
+                                </div>
+                                <span class="text-label-md font-label-md text-on-surface-variant"
+                                    id="status-2">Pending</span>
+                            </div>
+                            <button
+                                class="mt-2 px-3 py-1 border border-primary text-primary text-label-md font-label-md rounded-lg hover:bg-primary/5 transition-colors"
+                                onclick="toggleVerification(2)">Mark as Checked</button>
+                        </div>
+                    </div>
+                    <!-- Checklist Item 3 -->
+                    <div class="flex gap-4 group">
+                        <div class="flex flex-col items-center">
+                            <div class="w-6 h-6 rounded-full border-2 border-outline flex items-center justify-center transition-colors"
+                                id="check-3-dot">
+                                <span class="material-symbols-outlined text-[16px] hidden" data-icon="check"
+                                    id="check-3-icon">check</span>
+                            </div>
+                            <div class="w-[2px] flex-1 bg-outline-variant/30 my-2"></div>
+                        </div>
+                        <div class="flex-1 pb-gutter">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-body-md font-bold text-primary">Compliance &amp; Legal Verification
+                                    </p>
+                                    <p class="text-label-md font-label-md text-on-surface-variant">AML and sanctions
+                                        screening</p>
+                                </div>
+                                <span class="text-label-md font-label-md text-on-surface-variant"
+                                    id="status-3">Pending</span>
+                            </div>
+                            <button
+                                class="mt-2 px-3 py-1 border border-primary text-primary text-label-md font-label-md rounded-lg hover:bg-primary/5 transition-colors"
+                                onclick="toggleVerification(3)">Mark as Checked</button>
+                        </div>
+                    </div>
+                    <!-- Checklist Item 4 -->
+                    <div class="flex gap-4 group">
+                        <div class="flex flex-col items-center">
+                            <div class="w-6 h-6 rounded-full border-2 border-outline flex items-center justify-center transition-colors"
+                                id="check-4-dot">
+                                <span class="material-symbols-outlined text-[16px] hidden" data-icon="check"
+                                    id="check-4-icon">check</span>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-body-md font-bold text-primary">Tax Residency Certificate Review</p>
+                                    <p class="text-label-md font-label-md text-on-surface-variant">Validation of
+                                        uploaded document #EU-88</p>
+                                </div>
+                                <span class="text-label-md font-label-md text-on-surface-variant"
+                                    id="status-4">Pending</span>
+                            </div>
+                            <button
+                                class="mt-2 px-3 py-1 border border-primary text-primary text-label-md font-label-md rounded-lg hover:bg-primary/5 transition-colors"
+                                onclick="toggleVerification(4)">Mark as Checked</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Progress Footer -->
+                <div class="p-stack-lg bg-surface-container-low border-t border-outline-variant">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-label-md font-label-md text-on-surface-variant">Overall Progress</span>
+                        <span class="text-label-md font-label-md text-primary" id="progress-text">0%</span>
+                    </div>
+                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+                        <div class="h-full bg-secondary w-0 transition-all duration-500" id="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Final Decision Action Bar -->
+        <div
+            class="sticky bottom-margin mt-auto bg-primary shadow-2xl rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-stack-lg border border-on-primary/10">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-on-primary">
+                    <span class="material-symbols-outlined text-[28px]" data-icon="verified_user">verified_user</span>
+                </div>
+                <div>
+                    <h4 class="text-headline-sm font-headline-sm text-on-primary">Verification Decision Required</h4>
+                    <p class="text-label-md font-label-md text-on-primary/70">Complete all audit steps before final
+                        approval</p>
+                </div>
+            </div>
+            <div class="flex gap-stack-lg w-full md:w-auto">
+                <button
+                    class="flex-1 md:flex-none px-8 py-3 bg-error text-on-error rounded-xl font-headline-sm text-headline-sm hover:opacity-90 transition-opacity"
+                    onclick="handleDecision('reject')">Reject Request</button>
+                <button
+                    class="flex-1 md:flex-none px-8 py-3 bg-[#10B981] text-on-primary rounded-xl font-headline-sm text-headline-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                    onclick="handleDecision('approve')">
+                    <span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+                    Approve Request
+                </button>
+            </div>
+        </div>
+    </main>
+    <script>
+        // Supabase Setup
+        const supabaseUrl = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let businessId = urlParams.get('id');
+        if (!businessId) {
+            const emptyState = document.getElementById('timeline-empty-state');
+            if (emptyState) emptyState.classList.remove('hidden');
+            const mainContent = document.querySelector('.flex-1');
+            if (mainContent) mainContent.classList.add('hidden');
+        }
+        let currentBusiness = null;
+
+        const verifiedStates = { 1: false, 2: false, 3: false, 4: false };
+
+        function escapeHtml(s) {
+            if (s === null || s === undefined) return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // 1 → First, 2 → Second, 3 → Third, … used for "(third upload)" labels.
+        function ordinal(n) {
+            const s = ['th', 'st', 'nd', 'rd'];
+            const v = n % 100;
+            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        }
+
+        async function loadData() {
+            if (!businessId) return;
+            try {
+                // Fetch Business — try account_id first, then fall back to id
+                const { data: bData, error: bErr } = await supabaseClient
+                    .from('customer_accounts')
+                    .select('*')
+                    .or(`account_id.eq.${businessId},id.eq.${businessId}`)
+                    .maybeSingle();
+                if (bErr) throw bErr;
+                if (!bData) {
+                    alert("Customer record not found in database.");
+                    return;
+                }
+                currentBusiness = bData;
+
+                // Populate Header
+                document.getElementById('company-name').innerText = bData.company_name || 'Unknown Company';
+                document.getElementById('business-id').innerText = bData.account_id || bData.id?.substring(0, 8) || bData.company_name?.charAt(0) || 'N/A';
+                document.getElementById('company-email').innerText = bData.email || 'N/A';
+
+                // Set Logo
+                const logoImg = document.getElementById('company-logo');
+                const logoInitial = document.getElementById('company-initial');
+                logoImg.style.display = 'none';
+                if (bData.company_name && bData.company_name.length > 0) {
+                    logoInitial.innerText = bData.company_name.charAt(0).toUpperCase();
+                    logoInitial.classList.remove('hidden');
+                } else {
+                    logoInitial.innerText = '?';
+                    logoInitial.classList.remove('hidden');
+                }
+
+                // Set Badge
+                const badgeContainer = document.getElementById('status-badge-container');
+                const status = bData.status;
+                const verStatus = bData.verification_status;
+                const cleanStatus = (status === 'Active' || verStatus === 'approved') ? 'Verified' : (status === 'Rejected' || verStatus === 'rejected') ? 'Rejected' : 'Pending';
+                if (cleanStatus === 'Verified') {
+                    badgeContainer.className = "px-3 py-1 bg-[#ECFDF5] text-[#047857] rounded-xl text-label-md font-label-md flex items-center gap-1 border border-[#A7F3D0]";
+                    badgeContainer.innerHTML = `<span class="material-symbols-outlined text-[14px]">check_circle</span> Verified`;
+                } else if (cleanStatus === 'Rejected') {
+                    badgeContainer.className = "px-3 py-1 bg-[#FEF2F2] text-[#B91C1C] rounded-xl text-label-md font-label-md flex items-center gap-1 border border-[#FECACA]";
+                    badgeContainer.innerHTML = `<span class="material-symbols-outlined text-[14px]">cancel</span> Rejected`;
+                } else {
+                    badgeContainer.className = "px-3 py-1 bg-[#FFF7ED] text-[#C2410C] rounded-xl text-label-md font-label-md flex items-center gap-1 border border-[#FED7AA]";
+                    badgeContainer.innerHTML = `<span class="material-symbols-outlined text-[14px]">pending</span> Pending Verification`;
+                }
+
+                // Fetch Documents — use b2b_documents linked to customer_accounts
+                const { data: b2bDocs } = await supabaseClient
+                    .from('b2b_documents')
+                    .select('*')
+                    .eq('customer_id', bData.id);
+
+                let documents = b2bDocs || [];
+
+                const docList = document.getElementById('document-list');
+                docList.innerHTML = '';
+                if (documents.length > 0) {
+                    // Group all submissions by document_type so the manager can
+                    // see the full upload history. Most recent submission per
+                    // type is the "active" one and highlighted; older attempts
+                    // are tagged (first upload), (second upload), … in
+                    // chronological order.
+                    const grouped = {};
+                    documents.forEach(d => {
+                        const type = d.document_type || d.doc_name || 'other';
+                        if (!grouped[type]) grouped[type] = [];
+                        grouped[type].push(d);
+                    });
+
+                    Object.entries(grouped).forEach(([type, docs]) => {
+                        // Sort oldest → newest so attempt # is stable
+                        const sorted = docs.slice().sort((a, b) => {
+                            const da = new Date(a.created_at || a.upload_date || 0).getTime();
+                            const db = new Date(b.created_at || b.upload_date || 0).getTime();
+                            return da - db;
+                        });
+                        const docName = type || 'Unnamed Document';
+                        const headerHtml = `
+                            <div class="p-4 bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <span class="material-symbols-outlined text-on-surface-variant">folder</span>
+                                    <span class="text-label-md font-label-md uppercase tracking-wider text-on-surface-variant">${escapeHtml(docName.replace(/_/g, ' '))}</span>
+                                </div>
+                                <span class="text-label-md font-label-md text-on-surface-variant">${sorted.length} submission${sorted.length === 1 ? '' : 's'}</span>
+                            </div>
+                        `;
+                        const rowsHtml = sorted.map((doc, idx) => {
+                            const attempt = idx + 1;
+                            const isLatest = idx === sorted.length - 1;
+                            const attemptLabel = isLatest
+                                ? `Latest submission (attempt #${attempt})`
+                                : `Previous attempt (${ordinal(attempt)}) upload`;
+                            const url = doc.file_url || '#';
+                            const uploadedAt = doc.created_at || doc.upload_date;
+                            const ts = uploadedAt ? new Date(uploadedAt).toLocaleString() : '—';
+                            const fileName = (doc.notes || doc.doc_name || `${docName}.pdf`).toString();
+                            return `
+                                <div class="p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors group cursor-pointer ${isLatest ? 'bg-[#ECFDF5]/40' : ''}" onclick="window.open('${escapeHtml(url)}', '_blank')">
+                                    <div class="flex items-center gap-4 min-w-0">
+                                        <div class="w-10 h-10 ${isLatest ? 'bg-[#10B981]/15 text-[#047857]' : 'bg-error-container text-error'} rounded flex items-center justify-center shrink-0">
+                                            <span class="material-symbols-outlined">picture_as_pdf</span>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <p class="text-body-md font-body-md font-bold text-primary truncate">${escapeHtml(fileName)}</p>
+                                                ${isLatest ? '<span class="px-2 py-0.5 bg-[#ECFDF5] text-[#047857] rounded-md text-[10px] font-bold uppercase tracking-wider border border-[#A7F3D0]">Active</span>' : ''}
+                                            </div>
+                                            <p class="text-label-md font-label-md text-on-surface-variant truncate">
+                                                ${attemptLabel} · ${escapeHtml(ts)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        docList.innerHTML += `
+                            <div class="border-b last:border-b-0 border-outline-variant">
+                                ${headerHtml}
+                                ${rowsHtml}
+                            </div>
+                        `;
+                    });
+                } else {
+                    docList.innerHTML = '<div class="p-4 text-center text-on-surface-variant font-bold">No documents found.</div>';
+                }
+
+                // Load verification state from customer_accounts
+                const verificationStatus = bData.verification_status;
+                const documentStatus = bData.document_status;
+                if (documentStatus === 'Verified') forceToggle(4, true);
+                if (verificationStatus === 'approved') {
+                    forceToggle(1, true);
+                    forceToggle(2, true);
+                    forceToggle(3, true);
+                }
+
+            } catch (err) {
+                console.warn("Error loading verification data", err);
+                alert("Failed to load customer data from database.");
+            }
+        }
+
+        async function ensureAuthenticated() {
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) {
+                    console.log("No active Supabase session.");
+                }
+            } catch (e) {
+                console.log("Auto-login failed:", e);
+            }
+        }
+
+        function forceToggle(id, state) {
+            verifiedStates[id] = state;
+            updateChecklistUI(id);
+        }
+
+        async function toggleVerification(id) {
+            verifiedStates[id] = !verifiedStates[id];
+            updateChecklistUI(id);
+
+            // Save state to Supabase
+            try {
+                await ensureAuthenticated();
+                const allChecked = Object.values(verifiedStates).every(Boolean);
+                const anyChecked = Object.values(verifiedStates).some(Boolean);
+                const pk = currentBusiness?.id || businessId;
+                await supabaseClient.from('customer_accounts')
+                    .update({
+                        document_status: allChecked ? 'Verified' : (anyChecked ? 'Partial' : 'Pending'),
+                    })
+                    .eq('id', pk);
+            } catch (e) {
+                console.warn("Failed to save checkbox state", e);
+            }
+        }
+
+        function updateChecklistUI(id) {
+            const dot = document.getElementById(`check-${id}-dot`);
+            const icon = document.getElementById(`check-${id}-icon`);
+            const status = document.getElementById(`status-${id}`);
+
+            if (verifiedStates[id]) {
+                dot.classList.remove('border-outline');
+                dot.classList.add('bg-[#10B981]', 'border-[#10B981]', 'text-white');
+                icon.classList.remove('hidden');
+                status.innerText = 'Verified';
+                status.classList.remove('text-on-surface-variant');
+                status.classList.add('text-[#10B981]', 'font-bold');
+            } else {
+                dot.classList.add('border-outline');
+                dot.classList.remove('bg-[#10B981]', 'border-[#10B981]', 'text-white');
+                icon.classList.add('hidden');
+                status.innerText = 'Pending';
+                status.classList.add('text-on-surface-variant');
+                status.classList.remove('text-[#10B981]', 'font-bold');
+            }
+
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const total = 4;
+            const completed = Object.values(verifiedStates).filter(v => v === true).length;
+            const percentage = (completed / total) * 100;
+
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            document.getElementById('progress-text').innerText = Math.round(percentage) + '%';
+        }
+
+        async function handleDecision(type) {
+            const completed = Object.values(verifiedStates).filter(v => v === true).length;
+            if (completed < 4 && type === 'approve') {
+                alert('Incomplete Verification: All checklist items must be verified before approval.');
+                return;
+            }
+
+            const newStatus = type === 'approve' ? 'Active' : 'Rejected';
+            const verStatus = type === 'approve' ? 'approved' : 'rejected';
+
+            // For rejections, ask the manager for a short note that will go
+            // into the customer email so they know what to fix.
+            let rejectionReason = '';
+            if (type === 'reject') {
+                rejectionReason = (window.prompt(
+                    'Optional: short note for the customer explaining the rejection (will be included in their email).',
+                    ''
+                ) || '').trim();
+            }
+
+            try {
+                await ensureAuthenticated();
+                const pk = currentBusiness?.id || businessId;
+                const { error: updateError } = await supabaseClient.from('customer_accounts')
+                    .update({
+                        status: newStatus,
+                        verification_status: verStatus,
+                        document_status: type === 'approve' ? 'Verified' : 'Rejected'
+                    })
+                    .eq('id', pk);
+
+                if (updateError) throw updateError;
+
+                // Also sync email-based lookup for the customer portal
+                const companyEmail = document.getElementById('company-email').innerText;
+                if (companyEmail && companyEmail !== '...') {
+                    try {
+                        await fetch('/api/supabase', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                table: 'customer_accounts',
+                                operation: 'update',
+                                data: { verification_status: verStatus, updated_at: new Date().toISOString() },
+                                filters: { eq: { email: companyEmail } }
+                            })
+                        });
+                    } catch (e) {
+                        console.warn('Could not update customer_accounts verification status:', e);
+                    }
+                }
+
+                // Notify the customer via email so they know the outcome.
+                // Best-effort — the DB update is the source of truth.
+                if (companyEmail && companyEmail !== '...') {
+                    try {
+                        await fetch('/api/customer-verification/notify-decision', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                decision: type,
+                                customerEmail: companyEmail,
+                                companyName: currentBusiness?.company_name || document.getElementById('company-name').innerText || 'Customer',
+                                businessId: pk,
+                                reason: rejectionReason,
+                            })
+                        });
+                    } catch (e) {
+                        console.warn('Could not send verification decision email:', e);
+                    }
+                }
+
+                alert(`Status successfully updated to ${newStatus}`);
+                window.location.reload();
+            } catch (e) {
+                alert("Error updating decision: " + e.message);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+
+</html>

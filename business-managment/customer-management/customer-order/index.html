@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Enterprise Orders (B2B) | EspressGo</title>
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<script src="/public/js/rbac.js?v=20250701"></script>
+  <script src="/components/sidebar.js"></script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+/* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+        main { margin-left: 0 !important; width: 100% !important; padding: 1.5rem !important; }
+        header { left: 0 !important; width: 100% !important; }
+        [class*="ml-64"] { margin-left: 0 !important; }
+        [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+    }
+    @media (max-width: 768px) {
+        main { padding: 1rem !important; }
+        .grid { grid-template-columns: 1fr !important; }
+        .grid-cols-2 { grid-template-columns: 1fr !important; }
+        .flex-wrap { flex-wrap: wrap !important; }
+        table { font-size: 12px !important; }
+    }
+    @media (max-width: 480px) {
+        main { padding: 0.75rem !important; }
+    }
+  </style>
+</head>
+
+<body class="bg-background text-on-surface font-body-md selection:bg-secondary-container antialiased">
+  <app-sidebar layout="fixed"></app-sidebar>
+
+  <!-- Top App Bar -->
+  <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+    <div class="flex items-center justify-between w-full h-full">
+      <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined text-[22px]">business</span>
+        Enterprise Orders (B2B)
+      </h2>
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2 text-[11px] font-bold text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          B2B Orders · Live
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="ml-64 pt-20 min-h-[calc(100vh-80px)]">
+    <!-- Canvas Area -->
+    <div class="p-8 space-y-6">
+      <!-- Header Section with Segment Switcher -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+        <div>
+          <h2 id="orders-title" class="text-3xl font-bold font-headline-lg text-primary mb-1">Enterprise Orders (B2B)</h2>
+          <p id="orders-desc" class="font-body-md text-on-surface-variant opacity-80">Track and manage corporate wholesale distribution and bulk cargo orders.</p>
+        </div>
+        
+        <!-- B2B vs B2C Segment Control Switcher -->
+        <div class="bg-slate-100 border border-slate-200 rounded-xl p-1 flex gap-1 shadow-inner self-stretch md:self-auto shrink-0">
+          <a id="toggle-b2b" href="b2b.html" class="px-5 py-2 bg-white text-primary rounded-lg font-bold text-xs shadow transition-all flex items-center gap-1.5 border border-slate-200/50">
+            <span class="material-symbols-outlined text-[16px]">business</span>
+            <span>Enterprise Orders (B2B)</span>
+          </a>
+          <a id="toggle-b2c" href="b2c.html" class="px-5 py-2 text-on-surface-variant hover:bg-white/50 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px]">shopping_cart</span>
+            <span>Retail Orders (B2C)</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Interactive Filter Bar -->
+      <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm space-y-6">
+        <div id="filter-grid" class="grid grid-cols-1 gap-6">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-on-surface-variant">Search Client or ID</label>
+            <input id="search-input" oninput="handleFilterChange()"
+              class="bg-surface-container-low border border-outline-variant rounded p-2 text-sm focus:border-primary outline-none w-full"
+              placeholder="Search by order ID, buyer, product..." type="text" />
+          </div>
+          <div id="dynamic-filter-container" class="flex flex-col gap-1"></div>
+        </div>
+      </div>
+
+      <!-- Orders Table Card -->
+      <div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm mt-6">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-surface-container text-on-surface-variant">
+              <tr id="table-headers-row">
+                <!-- Dynamic headers -->
+              </tr>
+            </thead>
+            <tbody id="orders-table-body" class="divide-y divide-outline-variant">
+              <!-- Dynamic rows -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Pagination Footer -->
+        <div class="p-4 bg-surface-container-low flex justify-between items-center border-t border-outline-variant">
+          <span id="entries-counter" class="text-sm font-bold text-on-surface-variant">Showing 0-0 of 0 orders</span>
+          <div class="flex gap-2">
+            <button
+              class="p-2 border border-outline-variant rounded hover:bg-surface-container transition-colors disabled:opacity-50"
+              disabled="">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <button class="p-2 border border-outline-variant rounded hover:bg-surface-container transition-colors">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <!-- Visual Accent Element -->
+  <div class="fixed bottom-0 right-0 opacity-10 pointer-events-none p-8">
+    <img alt="Coffee Icon" class="w-32 h-32 grayscale opacity-50"
+      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQN0YKSF_h6BON1P59QZ9ROvzZWiv3PxbKUWmz_txh5GqxbtEV2pMMWxvzghmFKE7nS0GWgKzh_qBE3daEpijPdbiiJQwjmmi1vIdrAi4kke0ofCE1OteTZmeQ0S-1XKued0I8Idfyw5Is-8rhNFFqvzVXiO9qsSnQARz0Bk7qQK2-m60lVkhE9ch_cptieTPwFZpfe_fO0nhhXocu8dOQEE6GPvXMZLEKoYmjhA627ZNtH1e_f2R5Ovz8kdA5kgtKF68JMkjrBFE" />
+  </div>
+
+  <script>
+    // Supabase Initialization
+    const supabaseUrl = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    let currentSegment = 'b2b';
+    let loadedB2BOrders = [];
+    let loadedB2COrders = [];
+
+    // Fetch B2B Orders from Supabase (orders table)
+    async function fetchB2BOrders() {
+      try {
+        if (window.invalidateSupabaseCache) window.invalidateSupabaseCache('orders');
+        const { data, error } = await supabaseClient
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1000);
+        console.log('[B2B DEBUG] supabaseClient returned:', data?.length, 'orders, error:', error);
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          loadedB2BOrders = data.map((item, idx) => ({
+            id: item.order_number || item.id,
+            dbId: item.id,
+            date: item.created_at ? item.created_at.split('T')[0] : (item.purchase_date || item.event_date || '').split('T')[0],
+            clientName: item.customer_name || item.company_name || "Enterprise Partner",
+            product: item.notes || item.order_number || "Bulk Cargo Order",
+            qty: item.tracking_number || "1 unit",
+            status: item.status === 'Delivered' ? 'Delivered' : item.status === 'Shipped' ? 'Shipped' : item.status === 'Confirmed' ? 'Confirmed' : item.status === 'Packed' ? 'Shipped' : item.status === 'Processing' ? 'Confirmed' : 'Pending',
+            deliveryDate: item.delivery_date || new Date(new Date().getTime() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          }));
+        } else {
+          loadedB2BOrders = [];
+        }
+      } catch (err) {
+        console.warn("Supabase orders B2B fetch failed: ", err);
+        loadedB2BOrders = [];
+      }
+    }
+
+    // Fetch fulfillment_orders refund signal — canonical source of truth for
+    // "Refund-ing" vs "Logistic-ing" status on each source order. Read once
+    // per page load and indexed by fulfillment_orders.order_id so renderTableRows
+    // can do an O(1) lookup per row.
+    async function fetchFulfillmentMap() {
+      try {
+        if (window.invalidateSupabaseCache) window.invalidateSupabaseCache('fulfillment_orders');
+        const { data, error } = await supabaseClient
+          .from('fulfillment_orders')
+          .select('order_id, refund_pending')
+          .order('created_at', { ascending: false })
+          .limit(2000);
+        if (error) throw error;
+
+        const map = new Map();
+        (data || []).forEach((row) => {
+          const key = row.order_id;
+          if (!key) return;
+          if (!map.has(key) || row.refund_pending === true) map.set(key, row.refund_pending === true);
+        });
+        window.__fulfillmentRefundMap = map;
+      } catch (err) {
+        console.warn("Supabase fulfillment_orders fetch failed: ", err);
+        window.__fulfillmentRefundMap = new Map();
+      }
+    }
+
+    // Fetch B2C Orders from Supabase (retail_purchases)
+    async function fetchB2COrders() {
+      try {
+        if (window.invalidateSupabaseCache) window.invalidateSupabaseCache('retail_purchases');
+        const { data, error } = await supabaseClient
+          .from('retail_purchases')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1000);
+        console.log('[B2B DEBUG] fetchB2COrders supabaseClient returned:', data?.length, 'orders, error:', error);
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          loadedB2COrders = data.map((item) => ({
+            id: item.purchase_number || item.id,
+            dbId: item.id,
+            date: item.purchase_date ? item.purchase_date.split('T')[0] : (item.created_at || '').split('T')[0],
+            clientName: item.customer_name || "Retail Buyer",
+            product: item.notes || item.purchase_item || item.purchase_number || "Retail Purchase",
+            qty: item.total_amount ? `$${parseFloat(item.total_amount).toLocaleString()} invoice` : "1 unit",
+            status: item.status === 'Delivered' ? 'Delivered' : item.status === 'Shipped' ? 'Shipped' : item.status === 'Confirmed' ? 'Confirmed' : item.status === 'Processing' ? 'Confirmed' : 'Pending',
+            platform: item.customer_email ? "Web Store" : "Retail"
+          }));
+        } else {
+          loadedB2COrders = [];
+        }
+      } catch (err) {
+        console.warn("Supabase retail_purchases fetch failed: ", err);
+        loadedB2COrders = [];
+      }
+    }
+
+    function switchSegment(segment) {
+      currentSegment = segment;
+
+      if (segment === 'b2b') {
+        document.getElementById('orders-title').innerText = "Enterprise Orders (B2B)";
+        document.getElementById('orders-desc').innerText = "Track and manage corporate wholesale distribution and bulk cargo orders.";
+
+        document.getElementById('dynamic-filter-container').innerHTML = '';
+      } else {
+        document.getElementById('orders-title').innerText = "Retail Orders (B2C)";
+        document.getElementById('orders-desc').innerText = "Track direct-to-consumer (D2C) transactions and platform distribution.";
+
+        document.getElementById('dynamic-filter-container').innerHTML = '';
+      }
+
+      renderTableHeaders();
+      applyFilters();
+    }
+
+    function renderTableHeaders() {
+      const headerRow = document.getElementById('table-headers-row');
+      headerRow.innerHTML = '';
+      
+      if (currentSegment === 'b2b') {
+        headerRow.innerHTML = `
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Order ID</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Date Received</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Enterprise Partner</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Cargo & Qty</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Status</th>
+        `;
+      } else {
+        headerRow.innerHTML = `
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Order ID</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Date Received</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Retail Buyer</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Retail Items & Qty</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Store Channel</th>
+          <th class="p-4 text-xs font-bold uppercase tracking-wider">Status</th>
+        `;
+      }
+    }
+
+    function handleFilterChange() {
+      applyFilters();
+    }
+
+function applyFilters() {
+      const search = document.getElementById('search-input').value.toLowerCase().trim();
+
+      let dataset = currentSegment === 'b2b' ? [...loadedB2BOrders] : [...loadedB2COrders];
+
+      // Filter by Search Query
+      if (search) {
+        dataset = dataset.filter(o =>
+          o.id.toLowerCase().includes(search) ||
+          o.clientName.toLowerCase().includes(search) ||
+          o.product.toLowerCase().includes(search)
+        );
+      }
+
+      renderTableRows(dataset);
+    }
+
+    function renderTableRows(orders) {
+      const tbody = document.getElementById('orders-table-body');
+      tbody.innerHTML = '';
+      
+      const counter = document.getElementById('entries-counter');
+      counter.innerText = `Showing 1-${orders.length} of ${orders.length} orders`;
+      
+      if (orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${currentSegment === 'b2b' ? 5 : 6}" class="p-8 text-center text-on-surface-variant font-bold">No orders match these criteria.</td></tr>`;
+        return;
+      }
+      
+      orders.forEach(order => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-surface-container-low transition-colors group';
+
+        const dateObj = new Date(order.date);
+        const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
+        // Display truncated order IDs nicely
+        const displayId = order.id.length > 15 ? `#${order.id.slice(0,8)}...` : order.id;
+
+        // Derive Status from fulfillment_orders.refund_pending. Refund-ing when
+        // the canonical fulfillment row is in refund-pending state; Logistic-ing
+        // otherwise (covers "no fulfillment row yet" and "ready to dispatch").
+        const isRefund = window.__fulfillmentRefundMap && window.__fulfillmentRefundMap.get(order.id) === true;
+        const statusBadge = isRefund
+          ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200">Refund-ing</span>`
+          : `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">Logistic-ing</span>`;
+
+        if (currentSegment === 'b2b') {
+          tr.innerHTML = `
+            <td class="p-4 font-bold text-sm text-on-surface truncate max-w-[120px]" title="${order.id}"><span class="sr-only">${order.id}</span>${displayId}</td>
+            <td class="p-4 text-sm text-on-surface-variant">${formattedDate}</td>
+            <td class="p-4 font-bold text-on-surface">${order.clientName}</td>
+            <td class="p-4">
+              <div class="text-sm font-bold text-on-surface truncate max-w-[200px]">${order.product}</div>
+              <div class="text-xs font-bold text-on-surface-variant truncate max-w-[200px]">${order.qty}</div>
+            </td>
+            <td class="p-4">${statusBadge}</td>
+          `;
+        } else {
+          // B2C Column rendering
+          let platformBadge = "bg-slate-100 text-slate-700";
+          if (order.platform === 'Shopify') platformBadge = "bg-green-50 text-green-700 border border-green-200";
+          if (order.platform === 'Amazon') platformBadge = "bg-amber-50 text-amber-800 border border-amber-200";
+          if (order.platform === 'Mobile App') platformBadge = "bg-purple-50 text-purple-800 border border-purple-200";
+          if (order.platform === 'Web Store') platformBadge = "bg-blue-50 text-blue-700 border border-blue-200";
+
+          tr.innerHTML = `
+            <td class="p-4 font-bold text-sm text-on-surface truncate max-w-[120px]" title="${order.id}"><span class="sr-only">${order.id}</span>${displayId}</td>
+            <td class="p-4 text-sm text-on-surface-variant">${formattedDate}</td>
+            <td class="p-4 font-bold text-on-surface">${order.clientName}</td>
+            <td class="p-4">
+              <div class="text-sm font-bold text-on-surface truncate max-w-[200px]">${order.product}</div>
+              <div class="text-xs font-bold text-on-surface-variant">${order.qty}</div>
+            </td>
+            <td class="p-4">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${platformBadge}">
+                ${order.platform}
+              </span>
+            </td>
+            <td class="p-4">${statusBadge}</td>
+          `;
+        }
+        
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Proactively fetch Supabase records
+      await fetchB2BOrders();
+      await fetchB2COrders();
+      await fetchFulfillmentMap();
+
+      switchSegment('b2b');
+    });
+  </script>
+</body>
+
+</html>

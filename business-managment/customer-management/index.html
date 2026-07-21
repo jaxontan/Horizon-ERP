@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Customer Registry Hub | Supply Chain Manager</title>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800"
+        rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<script src="/public/js/rbac.js?v=20250701"></script>
+    <script src="/components/sidebar.js"></script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+
+        body {
+            background-color: #F8FAFC;
+        }
+
+        .table-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            main { margin-left: 0 !important; width: 100% !important; padding: 4.5rem 1.5rem 1.5rem 1.5rem !important; }
+            header { left: 0 !important; width: 100% !important; }
+            [class*="ml-64"] { margin-left: 0 !important; }
+            [class*="w-[calc(100%-16rem)]"] { width: 100% !important; }
+        }
+        @media (max-width: 768px) {
+            main { padding: 4.5rem 1rem 1rem 1rem !important; }
+            .grid { grid-template-columns: 1fr !important; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .flex-wrap { flex-wrap: wrap !important; }
+            table { font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+            main { padding: 4.5rem 0.75rem 0.75rem 0.75rem !important; }
+        }
+    </style>
+</head>
+
+<body class="font-body-md text-on-surface">
+    <!-- Sidebar Component -->
+    <app-sidebar layout="fixed"></app-sidebar>
+
+    <!-- Top App Bar -->
+    <header class="bg-surface-container-lowest fixed top-0 right-0 left-64 h-16 border-b border-outline-variant flex items-center px-8 z-40 shadow-sm">
+        <div class="flex items-center justify-between w-full h-full">
+            <h2 class="text-xl font-headline-sm font-bold text-primary flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px]">groups</span>
+                Customer Master Registry
+            </h2>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-2 text-[11px] font-bold text-on-surface-variant bg-surface-container-low border border-outline-variant px-3 py-1.5 rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Customer Directory · Live
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Header -->
+    <!-- Main Content Area -->
+    <main class="ml-64 p-8 min-h-[calc(100vh-112px)] flex flex-col gap-8" style="padding-top: 7rem;">
+        <!-- Page Header & Metrics Segment -->
+        <section class="flex flex-col gap-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 id="directory-title" class="text-3xl font-headline-lg md:text-4xl font-extrabold text-primary leading-tight tracking-tight">
+                        Enterprise Partners
+                    </h2>
+                    <p id="directory-desc" class="text-base text-on-surface-variant mt-2 font-semibold max-w-2xl">Manage B2B commercial
+                        entities, track compliance, and view contract details.</p>
+                </div>
+
+                <!-- B2B vs B2C Segment Control Switcher -->
+                <div
+                    class="bg-slate-100 border border-slate-200 rounded-2xl p-1.5 flex gap-1.5 shadow-inner self-stretch md:self-auto">
+                    <button id="toggle-b2b" onclick="switchSegment('b2b')"
+                        class="px-7 py-3.5 bg-white text-primary rounded-xl font-extrabold text-sm shadow-md transition-all flex items-center gap-2.5 border border-slate-200/50">
+                        <span class="material-symbols-outlined text-[22px]">business</span>
+                        <span>Enterprise Partners (B2B)</span>
+                    </button>
+                    <button id="toggle-b2c" onclick="switchSegment('b2c')"
+                        class="px-7 py-3.5 text-on-surface-variant hover:bg-white/50 rounded-xl font-extrabold text-sm transition-all flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-[22px]">shopping_cart</span>
+                        <span>Retail Buyers (B2C)</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Bar -->
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-2 rounded-xl border border-outline-variant shadow-sm">
+            <div class="flex items-center gap-2 w-full px-2">
+                <span class="material-symbols-outlined text-[20px] text-on-surface-variant">search</span>
+                <input id="search-input" oninput="handleSearch()" type="text"
+                    placeholder="Search by company name, ID, or email..."
+                    class="flex-1 bg-transparent border-0 outline-none text-body-md text-on-surface placeholder:text-on-surface-variant/60 font-semibold py-2" />
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white border border-outline-variant rounded-xl shadow-sm overflow-hidden flex-1 flex flex-col">
+            <div class="overflow-x-auto table-scroll">
+                <table class="w-full text-left border-collapse min-w-[900px]">
+                    <thead>
+                        <tr class="bg-surface-container-low border-b border-outline-variant" id="table-headers-row">
+                            <!-- Populated dynamically -->
+                        </tr>
+                    </thead>
+                    <tbody id="customers-table-body" class="divide-y divide-outline-variant">
+                        <!-- Dynamic rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div
+                class="p-4 border-t border-outline-variant flex items-center justify-between bg-surface-container-low mt-auto">
+                <p id="pagination-text" class="text-label-md text-on-surface-variant">Showing 0 entries</p>
+                <div class="flex gap-2">
+                    <button
+                        class="px-3 py-1 border border-outline-variant rounded-md text-on-surface-variant hover:bg-white transition-colors disabled:opacity-50"
+                        disabled>Previous</button>
+                    <button
+                        class="px-3 py-1 bg-primary text-on-primary rounded-md border border-primary font-bold">1</button>
+                    <button
+                        class="px-3 py-1 border border-outline-variant rounded-md text-on-surface-variant hover:bg-white transition-colors disabled:opacity-50"
+                        disabled>Next</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Supabase Initialization
+        const supabaseUrl = 'https://qsobpenorlpzlkeyiefg.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseB2CClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        const tableBody = document.getElementById('customers-table-body');
+
+        let allB2B = [];
+        let allB2C = [];
+
+        let currentSegment = 'b2b'; // 'b2b' or 'b2c'
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let currentSort = 'newest';
+
+        async function fetchB2B() {
+            // Fetch B2B customers from customer_accounts
+            try {
+                const { data, error } = await supabaseClient
+                    .from('customer_accounts')
+                    .select('*')
+                    .eq('segment', 'b2b')
+                    .order('created_at', { ascending: false });
+
+                console.log('[customer-master] customer_accounts raw result:', { data, error });
+                if (!error && data && data.length > 0) {
+                    allB2B = data.map(b => ({
+                        id: b.account_id || b.id,
+                        company_name: b.company_name || b.name || 'Unnamed Company',
+                        business_id_string: b.account_id || '',
+                        email: b.email,
+                        status: b.verification_status === 'verified' || b.verification_status === 'approved' ? 'Verified' : (b.verification_status === 'pending' ? 'Pending' : 'Rejected'),
+                        legal_entity_type: b.customer_type || 'Wholesale Partner',
+                        created_at: b.created_at,
+                        phone: b.phone,
+                        address: b.address,
+                        source: 'customer_accounts'
+                    }));
+                } else {
+                    allB2B = [];
+                }
+            } catch (err) {
+                console.warn('Error fetching B2B from customer_accounts:', err);
+                allB2B = [];
+            }
+        }
+
+        async function fetchB2C() {
+            try {
+                const { data: clients, error: err } = await supabaseB2CClient
+                    .from('retail_buyers')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(1000);
+
+                console.log('[customer-master] retail_buyers raw result:', { clients, error: err });
+                if (err) throw err;
+
+                if (clients && clients.length > 0) {
+                    let purchases = [];
+                    try {
+                        const { data: dbPurchases } = await supabaseB2CClient
+                            .from('retail_purchases')
+                            .select('*')
+                            .order('created_at', { ascending: false })
+                            .limit(1000);
+                        if (dbPurchases) purchases = dbPurchases;
+                    } catch (e) {
+                        console.log("Could not load B2C purchases:", e);
+                    }
+
+                    allB2C = clients.map(client => {
+                        const clientPurchases = purchases
+                            .filter(p => p.buyer_id === client.id || String(p.customer_email || '').toLowerCase() === String(client.email || '').toLowerCase())
+                            .sort((a, b) => new Date(b.purchase_date) - new Date(a.purchase_date));
+                        
+                        const latestPurchase = clientPurchases[0] || {};
+
+                        return {
+                            id: client.id,
+                            name: client.name,
+                            email: client.email,
+                            phone: client.phone || 'Not provided',
+                            tier: (client.platform || 'Web Store') + ' Member',
+                            points: client.loyalty_points || 0,
+                            lastPurchase: latestPurchase.notes || latestPurchase.purchase_item || latestPurchase.purchase_number || 'No purchases yet',
+                            lastPurchaseDate: latestPurchase.purchase_date || new Date().toISOString(),
+                            status: client.status === 'Flagged' ? 'Flagged' : 'Active',
+                            avatar: client.avatar_url
+                        };
+                    });
+                } else {
+                    allB2C = [];
+                }
+            } catch (err) {
+                console.warn('Error fetching B2C data:', err, 'message:', err?.message, 'details:', err?.details, 'hint:', err?.hint);
+            }
+        }
+
+        function switchSegment(segment) {
+            currentSegment = segment;
+            console.log('[customer-master] switchSegment:', segment, 'allB2B:', allB2B.length, 'allB2C:', allB2C.length);
+
+            // UI Toggle Styles
+            const btnB2B = document.getElementById('toggle-b2b');
+            const btnB2C = document.getElementById('toggle-b2c');
+
+            if (segment === 'b2b') {
+                btnB2B.className = "px-7 py-3.5 bg-white text-primary rounded-xl font-extrabold text-sm shadow-md transition-all flex items-center gap-2.5 border border-slate-200/50";
+                btnB2C.className = "px-7 py-3.5 text-on-surface-variant hover:bg-white/50 rounded-xl font-extrabold text-sm transition-all flex items-center gap-2.5";
+
+                document.getElementById('directory-title').innerText = "Enterprise Partners";
+                document.getElementById('directory-desc').innerText = "Manage B2B commercial entities, track compliance, and view contract details.";
+            } else {
+                btnB2C.className = "px-7 py-3.5 bg-white text-primary rounded-xl font-extrabold text-sm shadow-md transition-all flex items-center gap-2.5 border border-slate-200/50";
+                btnB2B.className = "px-7 py-3.5 text-on-surface-variant hover:bg-white/50 rounded-xl font-extrabold text-sm transition-all flex items-center gap-2.5";
+
+                document.getElementById('directory-title').innerText = "Retail Shoppers";
+                document.getElementById('directory-desc').innerText = "Track direct-to-consumer (D2C) online transactions, loyalty rewards, and buyer behavior.";
+            }
+
+            // Reset filters to 'all' on segment change
+            currentFilter = 'all';
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.value = '';
+            searchQuery = '';
+
+            renderTableHeaders();
+            applyFiltersAndSort();
+        }
+
+        function renderTableHeaders() {
+            const row = document.getElementById('table-headers-row');
+            row.innerHTML = '';
+
+            if (currentSegment === 'b2b') {
+                row.innerHTML = `
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold">Company Name</th>
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold">ID / Email</th>
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold">Added Date</th>
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold">Status</th>
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold text-right">Actions</th>
+                `;
+            } else {
+                row.innerHTML = `
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold">Buyer Name</th>
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold">Email</th>
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold">Retail Platform</th>
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold">Latest Purchase</th>
+                    <th class="p-4 text-label-md font-label-md text-on-surface-variant uppercase tracking-wider font-bold text-right">Actions</th>
+                `;
+            }
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+            applyFiltersAndSort();
+        }
+
+        function applyFiltersAndSort() {
+            if (currentSegment === 'b2b') {
+                applyB2BFilters();
+            } else {
+                applyB2CFilters();
+            }
+        }
+
+        function applyB2BFilters() {
+            let filtered = [...allB2B];
+
+            // Status Filter
+            if (currentFilter !== 'all') {
+                const targetStatus = currentFilter === 'active' ? 'Verified' : currentFilter === 'pending' ? 'Pending' : 'Rejected';
+                filtered = filtered.filter(c => c.status === targetStatus);
+            }
+
+            // Search Query
+            if (searchQuery) {
+                filtered = filtered.filter(c =>
+                    (c.company_name || '').toLowerCase().includes(searchQuery) ||
+                    (c.business_id_string && c.business_id_string.toLowerCase().includes(searchQuery)) ||
+                    (c.email && c.email.toLowerCase().includes(searchQuery))
+                );
+            }
+
+            // Sorting
+            if (currentSort === 'newest') {
+                filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            } else if (currentSort === 'alpha') {
+                filtered.sort((a, b) => a.company_name.localeCompare(b.company_name));
+            } else if (currentSort === 'status') {
+                filtered.sort((a, b) => a.status.localeCompare(b.status));
+            }
+
+            // Update Pagination text
+            const paginationText = document.getElementById('pagination-text');
+            paginationText.innerText = filtered.length > 0 ? `Showing 1 to ${filtered.length} of ${filtered.length} entries` : `Showing 0 entries`;
+
+            renderB2B(filtered);
+        }
+
+        function applyB2CFilters() {
+            let filtered = [...allB2C];
+
+            // Status Filter
+            if (currentFilter !== 'all') {
+                const targetStatus = currentFilter === 'active' ? 'Active' : currentFilter === 'pending' ? 'Flagged' : 'Suspended';
+                filtered = filtered.filter(c => c.status === targetStatus);
+            }
+
+            // Search Query
+            if (searchQuery) {
+                filtered = filtered.filter(c =>
+                    c.name.toLowerCase().includes(searchQuery) ||
+                    c.email.toLowerCase().includes(searchQuery) ||
+                    c.tier.toLowerCase().includes(searchQuery) ||
+                    c.lastPurchase.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            // Sorting
+            if (currentSort === 'newest') {
+                filtered.sort((a, b) => new Date(b.lastPurchaseDate) - new Date(a.lastPurchaseDate));
+            } else if (currentSort === 'alpha') {
+                filtered.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (currentSort === 'status') {
+                filtered.sort((a, b) => a.status.localeCompare(b.status));
+            }
+
+            // Update Pagination text
+            const paginationText = document.getElementById('pagination-text');
+            paginationText.innerText = filtered.length > 0 ? `Showing 1 to ${filtered.length} of ${filtered.length} entries` : `Showing 0 entries`;
+
+            renderB2C(filtered);
+        }
+
+        function getB2BStatusBadge(status) {
+            switch (status) {
+                case 'Verified':
+                    return `<span class="px-3 py-1 bg-[#ECFDF5] text-[#047857] rounded-xl text-label-md font-label-md inline-flex items-center gap-1 border border-[#A7F3D0]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+                                Verified
+                            </span>`;
+                case 'Rejected':
+                    return `<span class="px-3 py-1 bg-[#FEF2F2] text-[#B91C1C] rounded-xl text-label-md font-label-md inline-flex items-center gap-1 border border-[#FECACA]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#EF4444]"></span>
+                                Rejected
+                            </span>`;
+                case 'Pending':
+                case 'Pending Audit':
+                default:
+                    return `<span class="px-3 py-1 bg-[#FFF7ED] text-[#C2410C] rounded-xl text-label-md font-label-md inline-flex items-center gap-1 border border-[#FED7AA]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#F97316]"></span>
+                                Pending Audit
+                            </span>`;
+            }
+        }
+
+        function getB2CStatusBadge(status) {
+            switch (status) {
+                case 'Active':
+                    return `<span class="px-3 py-1 bg-[#ECFDF5] text-[#047857] rounded-xl text-label-md font-label-md inline-flex items-center gap-1 border border-[#A7F3D0]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
+                                Active
+                            </span>`;
+                case 'Flagged':
+                    return `<span class="px-3 py-1 bg-[#FFF7ED] text-[#C2410C] rounded-xl text-label-md font-label-md inline-flex items-center gap-1 border border-[#FED7AA]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#F97316]"></span>
+                                Flagged
+                            </span>`;
+                case 'Suspended':
+                default:
+                    return `<span class="px-3 py-1 bg-[#FEF2F2] text-[#B91C1C] rounded-xl text-label-md font-label-md inline-flex items-center gap-1 border border-[#FECACA]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#EF4444]"></span>
+                                Suspended
+                            </span>`;
+            }
+        }
+
+        function renderB2B(customers) {
+            tableBody.innerHTML = '';
+
+            if (!customers || customers.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-on-surface-variant font-bold">No enterprise customers found.</td></tr>';
+                return;
+            }
+
+            customers.forEach(customer => {
+                const dateObj = new Date(customer.created_at);
+                const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                const initial = (customer.company_name || 'U').charAt(0).toUpperCase();
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-surface-bright transition-colors group cursor-pointer';
+                tr.onclick = () => window.location.href = `big-business/customer-verification.html?id=${customer.id}`;
+
+                tr.innerHTML = `
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-primary border border-outline-variant/30 font-bold font-headline-sm shrink-0 overflow-hidden">
+                                ${customer.logo_url ? `<img src="${customer.logo_url}" class="w-full h-full object-cover">` : initial}
+                            </div>
+                            <div>
+                                <p class="font-bold text-primary font-body-md">${customer.company_name}</p>
+                                <p class="text-label-md text-on-surface-variant">${customer.legal_entity_type || 'Unknown'}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <p class="text-data-tabular font-data-tabular text-primary">${customer.business_id_string}</p>
+                        <p class="text-label-md text-on-surface-variant">${customer.email}</p>
+                        ${customer.phone ? `<p class="text-label-md text-on-surface-variant">${customer.phone}</p>` : ''}
+                    </td>
+                    <td class="p-4">
+                        <p class="text-body-md text-primary">${formattedDate}</p>
+                    </td>
+                    <td class="p-4">
+                        ${getB2BStatusBadge(customer.status)}
+                    </td>
+                    <td class="p-4 text-right flex justify-end gap-1" onclick="event.stopPropagation();">
+                        <button class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="View Timeline & LTV" onclick="window.location.href='customer-timeline.html?id=${customer.id}&type=b2b'">
+                            <span class="material-symbols-outlined text-[20px]">timeline</span>
+                        </button>
+                        <button class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="View Verification" onclick="window.location.href='big-business/customer-verification.html?id=${customer.id}'">
+                            <span class="material-symbols-outlined text-[20px]">${customer.status === 'Pending' ? 'fact_check' : 'visibility'}</span>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function renderB2C(buyers) {
+            tableBody.innerHTML = '';
+
+            if (!buyers || buyers.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-on-surface-variant font-bold">No individual retail shoppers found.</td></tr>';
+                return;
+            }
+
+            buyers.forEach(buyer => {
+                const dateObj = new Date(buyer.lastPurchaseDate);
+                const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+
+                // Format the platform cleanly and apply colored badges
+                const platform = buyer.tier.replace(" Member", "");
+                let badgeClass = "bg-slate-100 text-slate-700 border-slate-200";
+                if (platform === "Shopify") badgeClass = "bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]";
+                else if (platform === "Amazon") badgeClass = "bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]";
+                else if (platform === "Etsy") badgeClass = "bg-[#FFF8F2] text-[#D85B00] border-[#FFD0B3]";
+                else if (platform === "WooCommerce") badgeClass = "bg-[#F3E8FF] text-[#6B21A8] border-[#E9D5FF]";
+                else if (platform === "eBay") badgeClass = "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]";
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-surface-bright transition-colors group cursor-pointer';
+                tr.onclick = () => window.location.href = `customer-timeline.html?id=${buyer.id}&type=b2c`;
+
+                tr.innerHTML = `
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-primary border border-outline-variant/30 font-bold shrink-0 overflow-hidden">
+                                ${buyer.avatar ? `<img src="${buyer.avatar}" class="w-full h-full object-cover">` : (buyer.name || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <p class="font-bold text-primary font-body-md">${buyer.name || 'Unknown'}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <p class="text-body-md text-primary">${buyer.email}</p>
+                    </td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-0.5 rounded-full border text-[10px] font-extrabold uppercase tracking-wider ${badgeClass}">
+                            ${platform}
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        <p class="text-xs font-bold text-primary max-w-[220px] truncate" title="${buyer.lastPurchase}">${buyer.lastPurchase}</p>
+                        <p class="text-[10px] text-on-surface-variant font-semibold">${formattedDate}</p>
+                    </td>
+                    <td class="p-4 text-right flex justify-end gap-1" onclick="event.stopPropagation();">
+                        <button class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="View Customer Timeline" onclick="window.location.href='customer-timeline.html?id=${buyer.id}&type=b2c'">
+                            <span class="material-symbols-outlined text-[20px]">timeline</span>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('[customer-master] DOMContentLoaded, calling fetch...');
+            await Promise.all([fetchB2B(), fetchB2C()]);
+            console.log('[customer-master] after fetch, allB2B:', allB2B.length, 'allB2C:', allB2C.length);
+            switchSegment(currentSegment || 'b2b'); // Preserve any segment selected while data was loading.
+        });
+    </script>
+</body>
+
+</html>

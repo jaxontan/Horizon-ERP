@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>EspressGo — Corporate Wholesale Gateway</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/components/tailwind-config.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Material Symbols Outlined (self-hosted via jsDelivr CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #fff8f0;
+            color: #2b1810;
+        }
+        .header-font {
+            font-family: 'Outfit', sans-serif;
+        }
+        .serif-font {
+            font-family: 'Playfair Display', serif;
+        }
+        .mono-card {
+            background: #ffffff;
+            border: 1px solid rgba(212, 165, 116, 0.35);
+            box-shadow: 0 4px 20px rgba(194, 65, 12, 0.06);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .premium-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .premium-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+            transition: 0.5s;
+        }
+        .premium-btn:hover::before {
+            left: 100%;
+        }
+    </style>
+</head>
+
+<body class="font-customer-body antialiased flex flex-col min-h-screen relative selection:bg-[#c2410c] selection:text-white">
+
+    <!-- Absolute minimalist ambient grid -->
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(194,65,12,0.10),rgba(0,0,0,0))] pointer-events-none z-0"></div>
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(212,165,116,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(212,165,116,0.10)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#fff_70%,transparent_100%)] pointer-events-none z-0"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="relative z-10 px-8 lg:px-16 h-20 flex items-center justify-between border-b border-[#d4a574]/40 backdrop-blur-md bg-[#fff8f0]/80">
+        <a href="../index.html" class="flex items-center gap-4 group">
+            <div class="w-10 h-10 rounded-full border border-[#d4a574]/50 flex items-center justify-center text-[#c2410c] bg-[#fef3e2] transition-all duration-300 group-hover:bg-white group-hover:text-black">
+                <span class="material-symbols-outlined text-xl font-headline-sm">arrow_back</span>
+            </div>
+            <div>
+                <span class="font-extrabold text-sm header-font text-[#2b1810] tracking-widest block uppercase">Back to Gateway</span>
+                <span class="text-[9px] text-[#8b4513] font-bold uppercase tracking-widest block mt-0.5">EspressGo Selection</span>
+            </div>
+        </a>
+
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full border border-[#d4a574]/50 bg-[#fef3e2] flex items-center justify-center text-[#8b4513]">
+                <span class="material-symbols-outlined text-lg">corporate_fare</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="relative z-10 flex-1 max-w-md mx-auto w-full px-6 py-16 flex flex-col justify-center">
+        
+        <!-- Selection Card -->
+        <div class="mono-card rounded-3xl p-8 space-y-8 relative overflow-hidden">
+            
+            <div class="space-y-3 text-center">
+                <div class="inline-flex px-3 py-1 bg-[#fef3e2] border border-[#d4a574]/60 rounded-full text-[9px] font-extrabold uppercase tracking-widest text-[#8b4513]">
+                    B2B Wholesale Experience
+                </div>
+                <h2 class="text-3xl font-headline-lg font-extrabold header-font text-[#2b1810] uppercase tracking-tight">Wholesale B2B</h2>
+                <p class="text-xs text-[#6b4423] font-normal max-w-xs mx-auto leading-relaxed">
+                    Register as a new wholesale partner or log in to access your corporate account and order wholesale supplies.
+                </p>
+            </div>
+
+            <div class="space-y-4 pt-2">
+                <!-- Button 1: New Business Registration -->
+                <a href="business-onboarding.html" class="premium-btn w-full py-4 bg-[#c2410c] hover:bg-[#9a330a] text-white rounded-2xl text-xs font-bold uppercase tracking-widest text-center transition-all duration-300 shadow-lg shadow-[#c2410c]/30 active:scale-[0.98] flex items-center justify-center gap-2 block">
+                    <span class="material-symbols-outlined text-sm">business_center</span>
+                    <span>New Business Registration</span>
+                </a>
+
+                <!-- Button 2: Existing Partner Login -->
+                <a href="b2b.html" class="premium-btn w-full py-4 bg-[#fef3e2] border border-[#d4a574]/60 hover:border-[#c2410c] hover:bg-[#fde7c8] text-[#2b1810] rounded-2xl text-xs font-bold uppercase tracking-widest transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 block">
+                    <span class="material-symbols-outlined text-sm">login</span>
+                    <span>Existing Partner Login</span>
+                </a>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Visual Footer -->
+    <footer class="relative z-10 text-center text-[9px] font-bold text-[#8b4513] uppercase tracking-widest py-10 mt-auto border-t border-[#d4a574]/40 bg-[#fff8f0]">
+        <span>&copy; 2026 EspressGo Coffee Roasters. Wholesale B2B Experiences.</span>
+    </footer>
+
+</body>
+</html>
