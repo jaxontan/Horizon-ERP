@@ -561,7 +561,6 @@ const NAV_PERMISSIONS = {
     'traceability':          'production:read',
     'purchase-record':        'procurement:read',
     'fulfillment':           'orders:read',
-    'returns':               'orders:read',
     'warehouse-stock':      'inventory:read',
     'production':            'production:read',
     'production-recipes':    'recipes:read',

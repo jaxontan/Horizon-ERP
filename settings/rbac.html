@@ -32,7 +32,6 @@
         .perm-row:hover { background:#f8fafc; }
         .dot { display:inline-block; width:8px; height:8px; border-radius:50%; }
         .dot-default    { background:#22c55e; }
-        .dot-overridden { background:#eab308; }
         .dot-removed    { background:#ef4444; }
         .sticky-col { position:sticky; left:0; background:inherit; z-index:1; }
         .save-dirty { box-shadow: 0 0 0 2px #f59e0b; }
@@ -89,7 +88,7 @@
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3 text-amber-900">
                 <span class="material-symbols-outlined text-[22px] mt-0.5">warning</span>
                 <div class="text-sm leading-relaxed">
-                    <strong>Be careful.</strong> Locking out roles can break the system. The <strong>admin</strong> column is always on and cannot be edited — the database itself rejects any change to it. Every save is recorded in history and can be reverted.
+                    <strong>Be careful.</strong> Locking out roles can break the system. The <strong>admin</strong> column is always on and cannot be edited — the database itself rejects any change to it.
                 </div>
             </div>
 
@@ -97,7 +96,6 @@
             <div class="border-b border-outline-variant flex gap-1">
                 <button data-tab="permissions" onclick="switchTab('permissions')" class="px-4 py-2 text-sm font-bold border-b-2 tab-active">Permissions</button>
                 <button data-tab="pages"       onclick="switchTab('pages')"       class="px-4 py-2 text-sm font-bold border-b-2 tab-inactive">Page Access</button>
-                <button data-tab="history"     onclick="switchTab('history')"     class="px-4 py-2 text-sm font-bold border-b-2 tab-inactive">History</button>
             </div>
 
             <!-- ── Tab: Permissions ────────────────────────────────────────────── -->
@@ -105,9 +103,8 @@
                 <div class="flex items-center justify-between">
                     <div class="text-sm text-on-surface-variant">
                         Toggle which roles can perform each action. Admin is always on.
-                        <span class="ml-3 inline-flex items-center gap-1"><span class="dot dot-default"></span> default</span>
-                        <span class="ml-2 inline-flex items-center gap-1"><span class="dot dot-overridden"></span> overridden</span>
-                        <span class="ml-2 inline-flex items-center gap-1"><span class="dot dot-removed"></span> removed</span>
+                        <span class="ml-3 inline-flex items-center gap-1"><span class="dot dot-default"></span> Accessible</span>
+                        <span class="ml-2 inline-flex items-center gap-1"><span class="dot dot-removed"></span> Inaccessible</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <button id="btn-toggle-perm-folders" onclick="toggleAllPermGroups()" class="px-3 py-1.5 text-xs font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high" title="Expand or collapse all permission groups">Collapse all</button>
@@ -173,13 +170,6 @@
                 </div>
             </section>
 
-            <!-- ── Tab: History ───────────────────────────────────────────────── -->
-            <section id="tab-history" class="space-y-3 hidden">
-                <div class="text-sm text-on-surface-variant">
-                    Past saves, newest first. Click <strong>Restore</strong> to roll back the matrix to that snapshot.
-                </div>
-                <div id="history-list" class="space-y-2"></div>
-            </section>
 
         </div>
     </main>
@@ -190,7 +180,7 @@
             <h3 class="text-lg font-bold text-primary mb-2">Save changes?</h3>
             <p id="confirm-summary" class="text-sm text-on-surface-variant mb-5"></p>
             <div class="mb-5">
-                <label class="text-xs font-bold text-on-surface-variant">Reason (optional, shown in history)</label>
+                <label class="text-xs font-bold text-on-surface-variant">Reason (optional)</label>
                 <input id="confirm-reason" type="text" maxlength="120" class="mt-1 w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="e.g. allow accountants to log production notes"/>
             </div>
             <div class="flex justify-end gap-2">
@@ -200,19 +190,6 @@
         </div>
     </div>
 
-    <!-- Restore confirm modal -->
-    <div id="restore-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="modal-panel max-w-md w-full p-6">
-            <h3 class="text-lg font-bold text-primary mb-2">Restore this snapshot?</h3>
-            <p id="restore-summary" class="text-sm text-on-surface-variant mb-5"></p>
-            <div class="flex justify-end gap-2">
-                <button onclick="closeRestoreConfirm()" class="px-4 py-2 text-sm font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high">Cancel</button>
-                <button onclick="doRestore()" class="px-4 py-2 text-sm font-bold text-white bg-amber-600 rounded-lg hover:opacity-95">Restore</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="toast"></div>
 
     <script src="/components/sidebar.js?v=20260705a"></script>
     <script>
@@ -230,7 +207,6 @@
     let serverPages = {};      // pageId -> { path, label, source: 'auto'|'manual', defaults: {role:true|false} }
     let pendingChanges = new Map();    // key = permKey|role, value = true|false
     let pendingPageChanges = new Map();// key = pageId|role, value = true|false
-    let pendingRestore = null; // { historyId, summary }
 
     // ─── Boot ────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', boot);
@@ -246,23 +222,22 @@
                 permission: 'staff:write',
             });
         }
-        await Promise.all([loadPermissions(), loadPages()]);
+        await loadPermissions();
+        await loadPages();
         renderPermissions();
         renderPages();
-        await loadHistory();
         updateSourcePill();
     }
 
     // ─── Tabs ────────────────────────────────────────────────────────────────
     function switchTab(name) {
-        for (const tab of ['permissions', 'pages', 'history']) {
+        for (const tab of ['permissions', 'pages']) {
             document.getElementById(`tab-${tab}`).classList.toggle('hidden', tab !== name);
         }
         for (const btn of document.querySelectorAll('[data-tab]')) {
             btn.classList.toggle('tab-active', btn.dataset.tab === name);
             btn.classList.toggle('tab-inactive', btn.dataset.tab !== name);
         }
-        if (name === 'history') loadHistory();
     }
 
     // ─── Load data ───────────────────────────────────────────────────────────
@@ -289,8 +264,9 @@
             const def = new Set(serverMatrix[k]);
             for (const role of EDITABLE_ROLES) {
                 const ov = overrideMap.get(`${k}|${role}`);
-                if (ov === true) def.delete(role);    // default did NOT include it
-                else if (ov === false) def.add(role); // default DID include it
+                // Remove the override's effect to get back to the original default
+                if (ov === true) def.delete(role);    // override added it → remove from effective → default didn't have it
+                else if (ov === false) def.delete(role); // override removed it → default must have had it, so remove
             }
             def.add('admin'); // admin is always in defaults
             localDefaults[k] = def;
@@ -370,11 +346,17 @@
             if (r.ok) {
                 const j = await r.json();
                 window.__rbacPageAccess = j.rows || [];
+                // Build a Map for fast lookups in onPageCellChange
+                window.__rbacPageAccessMap = new Map(
+                    (j.rows || []).map(o => [`${o.page_id}|${o.role}`, !!o.granted])
+                );
             } else {
                 window.__rbacPageAccess = [];
+                window.__rbacPageAccessMap = new Map();
             }
         } catch {
             window.__rbacPageAccess = [];
+            window.__rbacPageAccessMap = new Map();
         }
     }
 
@@ -418,67 +400,52 @@
         return id.split('-').map(s => s[0].toUpperCase() + s.slice(1)).join(' ');
     }
 
-    async function loadHistory() {
-        const resp = await fetch('/api/rbac/history', { credentials: 'same-origin' });
-        if (!resp.ok) {
-            document.getElementById('history-list').innerHTML =
-                `<div class="text-sm text-on-surface-variant">History unavailable.</div>`;
-            return;
-        }
-        const json = await resp.json();
-        const rows = json.rows || [];
-        const list = document.getElementById('history-list');
-        if (rows.length === 0) {
-            list.innerHTML = `<div class="text-sm text-on-surface-variant italic">No saves yet. The first time you click "Save changes", a baseline snapshot will be recorded.</div>`;
-            return;
-        }
-        list.innerHTML = rows.map(r => {
-            const when = new Date(r.saved_at).toLocaleString();
-            const snap = r.snapshot_after || { rows: [] };
-            const rowCount = (snap.rows || []).length;
-            return `
-                <div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-4 flex items-center justify-between">
-                    <div>
-                        <div class="text-sm font-bold text-primary">${escapeHtml(r.summary || '(no summary)')}</div>
-                        <div class="text-xs text-on-surface-variant mt-0.5">${when} — by ${escapeHtml(r.saved_by || '?')} — ${rowCount} override row${rowCount === 1 ? '' : 's'}</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick='viewSnapshot(${JSON.stringify(r).replace(/'/g, "&apos;")})' class="px-3 py-1.5 text-xs font-bold text-on-surface-variant bg-surface-container rounded-lg hover:bg-surface-container-high">View</button>
-                        <button onclick='openRestoreConfirm(${r.id}, ${JSON.stringify(r.summary || "").replace(/'/g, "&apos;")})' class="px-3 py-1.5 text-xs font-bold text-white bg-amber-600 rounded-lg hover:opacity-95">Restore</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
     // ─── Render ──────────────────────────────────────────────────────────────
-    // Permission grouping: derives the namespace from `permKey` (everything
-    // before the first `:`) and maps it to a human label. Permissions without
-    // a `:` get their own "(uncategorized)" group.
-    const PERM_GROUP_LABELS = {
-        'staff':           'Staff management',
-        'salary':          'Salaries',
-        'inventory':       'Inventory',
-        'raw_materials':   'Raw materials',
-        'recipes':         'Recipes',
-        'production':      'Production',
-        'finance':         'Finance',
-        'journal':         'Journal',
-        'orders':          'Orders',
-        'support':         'Support',
-        'supplier':        'Suppliers',
-        'outreach':        'Outreach',
-        'factory':         'Factory booking',
-        'warehouse_map':   'Warehouse map',
-        'alerts':          'Alerts',
-        'settings':        'Settings',
-    };
+    // Permission grouping: ordered to match the sidebar sections.
+    // PERM_SECTION_MAP maps group-key → { label, icon, order }
+    const PERM_SECTIONS = [
+        // Business Ops
+        { key: 'supplier',       label: 'Supplier Relations',      icon: 'handshake',                order: 0 },
+        { key: 'orders',         label: 'Customer Master',          icon: 'groups',                   order: 1 },
+        { key: 'sales',          label: 'Sales Dashboard',         icon: 'bar_chart',                order: 2 },
+        { key: 'outreach',       label: 'Marketing Outreach',      icon: 'mail',                     order: 3 },
+        // Communication Hub
+        { key: 'support',        label: 'Support Hub',              icon: 'support_agent',            order: 4 },
+        // Finances & Reports
+        { key: 'finance',        label: 'Finance Dashboard',        icon: 'account_balance',          order: 5 },
+        { key: 'procurement',    label: 'Purchase Records',        icon: 'shopping_bag',             order: 6 },
+        { key: 'journal',         label: 'Journal',                  icon: 'auto_stories',             order: 7 },
+        // Document Hub
+        { key: 'traceability',   label: 'Batch Tracing',           icon: 'assignment_turned_in',     order: 8 },
+        // Logistics & Dispatch
+        { key: 'fulfillment',    label: 'Order Fulfillment',       icon: 'assignment',                order: 9 },
+        // Warehouse
+        { key: 'inventory',      label: 'Stock Management',        icon: 'inventory_2',              order: 10 },
+        { key: 'production',     label: 'Production Pipeline',      icon: 'timeline',                  order: 11 },
+        { key: 'recipes',        label: 'Production Recipes',      icon: 'menu_book',                 order: 12 },
+        { key: 'raw_materials',  label: 'Raw Materials',            icon: 'category',                  order: 13 },
+        { key: 'factory',        label: 'Factory & Gear Booking',  icon: 'precision_manufacturing',   order: 14 },
+        { key: 'warehouse_map',  label: 'Warehouse Map',           icon: 'map',                       order: 15 },
+        // Staff Management
+        { key: 'staff',           label: 'Staff Attendance & Roster', icon: 'badge',                 order: 16 },
+        { key: 'provision',      label: 'Provision Staff',          icon: 'person_add',               order: 17 },
+        { key: 'salary',         label: 'Staff Salaries',           icon: 'payments',                 order: 18 },
+        // Settings & Security
+        { key: 'rbac',            label: 'RBAC Admin',             icon: 'admin_panel_settings',      order: 19 },
+        { key: 'alerts',         label: 'Alert Center',             icon: 'shield_lock',               order: 20 },
+        { key: 'settings',       label: 'Settings',                 icon: 'settings',                  order: 21 },
+    ];
+    const PERM_SECTION_MAP = Object.fromEntries(PERM_SECTIONS.map(s => [s.key, s]));
+
+    // Fallback for any perm groups not explicitly listed above
     function getPermGroup(key) {
         const colon = key.indexOf(':');
         return colon > 0 ? key.slice(0, colon) : '(uncategorized)';
     }
     function getPermGroupLabel(group) {
-        return PERM_GROUP_LABELS[group] || group;
+        if (PERM_SECTION_MAP[group]?.label) return PERM_SECTION_MAP[group].label;
+        // Fallback: capitalize first letter of each word, replace underscores with spaces
+        return group.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
     function getCollapsedPermGroups() {
         try {
@@ -504,10 +471,14 @@
             if (!groups.has(g)) groups.set(g, []);
             groups.get(g).push(key);
         }
+        // Ordered to match sidebar sections (uncategorized goes last)
         const groupNames = Array.from(groups.keys()).sort((a, b) => {
-            const la = getPermGroupLabel(a);
-            const lb = getPermGroupLabel(b);
-            return la.localeCompare(lb);
+            const secA = PERM_SECTION_MAP[a];
+            const secB = PERM_SECTION_MAP[b];
+            if (secA && secB) return secA.order - secB.order;
+            if (secA) return -1;
+            if (secB) return 1;
+            return a.localeCompare(b);
         });
         const collapsedGroups = getCollapsedPermGroups();
         const colSpan = 1 + window.RBAC.STAFF_ROLES.length; // 1 perm key column + per-role columns
@@ -515,14 +486,15 @@
         for (const group of groupNames) {
             const keys = groups.get(group);
             const isCollapsed = collapsedGroups.has(group);
+            const section = PERM_SECTION_MAP[group];
+            const icon = section?.icon || 'layers';
             // ── Group header row ─────────────────────────────────────────────
             html.push(`<tr class="folder-row folder-toggle${isCollapsed ? ' collapsed' : ''}" data-perm-group-row="${escapeHtml(group)}" data-collapsed="${isCollapsed ? 'true' : 'false'}" onclick="togglePermGroup('${escapeHtml(group).replace(/'/g, "\\'")}')">`);
             html.push(`<td colspan="${colSpan}" class="px-4 folder-toggle">`);
             html.push(`<div class="flex items-center gap-2">`);
             html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant folder-chevron">expand_more</span>`);
-            html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant">layers</span>`);
+            html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant">${icon}</span>`);
             html.push(`<span class="font-mono text-[12px] font-bold text-primary">${escapeHtml(getPermGroupLabel(group))}</span>`);
-            html.push(`<span class="text-[10px] font-mono text-on-surface-variant">${escapeHtml(group)}</span>`);
             html.push(`<span class="folder-count text-[10px] font-bold px-1.5 py-0.5 rounded-full">${keys.length} permission${keys.length === 1 ? '' : 's'}</span>`);
             html.push(`<span class="text-[10px] text-on-surface-variant ml-auto" data-perm-group-hint="${escapeHtml(group)}">${isCollapsed ? 'click to expand' : 'click to collapse'}</span>`);
             html.push(`</div>`);
@@ -543,13 +515,9 @@
                     const pending = pendingChanges.get(pendKey);
                     const currentAllowed = pending !== undefined ? pending : eff.has(role);
                     const defaultAllowed = def.has(role);
-                    // Dot indicates deviation from default
-                    let dotClass = 'dot-default';
-                    if (currentAllowed !== defaultAllowed) {
-                        dotClass = currentAllowed ? 'dot-overridden' : 'dot-removed';
-                    }
+                    // Dot indicates current state: green = allowed, red = denied
+                    let dotClass = currentAllowed ? 'dot-default' : 'dot-removed';
                     const hasOverride = overrides.has(pendKey);
-                    if (hasOverride) dotClass = 'dot-overridden';
                     if (isAdmin) {
                         html.push(`<td class="px-3 py-2 admin-locked"><div class="check-cell"><input type="checkbox" checked disabled/><span class="badge-always ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded">ALWAYS</span></div></td>`);
                     } else {
@@ -607,6 +575,40 @@
     // ─── Page Access: folder grouping ─────────────────────────────────────────
     // Derives a folder path (e.g. "business-management / Supplier-management")
     // from a page's URL. Root-level pages (e.g. "/index.html") go into "(root)".
+    // Page folder → sidebar section mapping (ordered to match sidebar).
+    // Used to group the Pages table rows into sidebar-matching sections.
+    const PAGE_SECTIONS = [
+        // Business Ops
+        { folder: 'business-management/Supplier-management',   label: 'Supplier Relations',       icon: 'handshake',                order: 0 },
+        { folder: 'business-management/customer-management', label: 'Customer Master',          icon: 'groups',                   order: 1 },
+        { folder: 'business-management/customer-management/customer-order', label: 'Sales Dashboard', icon: 'bar_chart',           order: 2 },
+        { folder: 'business-management/outreach',           label: 'Marketing Outreach',      icon: 'mail',                     order: 3 },
+        // Communication Hub
+        { folder: 'business-management/customer-management/support', label: 'Support Hub',         icon: 'support_agent',            order: 4 },
+        // Finances & Reports
+        { folder: 'business-management/finances',           label: 'Finance Dashboard',        icon: 'account_balance',          order: 5 },
+        { folder: 'document/purchase-record',                label: 'Purchase Records',        icon: 'shopping_bag',             order: 6 },
+        // Document Hub
+        { folder: 'document/traceability',                  label: 'Batch Tracing',           icon: 'assignment_turned_in',     order: 7 },
+        // Logistics & Dispatch
+        { folder: 'logistic',                               label: 'Order Fulfillment',       icon: 'assignment',                order: 8 },
+        // Warehouse
+        { folder: 'warehouse',                              label: 'Stock Management',        icon: 'inventory_2',              order: 9 },
+        { folder: 'production',                            label: 'Production Pipeline',      icon: 'timeline',                  order: 10 },
+        { folder: 'warehouse/recipes',                      label: 'Production Recipes',      icon: 'menu_book',                 order: 11 },
+        { folder: 'factory-booking',                       label: 'Factory & Gear Booking',  icon: 'precision_manufacturing',   order: 12 },
+        // Staff Management
+        { folder: 'staff-management',                       label: 'Staff Attendance & Roster', icon: 'badge',                 order: 13 },
+        { folder: 'staff-management/create-staff',          label: 'Provision Staff',          icon: 'person_add',               order: 14 },
+        { folder: 'staff-management/salaries',              label: 'Staff Salaries',          icon: 'payments',                  order: 15 },
+        // Settings & Security
+        { folder: 'settings/rbac',                          label: 'RBAC Admin',             icon: 'admin_panel_settings',      order: 16 },
+        { folder: 'settings/alert-center',                  label: 'Alert Center',            icon: 'shield_lock',               order: 17 },
+        // Fallback
+        { folder: '(root)',                                 label: '(root)',                  icon: 'folder',                   order: 99 },
+    ];
+    const PAGE_SECTION_MAP = Object.fromEntries(PAGE_SECTIONS.map(s => [s.folder, s]));
+
     function getFolderOfPath(path) {
         if (!path || typeof path !== 'string') return '(root)';
         // Strip leading slash + any trailing .html
@@ -619,6 +621,14 @@
         if (slash < 0) return '(root)';
         const folder = p.slice(0, slash);
         return folder || '(root)';
+    }
+    function getFolderSection(folder) {
+        // Try exact match first, then prefix match
+        if (PAGE_SECTION_MAP[folder]) return PAGE_SECTION_MAP[folder];
+        for (const [key, section] of Object.entries(PAGE_SECTION_MAP)) {
+            if (key !== '(root)' && folder.startsWith(key)) return section;
+        }
+        return { label: folder, icon: 'folder', order: 50 };
     }
     function getCollapsedFolders() {
         try {
@@ -650,20 +660,28 @@
             if (!folders.has(folder)) folders.set(folder, []);
             folders.get(folder).push({ id, p });
         }
-        const folderNames = Array.from(folders.keys()).sort();
+        // Sort folders to match sidebar section order
+        const folderNames = Array.from(folders.keys()).sort((a, b) => {
+            const secA = getFolderSection(a);
+            const secB = getFolderSection(b);
+            if (secA.order !== secB.order) return secA.order - secB.order;
+            return a.localeCompare(b);
+        });
         const collapsedFolders = getCollapsedFolders();
         const colSpan = 3 + window.RBAC.STAFF_ROLES.length; // page + path + source + per-role columns
 
         for (const folder of folderNames) {
             const rows = folders.get(folder).sort((a, b) => a.id.localeCompare(b.id));
             const isCollapsed = collapsedFolders.has(folder);
+            const section = getFolderSection(folder);
             // ── Folder header row ──────────────────────────────────────────────
             html.push(`<tr class="folder-row folder-toggle${isCollapsed ? ' collapsed' : ''}" data-folder-row="${escapeHtml(folder)}" data-collapsed="${isCollapsed ? 'true' : 'false'}" onclick="toggleFolder('${escapeHtml(folder).replace(/'/g, "\\'")}')">`);
             html.push(`<td colspan="${colSpan}" class="px-4 folder-toggle">`);
             html.push(`<div class="flex items-center gap-2">`);
             html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant folder-chevron">expand_more</span>`);
-            html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant">folder</span>`);
-            html.push(`<span class="font-mono text-[12px] font-bold text-primary">${escapeHtml(folder)}</span>`);
+            html.push(`<span class="material-symbols-outlined text-[18px] text-on-surface-variant">${section.icon}</span>`);
+            html.push(`<span class="font-mono text-[12px] font-bold text-primary">${escapeHtml(section.label)}</span>`);
+            html.push(`<span class="text-[10px] font-mono text-on-surface-variant/60">${escapeHtml(folder)}</span>`);
             html.push(`<span class="folder-count text-[10px] font-bold px-1.5 py-0.5 rounded-full">${rows.length} page${rows.length === 1 ? '' : 's'}</span>`);
             html.push(`<span class="text-[10px] text-on-surface-variant ml-auto" data-folder-hint="${escapeHtml(folder)}">${isCollapsed ? 'click to expand' : 'click to collapse'}</span>`);
             html.push(`</div>`);
@@ -701,10 +719,8 @@
                     // If server has an override row, use that; else use default
                     const currentAllowed = pending !== undefined ? pending : (override !== undefined ? override : p.defaults.has(role));
                     const defaultAllowed = p.defaults.has(role);
-                    let dotClass = 'dot-default';
-                    if (currentAllowed !== defaultAllowed) {
-                        dotClass = currentAllowed ? 'dot-overridden' : 'dot-removed';
-                    }
+                    // Dot indicates current state: green = allowed, red = denied
+                    let dotClass = currentAllowed ? 'dot-default' : 'dot-removed';
                     if (isAdmin) {
                         html.push(`<td class="px-3 py-2 admin-locked"><div class="check-cell"><input type="checkbox" checked disabled/><span class="badge-always ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded">ALWAYS</span></div></td>`);
                     } else if (isViewOnly) {
@@ -786,16 +802,17 @@
         const role = input.dataset.role;
         if (role === 'admin') return; // safety
         const newVal = input.checked;
-        const eff = serverMatrix[key];
-        const def = localDefaults[key] || eff;
-        if (newVal === def.has(role)) {
-            // matches default → no override needed
+        // Compare against current effective state (serverMatrix), not the original default.
+        // If there's a pending change, use that; otherwise the effective state reflects overrides.
+        const pending = pendingChanges.get(`${key}|${role}`);
+        const currentEffective = pending !== undefined ? pending : (serverMatrix[key] ? serverMatrix[key].has(role) : false);
+        if (newVal === currentEffective) {
             pendingChanges.delete(`${key}|${role}`);
         } else {
             pendingChanges.set(`${key}|${role}`, newVal);
         }
         updateDirtyIndicator();
-        updateRowDot(input.closest('tr'), key, role, newVal, def.has(role));
+        updateRowDot(input.closest('tr'), role, newVal);
     }
     function onPageCellChange(input) {
         const id = input.dataset.pageId;
@@ -803,6 +820,10 @@
         if (role === 'admin') return;
         const newVal = input.checked;
         const p = serverPages[id];
+        if (!p) {
+            toast(`Page "${id}" is not registered in RBAC.`, 'err');
+            return;
+        }
         if (p && p.viewOnly) {
             // View-only rows are always checked; a click can't change anything.
             input.checked = true;
@@ -815,18 +836,24 @@
             toast(`"${p.label}" is locked to ${p.requiredRole}+admin and cannot be granted to ${role}.`, 'warn');
             return;
         }
-        if (newVal === p.defaults.has(role)) {
+        // Compare against the current effective state, not the original default.
+        // The effective state is: pending if set, otherwise override from server, otherwise default.
+        const pageAccessMap = window.__rbacPageAccessMap || new Map();
+        const pending = pendingPageChanges.get(`${id}|${role}`);
+        const serverOverride = pageAccessMap.get(`${id}|${role}`);
+        const currentEffective = pending !== undefined ? pending : (serverOverride !== undefined ? serverOverride : p.defaults.has(role));
+        if (newVal === currentEffective) {
             pendingPageChanges.delete(`${id}|${role}`);
         } else {
             pendingPageChanges.set(`${id}|${role}`, newVal);
         }
         updateDirtyIndicator();
-        updateRowDot(input.closest('tr'), id, role, newVal, p.defaults.has(role));
+        updateRowDot(input.closest('tr'), role, newVal);
     }
-    function updateRowDot(tr, key, role, currentAllowed, defaultAllowed) {
+    function updateRowDot(tr, role, currentAllowed) {
         const dot = tr.querySelector(`.check-cell input[data-role="${role}"] + .dot`);
         if (!dot) return;
-        dot.className = 'dot ' + (currentAllowed === defaultAllowed ? 'dot-default' : (currentAllowed ? 'dot-overridden' : 'dot-removed')) + ' ml-2';
+        dot.className = 'dot ' + (currentAllowed ? 'dot-default' : 'dot-removed') + ' ml-2';
     }
 
     // ─── Save flow ───────────────────────────────────────────────────────────
@@ -841,7 +868,7 @@
         if (permCount) parts.push(`${permCount} permission override${permCount === 1 ? '' : 's'}`);
         if (pageCount) parts.push(`${pageCount} page-access override${pageCount === 1 ? '' : 's'}`);
         document.getElementById('confirm-summary').textContent =
-            `This will save ${parts.join(' and ')} and append a snapshot to the history log.`;
+            `This will save ${parts.join(' and ')}.`;
         document.getElementById('confirm-reason').value = '';
         document.getElementById('confirm-overlay').classList.remove('hidden');
     }
@@ -887,7 +914,14 @@
                 });
                 // 404 = endpoint not yet wired (server-side enforcement is
                 // permission-only in this build). Show a soft warning.
-                if (!r.ok && r.status !== 404) throw new Error(`pages ${r.status}`);
+                if (!r.ok) {
+                    const errText = await r.text();
+                    if (r.status === 404) {
+                        toast('Page-access API not available (404) — only permission changes saved.', 'warn');
+                    } else {
+                        throw new Error(`pages ${r.status}: ${errText.slice(0,300)}`);
+                    }
+                }
             }
             toast('Saved', 'ok');
             pendingChanges.clear();
@@ -899,7 +933,6 @@
             await RBAC.loadEffective({ force: true });
             renderPermissions();
             renderPages();
-            loadHistory();
         } catch (e) {
             toast(`Save failed: ${e.message || e}`, 'err');
         } finally {
@@ -978,42 +1011,6 @@
             }
         }
         openSaveConfirm();
-    }
-
-    // ─── Restore flow ────────────────────────────────────────────────────────
-    function openRestoreConfirm(historyId, summary) {
-        pendingRestore = { historyId, summary };
-        document.getElementById('restore-summary').textContent =
-            `Restore will replace the current permission overrides with snapshot "${summary || '(no summary)'}". Page-access overrides are not affected.`;
-        document.getElementById('restore-overlay').classList.remove('hidden');
-    }
-    function closeRestoreConfirm() { document.getElementById('restore-overlay').classList.add('hidden'); pendingRestore = null; }
-    async function doRestore() {
-        if (!pendingRestore) return;
-        const { historyId, summary } = pendingRestore;
-        closeRestoreConfirm();
-        try {
-            const r = await fetch(`/api/rbac/history/${historyId}/restore`, {
-                method: 'POST', credentials: 'same-origin',
-            });
-            if (!r.ok) throw new Error(`${r.status}: ${(await r.text()).slice(0,200)}`);
-            toast(`Restored: ${summary}`, 'ok');
-            await loadPermissions();
-            await loadPages();
-            RBAC.clearEffective();
-            await RBAC.loadEffective({ force: true });
-            renderPermissions();
-            renderPages();
-            loadHistory();
-        } catch (e) {
-            toast(`Restore failed: ${e.message || e}`, 'err');
-        }
-    }
-
-    function viewSnapshot(row) {
-        const json = JSON.stringify(row, null, 2);
-        const w = window.open('', '_blank', 'width=600,height=600');
-        w.document.write(`<pre style="font-size:12px;font-family:monospace;padding:16px">${escapeHtml(json)}</pre>`);
     }
 
     // ─── UI helpers ──────────────────────────────────────────────────────────
