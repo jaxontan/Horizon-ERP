@@ -362,15 +362,15 @@
 
                     setTimeout(() => {
                         const redirects = {
-                            admin: 'business-management/finances/opertation.html',
-                            accountant: 'business-management/finances/opertation.html',
+                            admin: 'business-management/finances/operation.html',
+                            accountant: 'business-management/finances/operation.html',
                             procurement: 'business-management/Supplier-management/index.html',
                             production: 'warehouse/inventory.html',
                             logistic: 'logistic/fulfillment.html',
                             sales: 'business-management/customer-management/customer-order/index.html',
                             client: 'customer-page/index.html'
                         };
-                        window.location.href = redirects[userRole] || 'business-management/finances/opertation.html';
+                        window.location.href = redirects[userRole] || 'business-management/finances/operation.html';
                     }, 1200);
                 }
 

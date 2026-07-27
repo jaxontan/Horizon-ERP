@@ -3595,7 +3595,7 @@ const STAFF_PAGE_PATHS = {
     'sales-dashboard-b2c':   '/business-management/customer-management/customer-order/b2c.html',
     'outreach':              '/business-management/outreach/email-outreach.html',
     'support-hub':           '/business-management/customer-management/support.html',
-    'finance-dashboard':     '/business-management/finances/opertation.html',
+    'finance-dashboard':     '/business-management/finances/operation.html',
     'traceability':          '/document/traceability.html',
     'purchase-record':       '/document/purchase-record.html',
     'fulfillment':           '/logistic/fulfillment.html',

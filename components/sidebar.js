@@ -880,7 +880,7 @@ ${skeletonRows}
             {
                 title: 'Finances & Reports',
                 items: [
-                    { id: 'finance-dashboard', href: '/business-management/finances/opertation.html', icon: 'account_balance', label: 'Finance Dashboard' },
+                    { id: 'finance-dashboard', href: '/business-management/finances/operation.html', icon: 'account_balance', label: 'Finance Dashboard' },
                     { id: 'purchase-record', href: '/document/purchase-record.html', icon: 'shopping_bag', label: 'Purchase Records' }
                 ]
             },
@@ -1116,7 +1116,7 @@ ${(userName || 'U').charAt(0).toUpperCase()}
         else if (path.endsWith('/business-management/outreach/email-outreach.html')) activePage = 'outreach';
         else if (path.includes('/business-management/outreach/')) activePage = 'outreach';
 
-        else if (path.endsWith('/business-management/finances/opertation.html')) activePage = 'finance-dashboard';
+        else if (path.endsWith('/business-management/finances/operation.html')) activePage = 'finance-dashboard';
 
         else if (path.endsWith('/document/traceability.html')) activePage = 'traceability';
         else if (path.endsWith('/document/purchase-record.html')) activePage = 'purchase-record';
