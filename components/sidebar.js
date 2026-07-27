@@ -1009,7 +1009,6 @@ ${skeletonRows}
 <div class="flex items-center">
 <div class="bg-[#031635] text-[#ffffff] rounded-md p-1.5 ${isMinimal ? '' : 'mr-2.5'} relative">
 <span class="material-symbols-outlined text-base">notifications</span>
-<span id="alert-badge-count" class="absolute -top-1 -right-1 bg-[#ba1a1a] text-[#ffffff] text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-[#ffffff]">0</span>
 </div>
 <div class="${textHiddenClass} leading-tight">
 <h3 class="font-semibold text-[13px]">Alert Center</h3>

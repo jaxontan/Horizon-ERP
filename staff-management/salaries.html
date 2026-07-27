@@ -1623,14 +1623,24 @@
                 console.log(`[Auto-Process] Already processed? localStorage=${alreadyAutoProcessed}, memory=${alreadyProcessed}`);
                 console.log(`[Auto-Process] paidCycleCounts:`, Object.fromEntries(paidCycleCounts));
 
-                // Only consider "already processed" if:
-                // 1. localStorage says so, OR
-                // 2. There's a valid run (totalPaid > 0) in historyList
+                // Only consider "already processed" if there's a valid run
+                // (totalPaid > 0) in historyList. A stale localStorage flag from
+                // a previous buggy run must NOT block the backfill — otherwise a
+                // cycle whose salaries were marked Paid individually (so no
+                // summary row was ever created) will stay invisible forever.
                 const hasValidRun = historyList.some(r => r.cycle === cycleLabel && r.totalPaid > 0);
-                
-                if (alreadyAutoProcessed || hasValidRun) {
-                    console.log(`[Auto-Process] ${cycleLabel} already processed, skipping`);
+
+                if (hasValidRun) {
+                    console.log(`[Auto-Process] ${cycleLabel} already has a valid run, skipping`);
+                    if (!alreadyAutoProcessed) localStorage.setItem(autoProcessedKey, 'true');
                     continue;
+                }
+
+                // Stale flag present but no DB row — clear it so the backfill
+                // branch below can run.
+                if (alreadyAutoProcessed) {
+                    console.log(`[Auto-Process] Clearing stale flag for ${cycleLabel} — no payroll_runs row exists`);
+                    localStorage.removeItem(autoProcessedKey);
                 }
 
                 // If lock time has passed, process this cycle
@@ -1650,11 +1660,54 @@
                     console.log(`[Auto-Process] Salaries data sample:`, salariesData.slice(0, 2));
 
                     const pendingRows = salariesData.filter(s => s.paymentStatus !== 'Paid');
-                    console.log(`[Auto-Process] Pending rows: ${pendingRows.length}`);
+                    const paidRows = salariesData.filter(s => s.paymentStatus === 'Paid');
+                    console.log(`[Auto-Process] Pending rows: ${pendingRows.length}, already-paid rows: ${paidRows.length}`);
 
                     if (pendingRows.length === 0) {
+                        // Every salary row is already Paid for this cycle. We
+                        // still need a payroll_runs summary row so the cycle
+                        // appears in the history panel — if one is missing,
+                        // build it now from the already-paid rows, otherwise
+                        // renderHistory() has nothing to draw and the cycle
+                        // becomes invisible (this is the exact bug that hid
+                        // "July 2026" before).
+                        if (paidRows.length === 0) {
+                            localStorage.setItem(autoProcessedKey, 'true');
+                            console.log(`[Auto-Process] No salary rows at all for ${cycleLabel}, marking as processed`);
+                            continue;
+                        }
+
+                        const allRows = paidRows.map(s => {
+                            const basePayCalculated = s.salaryType === 'Monthly' ? s.baseRate : (s.baseRate * s.hoursWorked);
+                            const grossPay = Math.max(0, basePayCalculated + s.bonus - s.deductions);
+                            return { ...s, grossPay };
+                        });
+                        const details = allRows.map(sal => {
+                            const profile = staffList.find(st => st.id === sal.staffId) || {
+                                name: "Legacy Employee", role: "Staff Member",
+                                photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200"
+                            };
+                            return {
+                                staffId: sal.staffId, name: profile.name, role: profile.role, photo: profile.photo,
+                                salaryType: sal.salaryType, baseRate: sal.baseRate,
+                                hoursWorked: sal.hoursWorked, bonus: sal.bonus,
+                                deductions: sal.deductions, grossPay: sal.grossPay
+                            };
+                        });
+                        const totalPaid = details.reduce((acc, d) => acc + (d.grossPay || 0), 0);
+
+                        const syncedRun = await syncPayrollRunToSupabase(cycleLabel, totalPaid, details.length, details);
+                        if (syncedRun) {
+                            historyList.unshift({
+                                id: syncedRun.id, run_code: syncedRun.run_code,
+                                cycle: cycleLabel, dateProcessed: syncedRun.dateProcessed,
+                                totalPaid, staffCount: details.length
+                            });
+                        }
+                        paidCycleCounts.set(cycleLabel, (paidCycleCounts.get(cycleLabel) || 0) + 1);
                         localStorage.setItem(autoProcessedKey, 'true');
-                        console.log(`[Auto-Process] No pending rows for ${cycleLabel}, marking as processed`);
+                        await refreshPayrollDashboard({ includeHistory: true, seedCycle: true });
+                        showToast("Payroll Backfilled", `${cycleLabel} had no history run — recorded ${details.length} staff at $${totalPaid.toFixed(2)}.`);
                         continue;
                     }
 

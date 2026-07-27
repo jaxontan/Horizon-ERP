@@ -2226,8 +2226,69 @@
             });
         }, 100);
 
+        // ── Seed canonical chart of accounts into journal.accounts ──────────────
+        //
+        // The 11 accounts that ship with this page are rendered as static
+        // portfolio cards, but until they're also rows in journal.accounts
+        // they are invisible to:
+        //   • the journal-entry dropdown (which queries the DB)
+        //   • the ledger writer (entry_lines.account_id has no FK target)
+        //   • any analytics that join on journal.accounts
+        // Admin-created accounts (e.g. "A345 - dsds") were already being
+        // persisted by the "+ Add Account" flow, but the seeds had no path
+        // into the DB. This idempotent bootstrap closes that gap.
+        //
+        // safeSeedAccounts() is called on every page load — it queries the
+        // DB once for existing rows by name and inserts only the missing
+        // ones, so it is a no-op on subsequent loads.
+        const SEED_ACCOUNTS_TO_PERSIST = [
+            { code: 'E001', name: 'Direct Labour',        type: 'expense',   nature: 'debit'  },
+            { code: 'E002', name: 'Direct Material',      type: 'expense',   nature: 'debit'  },
+            { code: 'E003', name: 'Factory Overhead',     type: 'expense',   nature: 'debit'  },
+            { code: 'A001', name: 'Cash',                 type: 'asset',     nature: 'debit'  },
+            { code: 'A002', name: 'Raw Material Inventory', type: 'asset',   nature: 'debit'  },
+            { code: 'L001', name: 'Accounts Payable',     type: 'liability', nature: 'credit' },
+            { code: 'A004', name: 'Accounts Receivable',  type: 'asset',     nature: 'debit'  },
+            { code: 'A005', name: 'Work in Process',      type: 'asset',     nature: 'debit'  },
+            { code: 'A003', name: 'Finished Goods',       type: 'asset',     nature: 'debit'  },
+            { code: 'E004', name: 'Cost of Goods Sold',   type: 'expense',   nature: 'debit'  },
+            { code: 'I001', name: 'Sales Revenue',        type: 'income',    nature: 'credit' },
+        ];
+
+        async function safeSeedAccounts() {
+            try {
+                const existing = await journalAPI({
+                    table: 'accounts',
+                    operation: 'select',
+                    columns: 'name'
+                }) || [];
+                const existingNames = new Set(
+                    existing.map(a => String(a.name || '').toLowerCase())
+                );
+                for (const acc of SEED_ACCOUNTS_TO_PERSIST) {
+                    if (existingNames.has(acc.name.toLowerCase())) continue;
+                    const result = await journalAPI({
+                        table: 'accounts',
+                        operation: 'insert',
+                        data: acc
+                    });
+                    if (result && result.id) {
+                        console.log(`[account] seeded ${acc.code} - ${acc.name} (id=${result.id})`);
+                        existingNames.add(acc.name.toLowerCase());
+                    } else {
+                        console.warn(`[account] failed to seed ${acc.name}:`, result);
+                    }
+                }
+            } catch (err) {
+                // Don't block the page if seeding fails — the portfolio
+                // cards still render and the user can still add new accounts.
+                console.warn('[account] safeSeedAccounts failed:', err);
+            }
+        }
+
         // Load real account data from Supabase on page load
         window.addEventListener('DOMContentLoaded', async () => {
+            await safeSeedAccounts();
             await loadAccountData();
             document.querySelectorAll('#accounts-portfolio-grid > div').forEach(card => {
                 const titleEl = card.querySelector('h4');

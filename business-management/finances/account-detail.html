@@ -480,20 +480,24 @@
         let ledgerDatabase = {};
         let accountBalance = '$0.00';
 
-        const ACCOUNT_OPTIONS = `
-            <option disabled selected value="">Select Account</option>
-            <option value="Direct Labour">E001 - Direct Labour</option>
-            <option value="Direct Material">E002 - Direct Material</option>
-            <option value="Factory Overhead">E003 - Factory Overhead</option>
-            <option value="Cash">A001 - Cash</option>
-            <option value="Raw Material Inventory">A002 - Raw Material Inventory</option>
-            <option value="Accounts Payable">L001 - Accounts Payable</option>
-            <option value="Accounts Receivable">A004 - Accounts Receivable</option>
-            <option value="Work in Process">A005 - Work in Process</option>
-            <option value="Finished Goods">A003 - Finished Goods</option>
-            <option value="Cost of Goods Sold">E004 - Cost of Goods Sold</option>
-            <option value="Revenue">I001 - Revenue</option>
-        `;
+        // Seed accounts that ship with the page as static portfolio cards. They
+        // are not persisted to journal.accounts, so they must be merged into
+        // the dropdown list at modal-open time — otherwise the journal entry
+        // modal would only show accounts an admin created via the "+ Add
+        // Account" button (e.g. "A345 - dsds") and miss the 11 seed accounts.
+        const SEED_ACCOUNTS = [
+            { code: 'E001', name: 'Direct Labour' },
+            { code: 'E002', name: 'Direct Material' },
+            { code: 'E003', name: 'Factory Overhead' },
+            { code: 'A001', name: 'Cash' },
+            { code: 'A002', name: 'Raw Material Inventory' },
+            { code: 'L001', name: 'Accounts Payable' },
+            { code: 'A004', name: 'Accounts Receivable' },
+            { code: 'A005', name: 'Work in Process' },
+            { code: 'A003', name: 'Finished Goods' },
+            { code: 'E004', name: 'Cost of Goods Sold' },
+            { code: 'I001', name: 'Sales Revenue' },
+        ];
 
         const TYPE_COLORS = {
             asset: { bg: 'bg-green-500/15', text: 'text-green-300', border: 'border-green-500/20', icon: 'bg-green-50', iconText: 'text-green-600' },
@@ -698,10 +702,10 @@
             document.getElementById('journal-entries-container').innerHTML = '';
             journalRowCount = 0;
 
-            // Ensure accounts list is loaded
-            if (accountsList.length === 0) {
-                accountsList = await journalAPI({ table: 'accounts', operation: 'select', columns: 'id, code, name' }) || [];
-            }
+            // Refresh the cache from the DB on every modal open so any account
+            // an admin added since the last visit is included.
+            const dbAccounts = await journalAPI({ table: 'accounts', operation: 'select', columns: 'id, code, name' }) || [];
+            accountsList = mergeAccountsWithSeeds(dbAccounts);
 
             // Two initial rows — first pre-selects current account on the debit side
             addJournalEntryRow(accountTitle, false);
@@ -709,6 +713,15 @@
 
             updateJournalTotals();
             document.getElementById('add-entry-modal').classList.remove('hidden');
+        }
+
+        // Merge the 11 seed accounts with any DB-created accounts. Dedupes by
+        // name, last-wins. Always returns the seed list as a stable baseline,
+        // so the dropdown is never empty even if the DB read fails.
+        function mergeAccountsWithSeeds(dbAccounts) {
+            const seedNames = new Set(SEED_ACCOUNTS.map(a => a.name));
+            const extras = (dbAccounts || []).filter(a => a && a.name && !seedNames.has(a.name));
+            return [...SEED_ACCOUNTS, ...extras];
         }
 
         function closeAddEntryModal() {
@@ -724,8 +737,14 @@
                 seen.add(a.name);
                 return true;
             });
+            // Stable sort: seed order first, then DB extras by code.
+            const seedNames = new Set(SEED_ACCOUNTS.map(a => a.name));
+            const seedRows = unique.filter(a => seedNames.has(a.name));
+            const extraRows = unique.filter(a => !seedNames.has(a.name))
+                .sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+            const ordered = [...seedRows, ...extraRows];
             return `<option disabled value="">Select Account</option>` +
-                unique.map(a => `<option value="${a.name}" ${a.name === preselected ? 'selected' : ''}>${a.code} - ${a.name}</option>`).join('');
+                ordered.map(a => `<option value="${a.name}" ${a.name === preselected ? 'selected' : ''}>${a.code ? a.code + ' - ' : ''}${a.name}</option>`).join('');
         }
 
         function addJournalEntryRow(preselectedAccount, preCheckCredit) {
