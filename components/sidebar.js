@@ -1,8 +1,8 @@
 class AppSidebar extends HTMLElement {
     constructor() {
         super();
-        this.supabaseUrl = 'https://qsobpenorlpzlkeyiefg.supabase.co';
-        this.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        this.supabaseUrl = 'https://djvlhmuoryrjfgaztidx.supabase.co';
+        this.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
         this.alertCount = 0;
         this._client = null;
     }
@@ -1215,8 +1215,8 @@ customElements.define('app-sidebar', AppSidebar);
 // Returns a promise that resolves with the Supabase client instance.
 window.initSupabaseClient = window.initSupabaseClient || function() {
     return new Promise(function(resolve) {
-        var SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
-        var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        var SB_URL = 'https://djvlhmuoryrjfgaztidx.supabase.co';
+        var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
         if (window.supabase && window.supabase._client) {
             resolve(window.supabase._client);
             return;
@@ -1243,8 +1243,8 @@ window.initSupabaseClient = window.initSupabaseClient || function() {
 // Never reads directly from localStorage (tokens get stale after refresh).
 window.getAccessToken = window.getAccessToken || function() {
     return new Promise(function(resolve) {
-        var SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
-        var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+        var SB_URL = 'https://djvlhmuoryrjfgaztidx.supabase.co';
+        var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
         if (window.supabase && window.supabase._client) {
             window.supabase._client.auth.getSession().then(function(result) {
                 resolve(result.data.session ? result.data.session.access_token : null);

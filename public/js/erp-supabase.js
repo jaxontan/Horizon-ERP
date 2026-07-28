@@ -1,6 +1,6 @@
 (function () {
-const SUPABASE_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+const SUPABASE_URL = 'https://djvlhmuoryrjfgaztidx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
 
     const DEFAULT_API_ORIGIN = 'http://localhost:3000';
     const STATIC_DEV_PORTS = new Set(['5500', '5501', '8000', '8080']);
