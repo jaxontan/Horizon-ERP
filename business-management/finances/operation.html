@@ -55,7 +55,7 @@
 <!-- TopAppBar Shell -->
 <header class="flex justify-between items-center w-full px-margin h-16 ml-64 max-w-[calc(100%-16rem)] bg-surface dark:bg-background border-b border-outline-variant dark:border-outline sticky top-0 z-30">
 <div class="flex items-center gap-stack-md">
-<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed mobile-show">Financial Dashboard</h1>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed mobile-show flex items-center gap-2"><span class="material-symbols-outlined text-[22px]">monitoring</span>Financial Dashboard</h1>
 </div></div><div class="flex items-center gap-stack-md">
 </div></header>
     <!-- Tabs Navigation -->
@@ -335,6 +335,39 @@
             } catch (err) { return 0; }
         }
 
+        // Custom date range labour cost: sum of payroll_runs.total_paid whose
+        // payroll cycle (e.g. "July 2026") falls inside the date range. Uses
+        // the cycle column rather than date_processed so finalized cycles
+        // match their salary cycle regardless of when they were processed.
+        async function fetchLabourCostForRange(dateFrom, dateTo) {
+            try {
+                const rows = await supabaseAPI({
+                    table: 'payroll_runs',
+                    operation: 'select',
+                    columns: 'total_paid, cycle'
+                });
+                const monthLong = ['January','February','March','April','May','June',
+                                   'July','August','September','October','November','December'];
+                const from = new Date(dateFrom);
+                const to = new Date(dateTo + 'T23:59:59');
+                let total = 0;
+                (rows || []).forEach(r => {
+                    const m = String(r.cycle || '').match(/^([A-Za-z]+)\s+(\d{4})$/);
+                    if (!m) return;
+                    const monthIdx = monthLong.findIndex(x => x.toLowerCase() === m[1].toLowerCase());
+                    if (monthIdx === -1) return;
+                    const cycleDate = new Date(parseInt(m[2], 10), monthIdx, 1);
+                    if (cycleDate >= from && cycleDate <= to) {
+                        total += parseFloat(r.total_paid) || 0;
+                    }
+                });
+                return total;
+            } catch (err) {
+                console.warn('fetchLabourCostForRange error:', err);
+                return 0;
+            }
+        }
+
         // Load finished goods inventory — Unsold Stock Value = current_stock × unit_cost of all finished products
         async function loadUnsoldStockValue() {
             try {
@@ -602,7 +635,7 @@
         const PERIOD_LABEL = { jan:'Jan', feb:'Feb', mar:'Mar', apr:'Apr', may:'May', jun:'Jun', jul:'Jul', aug:'Aug', sep:'Sep', oct:'Oct', nov:'Nov', dec:'Dec', year:'Year' };
 
         function _emptyLivePeriod() {
-            return { materials: 0, materialsPct: '0%', materialsTrend: '0%', labourBase: 0, overheads: 0, overheadsUtil: 0, overheadsAdmin: 0, currentSales: 0, dateFrom: '', dateTo: '' };
+            return { materials: 0, materialsPct: '0%', materialsTrend: '0%', labourBase: 0, labour: 0, labourPaidCount: 0, labourPendingCount: 0, labourStaffCount: 0, overheads: 0, overheadsUtil: 0, overheadsAdmin: 0, currentSales: 0, dateFrom: '', dateTo: '' };
         }
 
         let liveData = PERIOD_KEYS.reduce((acc, k) => { acc[k] = _emptyLivePeriod(); return acc; }, {});
@@ -634,6 +667,7 @@
             for (const period of PERIOD_KEYS) {
                 liveData[period].overheads = getTotalOverheads(period);
             }
+            await computeLabourCostPerPeriod();
             if (typeof setPeriod === 'function') setPeriod(currentActivePeriod);
         }
 
@@ -722,8 +756,105 @@
             for (const period of PERIOD_KEYS) {
                 liveData[period].overheads = getTotalOverheads(period);
             }
+            await computeLabourCostPerPeriod();
             if (typeof setPeriod === 'function') setPeriod(currentActivePeriod);
             await buildAndRenderChart();
+        }
+
+        // Realized labour cost = sum of payroll_runs.total_paid, bucketed by the
+        // payroll cycle text (e.g. "July 2026"). The cycle column on
+        // payroll_runs is the authoritative cycle identifier — date_processed
+        // is when the run was finalized, which may be in the following month.
+        // Pending salary cycles (no payroll run) contribute $0.
+        async function computeLabourCostPerPeriod() {
+            try {
+                const [payrollData, salariesData] = await Promise.all([
+                    supabaseAPI({
+                        table: 'payroll_runs',
+                        operation: 'select',
+                        columns: 'total_paid, cycle, created_at, date_processed'
+                    }),
+                    supabaseAPI({
+                        table: 'salaries',
+                        operation: 'select',
+                        columns: 'cycle, payment_status'
+                    })
+                ]);
+                const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+                const monthLong = ['January','February','March','April','May','June',
+                                   'July','August','September','October','November','December'];
+                // Dedup payroll_runs by cycle (DB may contain duplicate rows
+                // when finalize_payroll_cycle ran more than once for the same
+                // cycle). Keep only the most recently-created row per cycle so
+                // the Labour Cost card and chart show one figure per month
+                // instead of summing every duplicate.
+                const latestRunByCycle = {};
+                (payrollData || []).forEach(run => {
+                    const cycleKey = String(run.cycle || '').trim();
+                    if (!cycleKey) return;
+                    const ts = new Date(run.created_at || run.date_processed || 0).getTime();
+                    const existing = latestRunByCycle[cycleKey];
+                    if (!existing || ts > existing.ts) {
+                        latestRunByCycle[cycleKey] = { run, ts };
+                    }
+                });
+
+                const sums = {};
+                Object.values(latestRunByCycle).forEach(({ run }) => {
+                    const m = String(run.cycle || '').trim().match(/^([A-Za-z]+)\s+(\d{4})$/);
+                    if (!m) return;
+                    const monthIdx = monthLong.findIndex(x => x.toLowerCase() === m[1].toLowerCase());
+                    if (monthIdx === -1) return;
+                    const year = parseInt(m[2], 10);
+                    if (year !== currentActiveYear) return;
+                    const k = `${year}-${months[monthIdx]}`;
+                    sums[k] = (sums[k] || 0) + (parseFloat(run.total_paid) || 0);
+                });
+
+                const paidCounts = {};
+                const pendingCounts = {};
+                const staffCounts = {};
+                (salariesData || []).forEach(s => {
+                    const cycle = String(s.cycle || '').trim();
+                    const m = cycle.match(/^([A-Za-z]+)\s+(\d{4})$/);
+                    if (!m) return;
+                    const monthIdx = monthLong.findIndex(x => x.toLowerCase() === m[1].toLowerCase());
+                    if (monthIdx === -1) return;
+                    const year = parseInt(m[2], 10);
+                    if (year !== currentActiveYear) return;
+                    const key = `${year}-${months[monthIdx]}`;
+                    staffCounts[key] = (staffCounts[key] || 0) + 1;
+                    const status = String(s.payment_status || 'Pending').toLowerCase();
+                    if (status === 'paid') paidCounts[key] = (paidCounts[key] || 0) + 1;
+                    else pendingCounts[key] = (pendingCounts[key] || 0) + 1;
+                });
+
+                PERIOD_KEYS.forEach(period => {
+                    if (period === 'year') {
+                        let total = 0, paid = 0, pending = 0, staff = 0;
+                        PERIOD_KEYS.forEach(p => {
+                            if (p === 'year') return;
+                            const k = `${currentActiveYear}-${p}`;
+                            total += sums[k] || 0;
+                            paid += paidCounts[k] || 0;
+                            pending += pendingCounts[k] || 0;
+                            staff += staffCounts[k] || 0;
+                        });
+                        liveData[period].labour = total;
+                        liveData[period].labourPaidCount = paid;
+                        liveData[period].labourPendingCount = pending;
+                        liveData[period].labourStaffCount = staff;
+                    } else {
+                        const k = `${currentActiveYear}-${period}`;
+                        liveData[period].labour = sums[k] || 0;
+                        liveData[period].labourPaidCount = paidCounts[k] || 0;
+                        liveData[period].labourPendingCount = pendingCounts[k] || 0;
+                        liveData[period].labourStaffCount = staffCounts[k] || 0;
+                    }
+                });
+            } catch (err) {
+                console.warn('computeLabourCostPerPeriod error:', err);
+            }
         }
 
         function setPeriod(period) {
@@ -756,13 +887,18 @@
             Promise.all([
                 fetchSalesTotalsForRange(fromVal, textToVal),
                 fetchPOMaterialCostForRange(fromVal, textToVal),
-                loadUnsoldStockValue()
-            ]).then(([result, poCost, unsoldStock]) => {
+                loadUnsoldStockValue(),
+                fetchLabourCostForRange(fromVal, textToVal)
+            ]).then(([result, poCost, unsoldStock, labourCost]) => {
                 const customData = {
                     materials: poCost,
                     materialsPct: '--%',
                     materialsTrend: '0.0%',
                     labourBase: 0,
+                    labour: labourCost,
+                    labourPaidCount: 0,
+                    labourPendingCount: 0,
+                    labourStaffCount: 0,
                     overheads: getTotalOverheadsForRange(fromVal, textToVal),
                     overheadsAdmin: getAdminOverheadsForRange(fromVal, textToVal),
                     currentSales: result.totalSales || 0
@@ -885,26 +1021,23 @@
             }
             const salesValEl = document.getElementById('current-sales-value');
             if (salesValEl) salesValEl.textContent = fmt(data.currentSales);
-            loadDynamicLabourCosts();
+            renderLabourCard(data);
         }
 
-        async function loadDynamicLabourCosts(customTotal = null) {
-            await loadStaffAndSalariesFromSupabase();
-            let totalPayroll = 0, paidCount = 0, pendingCount = 0;
-            _salariesCache.forEach(sal => {
-                const basePay = sal.salaryType === 'Monthly' ? sal.baseRate : (sal.baseRate * sal.hoursWorked);
-                const grossPay = Math.max(0, basePay + sal.bonus - sal.deductions);
-                totalPayroll += grossPay;
-                sal.paymentStatus === 'Paid' ? paidCount++ : pendingCount++;
-            });
-            const paidRatio = _salariesCache.length > 0 ? Math.round((paidCount / _salariesCache.length) * 100) : 0;
-            const displayed = _salariesCache.length > 0 ? totalPayroll : totalPayroll;
+        function renderLabourCard(data) {
+            const labour = Number(data.labour || 0);
             const valEl = document.getElementById('labour-cost-value');
-            if (valEl) valEl.textContent = `$${displayed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            if (valEl) valEl.textContent = `$${labour.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             const countEl = document.getElementById('labour-staff-count');
-            if (countEl) countEl.textContent = `${_salariesCache.length} Members`;
+            if (countEl) countEl.textContent = `${data.labourStaffCount || 0} Members`;
             const statusEl = document.getElementById('labour-payroll-status');
-            if (statusEl) statusEl.textContent = `${paidRatio}% Paid`;
+            const paidCount = data.labourPaidCount || 0;
+            const pendingCount = data.labourPendingCount || 0;
+            if (statusEl) {
+                const total = paidCount + pendingCount;
+                const paidRatio = total > 0 ? Math.round((paidCount / total) * 100) : 0;
+                statusEl.textContent = `${paidRatio}% Paid`;
+            }
             const budgetStatus = document.getElementById('labour-budget-status');
             const budgetContainer = document.getElementById('labour-budget-status-container');
             const budgetIcon = document.getElementById('labour-budget-status-icon');
@@ -919,7 +1052,16 @@
                     budgetIcon.textContent = "warning";
                 }
             }
-            return totalPayroll;
+        }
+
+        async function loadDynamicLabourCosts() {
+            // Backwards-compat shim. Real labour cost is now driven by
+            // liveData[period].labour (set by computeLabourCostPerPeriod) and
+            // rendered by renderLabourCard(). This shim exists in case any
+            // external code still calls it.
+            const period = currentActivePeriod;
+            const data = liveData[period];
+            if (data) renderLabourCard(data);
         }
 
         async function buildAndRenderChart() {
@@ -959,7 +1101,7 @@
                         columns: 'total_amount, created_at'
                     }),
                     supabaseAPI({ table: 'factory_bookings', operation: 'select', columns: 'booking_fee, booking_date' }),
-                    supabaseAPI({ table: 'payroll_runs', operation: 'select', columns: 'total_paid, date_processed' })
+                    supabaseAPI({ table: 'payroll_runs', operation: 'select', columns: 'total_paid, date_processed, cycle, created_at' })
                 ]);
 
                 // Net sales = source orders only. order_fulfillments.total_amount
@@ -996,8 +1138,24 @@
                 
                 console.log('[DEBUG H3] Chart overheadsByMonth:', overheadsByMonth, 'factoryBookingData:', factoryBookingData);
 
-                const payrollByMonth = {};
+                // Dedup payroll_runs by cycle (DB may contain duplicate rows
+                // when finalize_payroll_cycle ran more than once for the same
+                // cycle). Keep only the most recently-created row per cycle so
+                // the chart's labour bar reflects one figure per month instead
+                // of summing every duplicate.
+                const latestRunByCycle = {};
                 (payrollRunsData || []).forEach(run => {
+                    const cycleKey = String(run.cycle || '').trim();
+                    if (!cycleKey) return;
+                    const ts = new Date(run.created_at || run.date_processed || 0).getTime();
+                    const existing = latestRunByCycle[cycleKey];
+                    if (!existing || ts > existing.ts) {
+                        latestRunByCycle[cycleKey] = { run, ts };
+                    }
+                });
+
+                const payrollByMonth = {};
+                Object.values(latestRunByCycle).forEach(({ run }) => {
                     const d = new Date(run.date_processed);
                     const key = `${d.getFullYear()}-${d.getMonth()}`;
                     payrollByMonth[key] = (payrollByMonth[key] || 0) + (parseFloat(run.total_paid) || 0);
@@ -1204,10 +1362,7 @@
 
             const labCostEl = document.getElementById('chart-labour-cost');
             if (labCostEl) {
-                const liveLabour = _salariesCache.reduce((sum, sal) => {
-                    const basePay = sal.salaryType === 'Monthly' ? sal.baseRate : (sal.baseRate * sal.hoursWorked);
-                    return sum + Math.max(0, basePay + sal.bonus - sal.deductions);
-                }, 0);
+                const liveLabour = Number(data.labour || 0);
                 labCostEl.textContent = liveLabour > 0
                     ? `$${liveLabour.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
                     : '$--';
@@ -1222,10 +1377,7 @@
 
             const avgMarginEl = document.getElementById('avg-margin-pct');
             if (avgMarginEl && data.currentSales > 0) {
-                const liveLabour = _salariesCache.reduce((sum, sal) => {
-                    const basePay = sal.salaryType === 'Monthly' ? sal.baseRate : (sal.baseRate * sal.hoursWorked);
-                    return sum + Math.max(0, basePay + sal.bonus - sal.deductions);
-                }, 0);
+                const liveLabour = Number(data.labour || 0);
                 const totalCosts = data.materials + liveLabour + totalOverheadsFromCache;
                 const margin = ((data.currentSales - totalCosts) / data.currentSales) * 100;
                 avgMarginEl.textContent = `${margin >= 0 ? '+' : ''}${margin.toFixed(1)}%`;

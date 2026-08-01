@@ -880,7 +880,7 @@ ${skeletonRows}
             {
                 title: 'Finances & Reports',
                 items: [
-                    { id: 'finance-dashboard', href: '/business-management/finances/operation.html', icon: 'account_balance', label: 'Finance Dashboard' },
+                    { id: 'finance-dashboard', href: '/business-management/finances/operation.html', icon: 'account_balance', label: 'Financial Dashboard' },
                     { id: 'purchase-record', href: '/document/purchase-record.html', icon: 'shopping_bag', label: 'Purchase Records' }
                 ]
             },
