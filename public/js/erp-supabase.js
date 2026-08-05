@@ -301,6 +301,20 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
                         query = query.filter(col, op, val);
                 }
             }
+        } else if (filters && typeof filters === 'object') {
+            for (const [operator, values] of Object.entries(filters)) {
+                if (!values || typeof values !== 'object') continue;
+                for (const [col, val] of Object.entries(values)) {
+                    const method = String(operator).toLowerCase();
+                    if (typeof query[method] === 'function') {
+                        query = method === 'in'
+                            ? query.in(col, Array.isArray(val) ? val : [val])
+                            : query[method](col, val);
+                    } else {
+                        query = query.filter(col, operator, val);
+                    }
+                }
+            }
         }
 
         if (order) {

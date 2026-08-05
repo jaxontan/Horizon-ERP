@@ -17,7 +17,7 @@
     <link href="https://cdn.jsdelivr.net/npm/material-symbols@0.27.0/outlined.css" rel="stylesheet" />
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/public/js/erp-supabase.js?v=20260706"></script>
+    <script src="/public/js/erp-supabase.js?v=20260803"></script>
     <!-- Custom Sidebar Component -->
     <script src="/public/js/rbac.js?v=20260706"></script>
     <script src="/components/sidebar.js?v=20260706" defer></script>
@@ -300,46 +300,59 @@
         let currentFilterStatus = 'all';
         let currentSearchQuery = '';
 
-        // Data Mapper: maps Supabase flat columns
-        function mapDbToSupplier(dbRow, index) {
-            const dbId = dbRow.supplier_id;
-            const newId = `SUP-${String(index + 1).padStart(3, '0')}`;
+// Data Mapper: maps Supabase flat columns. We deliberately do NOT generate
+            // a synthetic "SUP-001 / SUP-002" display id here — that was the
+            // source of a serious bug where opening a row could load a
+            // different row's details, because the synthetic id was a function
+            // of array index (which is not stable across sort orders or
+            // insertions). Details pages now navigate by the stable UUID
+            // (`dbId` / `supplier_id`) instead. The display-only "SUP-NNN"
+            // tag is still rendered next to the company name for UX, but it
+            // is computed at render time from the current sort order, not
+            // baked into the data model.
+            function mapDbToSupplier(dbRow, index) {
+                const dbId = dbRow.supplier_id;
+                // Keep `id` defined so legacy code that reads `s.id` keeps
+                // working — set it to the UUID for stability. Any UI that
+                // wants to show "SUP-001" should derive it from the index
+                // *at render time*, not from this field.
+                const newId = dbId;
 
-            // Defaults for entries
-            const defaultMeta = {
-                contactName: dbRow.supplier_main_point_of_contact_name || "Account Executive",
-                email: dbRow.supplier_main_point_of_contact_email || "",
-                phone: dbRow.supplier_main_point_of_contact_number || "Not specified",
-                country: dbRow.supplier_origin || "Global",
-                qualityScore: 88,
-                expenditure: 25000,
-                riskProfile: "Low",
-                carbonOffset: true,
-                esgGrade: "Grade B",
-                paymentTerms: "Net 30",
-                compliance: { iso9001: true, esg: true, ethicalLabor: true, cyberSecurity: true },
-                chatHistory: []
-            };
+                // Defaults for entries
+                const defaultMeta = {
+                    contactName: dbRow.supplier_main_point_of_contact_name || "Account Executive",
+                    email: dbRow.supplier_main_point_of_contact_email || "",
+                    phone: dbRow.supplier_main_point_of_contact_number || "Not specified",
+                    country: dbRow.supplier_origin || "Global",
+                    qualityScore: 88,
+                    expenditure: 25000,
+                    riskProfile: "Low",
+                    carbonOffset: true,
+                    esgGrade: "Grade B",
+                    paymentTerms: "Net 30",
+                    compliance: { iso9001: true, esg: true, ethicalLabor: true, cyberSecurity: true },
+                    chatHistory: []
+                };
 
-            // Parse Raw material provider
-            let sector = "Raw Goods";
-            let rawGoods = dbRow.raw_material_provider || "Standard materials";
-            if (dbRow.raw_material_provider && dbRow.raw_material_provider.includes(' - ')) {
-                const parts = dbRow.raw_material_provider.split(' - ');
-                sector = parts[0];
-                rawGoods = parts[1];
+                // Parse Raw material provider
+                let sector = "Raw Goods";
+                let rawGoods = dbRow.raw_material_provider || "Standard materials";
+                if (dbRow.raw_material_provider && dbRow.raw_material_provider.includes(' - ')) {
+                    const parts = dbRow.raw_material_provider.split(' - ');
+                    sector = parts[0];
+                    rawGoods = parts[1];
+                }
+
+                return {
+                    id: newId,
+                    dbId: dbId,
+                    name: dbRow.supplier_company,
+                    sector: sector,
+                    rawGoods: rawGoods,
+                    status: dbRow.status_of_supplier,
+                    ...defaultMeta
+                };
             }
-
-            return {
-                id: newId,
-                dbId: dbId,
-                name: dbRow.supplier_company,
-                sector: sector,
-                rawGoods: rawGoods,
-                status: dbRow.status_of_supplier,
-                ...defaultMeta
-            };
-        }
 
         // Syncs supplier changes back to Supabase
         async function syncSupplierToSupabase(supplier) {
@@ -379,13 +392,20 @@
                     suppliersList = data.map((row, idx) => mapDbToSupplier(row, idx));
                 }
 
-                // Mirror to localStorage so detail.html can resolve the
-                // display id (e.g. "SUP-001") back to a stable UUID via the
-                // stored `dbId`. Without this, opening a supplier from the
-                // list always falls into the "Supplier details not found"
-                // branch because details.html only looks up by UUID.
+                // Mirror to localStorage so detail.html can resolve legacy "SUP-NNN"
+                // bookmarks back to a stable UUID via the stored `dbId`.
+                // Each mirrored object carries both `id` (= UUID) and
+                // `displayId` (= "SUP-NNN" derived from current sort order),
+                // so details.html can fall back to either when reading
+                // stale URLs.
                 try {
-                    localStorage.setItem('suppliers', JSON.stringify(suppliersList));
+                    const sortedForMirror = [...suppliersList].sort((a, b) =>
+                        (a.name || '').localeCompare(b.name || ''));
+                    const mirror = sortedForMirror.map((s, idx) => ({
+                        ...s,
+                        displayId: `SUP-${String(idx + 1).padStart(3, '0')}`
+                    }));
+                    localStorage.setItem('suppliers', JSON.stringify(mirror));
                 } catch (storageErr) {
                     console.warn('Supplier localStorage mirror skipped:', storageErr);
                 }
@@ -491,10 +511,17 @@
                 return;
             }
 
-            filtered.forEach(s => {
+            filtered.forEach((s, displayIndex) => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-surface-bright transition-colors cursor-pointer";
-                tr.onclick = () => window.location.href = `details.html?id=${s.id}`;
+                // Navigate using the UUID (`s.id` is now the UUID, see
+                // mapDbToSupplier) so the details page loads the correct row
+                // even if the sort order or filter changes.
+                tr.onclick = () => window.location.href = `details.html?id=${encodeURIComponent(s.id)}`;
+                // Display-only ordinal that reflects the *current* sort/filter
+                // order. We do NOT use this for navigation or storage; the
+                // UUID (s.id) is the only stable identifier.
+                const displayCode = `SUP-${String(displayIndex + 1).padStart(3, '0')}`;
 
                 // Status Badge & Text Mapping
                 const isActive = s.status === 'Verified' || s.status === 'Active';
@@ -551,7 +578,7 @@
                             </div>
                             <div>
                                 <p class="font-bold text-primary leading-tight group-hover:underline">${s.name}</p>
-                                <p class="text-label-md text-on-surface-variant mt-0.5">${s.id} • Base: ${s.country || 'Global'}</p>
+                                <p class="text-label-md text-on-surface-variant mt-0.5">${displayCode} • Base: ${s.country || 'Global'}</p>
                             </div>
                         </div>
                     </td>
@@ -562,7 +589,7 @@
                     <td class="p-4">${statusBadge}</td>
                     <td class="p-4 pr-6 text-right flex justify-end items-center gap-2 flex-wrap" onclick="event.stopPropagation();">
                         ${deactivatedTag}
-                        <button class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="View Menu Quotation" onclick="window.location.href='details.html?id=${s.id}'">
+                        <button class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="View Menu Quotation" onclick="window.location.href='details.html?id=${encodeURIComponent(s.id)}'">
                             <span class="material-symbols-outlined text-[20px]">description</span>
                         </button>
                         ${toggleActionBtn}
@@ -583,7 +610,7 @@
             const isActive = supplier.status === 'Verified' || supplier.status === 'Active';
 
             if (isActive) {
-                supplier.status = 'Suspended'; // Inactivate
+                supplier.status = 'Suspended'; // Deactivate
                 alert(`Notice: ${supplier.name} has been set to INACTIVE. Procurement locked.`);
             } else {
                 supplier.status = 'Verified'; // Activate
@@ -650,15 +677,10 @@
 
                 if (data && data[0]) {
                     const dbId = data[0].supplier_id;
-                    
-                    // Get count for ID generation
-                    const allSuppliers = await sbClientOp({
-                        table: 'suppliers',
-                        operation: 'select',
-                        columns: 'supplier_id'
-                    });
-                    const supplierCount = (allSuppliers && allSuppliers.length) || 1;
-                    const newId = `SUP-${String(supplierCount).padStart(3, '0')}`;
+                    // Use the UUID as the stable id. The "SUP-NNN" tag is
+                    // a display-only ordinal that gets recomputed at render
+                    // time from the current sort order — see renderOverviewTable.
+                    const newId = dbId;
 
                     const metadata = {
                         contactName: "Account Executive",
