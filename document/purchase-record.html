@@ -418,7 +418,8 @@
         async function loadPurchaseRecords() {
             const [{ data, error }, { data: rmoData }] = await Promise.all([
                 apiSelect('purchase_records', '*', { order: { column: 'created_at', ascending: false }, limit: 50 }),
-                apiSelect('raw_material_orders', 'item_code, email_sent, created_at, batch_id, po_created, po_number, purchase_record_id', { order: { column: 'created_at', ascending: true } })
+                apiSelect('raw_material_orders', 'email_sent, created_at, email_sent_at, order_number, status, purchase_record_id', { order: { column: 'created_at', ascending: true } })
+
             ]);
 
             if (error) {

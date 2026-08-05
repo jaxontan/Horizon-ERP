@@ -50,10 +50,12 @@
     </style>
     <!-- Supabase Auth -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/public/js/erp-supabase.js"></script>
+
     <script>
-        const SUPABASE_URL = 'https://djvlhmuoryrjfgaztidx.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const SUPABASE_URL = '';
+        const SUPABASE_ANON_KEY = '';
+        const supabaseClient = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? window.supabase.createClient() : null);
 
         async function signOutAll() {
             // Clear the server-cookie session AND any legacy Supabase SDK

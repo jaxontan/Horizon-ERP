@@ -1,5 +1,5 @@
-    const SUPABASE_URL = 'https://djvlhmuoryrjfgaztidx.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
+    const SUPABASE_URL = '';
+    const SUPABASE_ANON_KEY = '';
     // Use a script-block-local binding (`supabaseClient`) instead of a top-level
     // `supabase` const so this file is safe to load on any page that already has
     // a `const supabase` declared in classic-script scope (e.g. customer-page/
@@ -7,7 +7,7 @@
     // `@supabase/supabase-js` — that property access stays as-is.
     const supabaseClient = (window.supabase && window.supabase._client)
         ? window.supabase._client
-        : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        : (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? window.supabase.createClient() : null);
 
     // Returns a fresh access token from the live SDK session.
     async function getAccessToken() {

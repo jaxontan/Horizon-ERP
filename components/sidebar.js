@@ -1,8 +1,9 @@
 class AppSidebar extends HTMLElement {
     constructor() {
         super();
-        this.supabaseUrl = 'https://djvlhmuoryrjfgaztidx.supabase.co';
-        this.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
+        this.supabaseUrl = '';
+        this.supabaseKey = '';
+
         this.alertCount = 0;
         this._client = null;
     }
@@ -314,14 +315,14 @@ ${skeletonRows}
         script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
         script.onload = () => {
             if (window.supabase && window.supabase.createClient) {
-                const client = window.supabase.createClient(sbUrl, sbKey);
+                const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? window.supabase.createClient() : null);
                 window.supabase._client = client;
             }
         };
         if (!document.head.querySelector('script[src*="supabase-js"]')) {
             document.head.appendChild(script);
         } else if (window.supabase && window.supabase.createClient) {
-            window.supabase._client = window.supabase.createClient(sbUrl, sbKey);
+            window.supabase._client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? window.supabase.createClient() : null);
         }
     }
 
@@ -337,7 +338,7 @@ ${skeletonRows}
                 const script = document.createElement('script');
                 script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
                 script.onload = () => {
-                    const client = window.supabase.createClient(sbUrl, sbKey);
+                    const client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? window.supabase.createClient() : null);
                     window.supabase._client = client;
                     resolve(client);
                 };
@@ -1215,60 +1216,38 @@ customElements.define('app-sidebar', AppSidebar);
 // Returns a promise that resolves with the Supabase client instance.
 window.initSupabaseClient = window.initSupabaseClient || function() {
     return new Promise(function(resolve) {
-        var SB_URL = 'https://djvlhmuoryrjfgaztidx.supabase.co';
-        var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
         if (window.supabase && window.supabase._client) {
             resolve(window.supabase._client);
             return;
         }
-        if (!window.supabase) {
-            var script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-            script.onload = function() {
-                var client = window.supabase.createClient(SB_URL, SB_KEY);
-                window.supabase._client = client;
-                resolve(client);
-            };
-            script.onerror = function() { resolve(null); };
-            document.head.appendChild(script);
-        } else {
-            var client = window.supabase.createClient(SB_URL, SB_KEY);
-            window.supabase._client = client;
-            resolve(client);
-        }
+        var checkCount = 0;
+        var interval = setInterval(function() {
+            checkCount++;
+            if (window.supabase && window.supabase._client) {
+                clearInterval(interval);
+                resolve(window.supabase._client);
+            } else if (checkCount > 50) {
+                clearInterval(interval);
+                resolve(null);
+            }
+        }, 100);
     });
 };
 
-// Returns a promise that resolves with a fresh access token from the live SDK session.
-// Never reads directly from localStorage (tokens get stale after refresh).
 window.getAccessToken = window.getAccessToken || function() {
     return new Promise(function(resolve) {
-        var SB_URL = 'https://djvlhmuoryrjfgaztidx.supabase.co';
-        var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
         if (window.supabase && window.supabase._client) {
             window.supabase._client.auth.getSession().then(function(result) {
                 resolve(result.data.session ? result.data.session.access_token : null);
             }).catch(function() { resolve(null); });
             return;
         }
-        if (!window.supabase) {
-            var script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-            script.onload = function() {
-                var client = window.supabase.createClient(SB_URL, SB_KEY);
-                window.supabase._client = client;
-                client.auth.getSession().then(function(result) {
-                    resolve(result.data.session ? result.data.session.access_token : null);
-                }).catch(function() { resolve(null); });
-            };
-            script.onerror = function() { resolve(null); };
-            document.head.appendChild(script);
-        } else {
-            var client = window.supabase.createClient(SB_URL, SB_KEY);
-            window.supabase._client = client;
+        window.initSupabaseClient().then(function(client) {
+            if (!client) { resolve(null); return; }
             client.auth.getSession().then(function(result) {
                 resolve(result.data.session ? result.data.session.access_token : null);
             }).catch(function() { resolve(null); });
-        }
+        });
     });
 };
+

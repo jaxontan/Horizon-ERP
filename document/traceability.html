@@ -1844,10 +1844,10 @@
         // ============================================================
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const SB_URL = 'https://qsobpenorlpzlkeyiefg.supabase.co';
-                const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzb2JwZW5vcmxwemxrZXlpZWZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDMwOTEsImV4cCI6MjA5MjMxOTA5MX0.RBJsOWvF0vfX_e6q_y2zpzvBKh_PA73cZ55I7CAm8M4';
+                const SB_URL = '';
+                const SB_KEY = '';
                 if (typeof window.supabase !== 'undefined' && window.supabase.createClient && !window.supabase._client) {
-                    window.supabase._client = window.supabase.createClient(SB_URL, SB_KEY);
+                    window.supabase._client = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? window.supabase.createClient() : null);
                 }
 
                 show('loading-overlay');

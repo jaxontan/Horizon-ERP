@@ -43,13 +43,13 @@ const UPLOAD_MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES || 10 * 1024 * 1024
 // (applied to every category as a fallback that loses the per-category
 // granularity — included for backward compatibility).
 const UPLOAD_ALLOWED_MIME_BY_CATEGORY = Object.freeze({
-  documents:        'application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'purchase-records':'application/pdf,image/jpeg,image/png,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  receipts:         'application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  outreach:         'application/pdf,image/jpeg,image/png,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/plain',
-  support:          'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,text/plain,application/json',
-  avatars:          'image/jpeg,image/png,image/webp',
-  misc:             'application/pdf,image/jpeg,image/png,image/webp,text/csv,application/json,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  documents: 'application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'purchase-records': 'application/pdf,image/jpeg,image/png,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  receipts: 'application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  outreach: 'application/pdf,image/jpeg,image/png,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/json,text/plain',
+  support: 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,text/plain,application/json',
+  avatars: 'image/jpeg,image/png,image/webp',
+  misc: 'application/pdf,image/jpeg,image/png,image/webp,text/csv,application/json,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 });
 
 function parseMimeCsv(value) {
@@ -115,20 +115,20 @@ const AI_REPLY_DAILY_CAP = Number(process.env.AI_REPLY_DAILY_CAP || 50);
 
 const supabaseAdmin = supabaseUrl && serviceRoleKey
   ? createClient(supabaseUrl, serviceRoleKey, {
-      db: { schema: 'public' },
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
+    db: { schema: 'public' },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      fetch: (url, options) => {
+        return fetch(url, {
+          ...options,
+          agent: getAgentForUrl(url),
+        });
       },
-      global: {
-        fetch: (url, options) => {
-          return fetch(url, {
-            ...options,
-            agent: getAgentForUrl(url),
-          });
-        },
-      },
-    })
+    },
+  })
   : null;
 
 const sqlProxyConfigured = Boolean(supabaseProjectRef && supabaseManagementToken);
@@ -492,23 +492,23 @@ function quoteLiteral(value) {
 // (id/email/name/segment) to enforce RBAC + filter rows by `customer_email`.
 
 function isPrivateNetworkHost(host) {
-    const raw = String(host || '').trim().toLowerCase().split(':')[0];
-    if (!raw) return false;
-    if (raw === 'localhost' || raw.endsWith('.localhost')) return true;
-    // Bare IPv6 forms: ::1, fc00::1, fe80::1, etc.
-    if (raw === '::1' || raw === '[::1]') return true;
-    if (raw.startsWith('fc') || raw.startsWith('fd') || raw.startsWith('fe80')) return true; // ULA + link-local
-    // IPv4 dotted form
-    const m = raw.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-    if (!m) return false;
-    const [a, b] = [Number(m[1]), Number(m[2])];
-    if (![a, b, Number(m[3]), Number(m[4])].every((n) => n >= 0 && n <= 255)) return false;
-    if (a === 127) return true;                                      // 127.0.0.0/8   loopback
-    if (a === 10) return true;                                       // 10.0.0.0/8    RFC1918
-    if (a === 172 && b >= 16 && b <= 31) return true;                // 172.16.0.0/12 RFC1918
-    if (a === 192 && b === 168) return true;                         // 192.168.0.0/16 RFC1918
-    if (a === 100 && b >= 64 && b <= 127) return true;               // 100.64.0.0/10 Tailscale / CGNAT (RFC6598)
-    return false;
+  const raw = String(host || '').trim().toLowerCase().split(':')[0];
+  if (!raw) return false;
+  if (raw === 'localhost' || raw.endsWith('.localhost')) return true;
+  // Bare IPv6 forms: ::1, fc00::1, fe80::1, etc.
+  if (raw === '::1' || raw === '[::1]') return true;
+  if (raw.startsWith('fc') || raw.startsWith('fd') || raw.startsWith('fe80')) return true; // ULA + link-local
+  // IPv4 dotted form
+  const m = raw.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  if (![a, b, Number(m[3]), Number(m[4])].every((n) => n >= 0 && n <= 255)) return false;
+  if (a === 127) return true;                                      // 127.0.0.0/8   loopback
+  if (a === 10) return true;                                       // 10.0.0.0/8    RFC1918
+  if (a === 172 && b >= 16 && b <= 31) return true;                // 172.16.0.0/12 RFC1918
+  if (a === 192 && b === 168) return true;                         // 192.168.0.0/16 RFC1918
+  if (a === 100 && b >= 64 && b <= 127) return true;               // 100.64.0.0/10 Tailscale / CGNAT (RFC6598)
+  return false;
 }
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'espressgo_session';
@@ -534,20 +534,20 @@ const STAFF_COOKIE_NAME = process.env.STAFF_COOKIE_NAME || 'espressgo_staff_sess
 // the Node process is behind a reverse proxy / tunnel), then Host, then a
 // env-configured fallback.
 const SESSION_COOKIE_SECURE_EXPLICIT = (() => {
-    if (process.env.SESSION_COOKIE_SECURE === undefined) return null;
-    const raw = String(process.env.SESSION_COOKIE_SECURE).trim().toLowerCase();
-    if (raw === 'true' || raw === '1' || raw === 'yes') return true;
-    if (raw === 'false' || raw === '0' || raw === 'no') return false;
-    return null;
+  if (process.env.SESSION_COOKIE_SECURE === undefined) return null;
+  const raw = String(process.env.SESSION_COOKIE_SECURE).trim().toLowerCase();
+  if (raw === 'true' || raw === '1' || raw === 'yes') return true;
+  if (raw === 'false' || raw === '0' || raw === 'no') return false;
+  return null;
 })();
 const SESSION_COOKIE_DETECTED_HOST =
-    process.env.HOST ||
-    process.env.HRP_HOST ||
-    process.env.SESSION_HOST ||
-    'localhost';
+  process.env.HOST ||
+  process.env.HRP_HOST ||
+  process.env.SESSION_HOST ||
+  'localhost';
 const SESSION_COOKIE_SECURE = SESSION_COOKIE_SECURE_EXPLICIT !== null
-    ? SESSION_COOKIE_SECURE_EXPLICIT
-    : !(process.env.NODE_ENV !== 'production' && isPrivateNetworkHost(SESSION_COOKIE_DETECTED_HOST));
+  ? SESSION_COOKIE_SECURE_EXPLICIT
+  : !(process.env.NODE_ENV !== 'production' && isPrivateNetworkHost(SESSION_COOKIE_DETECTED_HOST));
 const SESSION_COOKIE_MAX_AGE_S = 60 * 60 * 24 * 7; // 7 days
 // Fallback secret keeps the server bootable in dev, but emit a loud warning so
 // nobody accidentally ships a predictable cookie signer to prod.
@@ -687,14 +687,14 @@ async function verifyStaffRole(email, claimedRole) {
 // X-Forwarded-Host (and X-Forwarded-Proto, if you add it later) when a
 // known reverse proxy is fronting the app.
 function shouldUseSecureCookie(req) {
-    if (SESSION_COOKIE_SECURE_EXPLICIT !== null) return SESSION_COOKIE_SECURE_EXPLICIT;
-    const trustProxy = String(process.env.TRUST_PROXY || '').toLowerCase() === '1'
-        || String(process.env.TRUST_PROXY || '').toLowerCase() === 'true';
-    const headerHost = trustProxy
-        ? (req?.headers?.['x-forwarded-host'] || req?.headers?.host || SESSION_COOKIE_DETECTED_HOST)
-        : (req?.headers?.host || SESSION_COOKIE_DETECTED_HOST);
-    if (process.env.NODE_ENV === 'production') return true;
-    return !isPrivateNetworkHost(headerHost);
+  if (SESSION_COOKIE_SECURE_EXPLICIT !== null) return SESSION_COOKIE_SECURE_EXPLICIT;
+  const trustProxy = String(process.env.TRUST_PROXY || '').toLowerCase() === '1'
+    || String(process.env.TRUST_PROXY || '').toLowerCase() === 'true';
+  const headerHost = trustProxy
+    ? (req?.headers?.['x-forwarded-host'] || req?.headers?.host || SESSION_COOKIE_DETECTED_HOST)
+    : (req?.headers?.host || SESSION_COOKIE_DETECTED_HOST);
+  if (process.env.NODE_ENV === 'production') return true;
+  return !isPrivateNetworkHost(headerHost);
 }
 
 function setSessionCookie(req, res, jwt, { name = SESSION_COOKIE_NAME } = {}) {
@@ -921,7 +921,7 @@ async function generateAiStaffReply({ channelId, customerMessageId, customerMess
     const q = `SELECT order_id, customer_email FROM public.chat_channels WHERE id = '${channelId}' LIMIT 1`;
     const cData = await runManagementSql(q);
     const cRows = parseSqlRows(cData);
-    
+
     if (cRows && cRows.length > 0) {
       if (!resolvedOrderId) {
         resolvedOrderId = cRows[0].order_id;
@@ -1116,8 +1116,8 @@ async function generateAiStaffReply({ channelId, customerMessageId, customerMess
     .trim();
 
   // Safeguard: if handoff phrase is detected in any form, return the exact handoff string
-  if (cleanReply.toLowerCase().includes('colleague from our support team') || 
-      cleanReply.toLowerCase().includes('follow up with you shortly')) {
+  if (cleanReply.toLowerCase().includes('colleague from our support team') ||
+    cleanReply.toLowerCase().includes('follow up with you shortly')) {
     cleanReply = "I'll have a colleague from our support team follow up with you shortly on this.";
   }
 
@@ -1186,7 +1186,7 @@ async function fetchOrderContext(orderId) {
     if (rows && rows.length > 0) {
       const o = rows[0];
       const items = o.notes || o.product || 'Retail order';
-      
+
       let fulfillmentStatus = 'Not created';
       try {
         const fQuery = `
@@ -1232,7 +1232,7 @@ async function fetchOrderContext(orderId) {
     if (rows && rows.length > 0) {
       const o = rows[0];
       const items = o.notes || 'B2B order';
-      
+
       let fulfillmentStatus = 'Not created';
       try {
         const fQuery = `
@@ -1345,6 +1345,7 @@ async function runManagementSql(query) {
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
       resp = await fetch(`https://api.supabase.com/v1/projects/${supabaseProjectRef}/database/query`, {
+
         method: 'POST',
         headers: {
           Authorization: `Bearer ${supabaseManagementToken}`,
@@ -1845,11 +1846,10 @@ async function upsertSqlRows({ schema, table, data, returning = '*', onConflict,
     const conflictColumns = normalizeConflictColumns(onConflict, primaryKeys, row);
     const updateColumns = keys.filter((key) => !conflictColumns.includes(key));
     const conflictSql = conflictColumns.length > 0
-      ? ` ON CONFLICT (${conflictColumns.map(quoteIdent).join(', ')}) ${
-          updateColumns.length > 0
-            ? `DO UPDATE SET ${updateColumns.map((key) => `${quoteIdent(key)} = EXCLUDED.${quoteIdent(key)}`).join(', ')}`
-            : 'DO NOTHING'
-        }`
+      ? ` ON CONFLICT (${conflictColumns.map(quoteIdent).join(', ')}) ${updateColumns.length > 0
+        ? `DO UPDATE SET ${updateColumns.map((key) => `${quoteIdent(key)} = EXCLUDED.${quoteIdent(key)}`).join(', ')}`
+        : 'DO NOTHING'
+      }`
       : '';
     const sql = `INSERT INTO ${qualifiedTable(schema, table)} (${keys.map(quoteIdent).join(', ')}) VALUES (${keys.map((key) => sqlValue(row[key], key)).join(', ')})${conflictSql} RETURNING ${returnColumns}`;
     return parseSqlRows(await runManagementSql(sql));
@@ -1860,11 +1860,10 @@ async function upsertSqlRows({ schema, table, data, returning = '*', onConflict,
   const firstRowConflict = normalizeConflictColumns(onConflict, primaryKeys, cleanedRows[0]);
   const updateColumns = keys.filter((key) => !firstRowConflict.includes(key));
   const conflictSql = firstRowConflict.length > 0
-    ? ` ON CONFLICT (${firstRowConflict.map(quoteIdent).join(', ')}) ${
-        updateColumns.length > 0
-          ? `DO UPDATE SET ${updateColumns.map((key) => `${quoteIdent(key)} = EXCLUDED.${quoteIdent(key)}`).join(', ')}`
-          : 'DO NOTHING'
-      }`
+    ? ` ON CONFLICT (${firstRowConflict.map(quoteIdent).join(', ')}) ${updateColumns.length > 0
+      ? `DO UPDATE SET ${updateColumns.map((key) => `${quoteIdent(key)} = EXCLUDED.${quoteIdent(key)}`).join(', ')}`
+      : 'DO NOTHING'
+    }`
     : '';
 
   const valuesClause = cleanedRows
@@ -2232,30 +2231,30 @@ async function executeSupabaseJsFallback(body) {
 // Maps schema+table pairs to semantic action types used by the Alert Center.
 const ACTION_TYPE_MAP = {
   // Inventory / stock
-  'inventory.items':               'STOCK_UPDATE',
-  'inventory.orders':              'ORDER_CREATE',
-  'inventory.purchase_orders':     'PO_CREATE',
-  'inventory.suppliers':           'SUPPLIER_UPDATE',
-  'inventory.stock_adjustments':   'STOCK_ADJUST',
+  'inventory.items': 'STOCK_UPDATE',
+  'inventory.orders': 'ORDER_CREATE',
+  'inventory.purchase_orders': 'PO_CREATE',
+  'inventory.suppliers': 'SUPPLIER_UPDATE',
+  'inventory.stock_adjustments': 'STOCK_ADJUST',
   // Warehouse
-  'warehouse.ingredients':         'STOCK_UPDATE',
-  'warehouse.finished_goods':      'STOCK_UPDATE',
-  'warehouse.stock_movements':     'STOCK_MOVE',
+  'warehouse.ingredients': 'STOCK_UPDATE',
+  'warehouse.finished_goods': 'STOCK_UPDATE',
+  'warehouse.stock_movements': 'STOCK_MOVE',
   // Finance / journal
-  'journal.entries':               'JOURNAL_CREATE',
-  'journal.accounts':              'ACCOUNT_UPDATE',
+  'journal.entries': 'JOURNAL_CREATE',
+  'journal.accounts': 'ACCOUNT_UPDATE',
   // Manufacturing / production
-  'production.jobs':               'PRODUCTION_CREATE',
-  'production.bom':                'BOM_UPDATE',
+  'production.jobs': 'PRODUCTION_CREATE',
+  'production.bom': 'BOM_UPDATE',
   // Staff
-  'staff.employees':              'STAFF_UPDATE',
+  'staff.employees': 'STAFF_UPDATE',
   // Customer / orders
-  'customer.orders':               'ORDER_CREATE',
-  'customer.payments':             'PAYMENT_RECORD',
+  'customer.orders': 'ORDER_CREATE',
+  'customer.payments': 'PAYMENT_RECORD',
   // Logistics / factory
-  'factory.bookings':              'BOOKING_CREATE',
-  'logistic.shipments':            'SHIPMENT_CREATE',
-  'logistic.routes':               'ROUTE_UPDATE',
+  'factory.bookings': 'BOOKING_CREATE',
+  'logistic.shipments': 'SHIPMENT_CREATE',
+  'logistic.routes': 'ROUTE_UPDATE',
 };
 
 function classifyActionType(schema, table) {
@@ -2336,19 +2335,19 @@ function buildAuditDescription({ schema, table, operation, data, resultData, tar
 function buildAlertTitle({ schema, table, operation }) {
   const actionType = classifyActionType(schema, table) || operation.toUpperCase();
   switch (actionType) {
-    case 'STOCK_UPDATE':        return `📦 Stock ${operation === 'delete' ? 'Removed' : 'Updated'}`;
-    case 'ORDER_CREATE':        return `🛒 Order ${operation === 'delete' ? 'Cancelled' : 'Created'}`;
-    case 'JOURNAL_CREATE':      return `📒 Journal Entry Posted`;
-    case 'ACCOUNT_UPDATE':      return `🏦 Account Updated`;
-    case 'STAFF_UPDATE':        return `👤 Staff Record Updated`;
-    case 'PRODUCTION_CREATE':   return `🏭 Production Job Started`;
-    case 'PAYMENT_RECORD':      return `💳 Payment Recorded`;
-    case 'BOOKING_CREATE':      return `📅 Booking Created`;
-    case 'SHIPMENT_CREATE':    return `🚚 Shipment Created`;
-    case 'PO_CREATE':           return `📋 Purchase Order Created`;
-    case 'STOCK_ADJUST':        return `🔧 Stock Adjustment`;
-    case 'STOCK_MOVE':          return `↔️ Stock Movement`;
-    default:                    return `${operation.toUpperCase()} ${table}`;
+    case 'STOCK_UPDATE': return `📦 Stock ${operation === 'delete' ? 'Removed' : 'Updated'}`;
+    case 'ORDER_CREATE': return `🛒 Order ${operation === 'delete' ? 'Cancelled' : 'Created'}`;
+    case 'JOURNAL_CREATE': return `📒 Journal Entry Posted`;
+    case 'ACCOUNT_UPDATE': return `🏦 Account Updated`;
+    case 'STAFF_UPDATE': return `👤 Staff Record Updated`;
+    case 'PRODUCTION_CREATE': return `🏭 Production Job Started`;
+    case 'PAYMENT_RECORD': return `💳 Payment Recorded`;
+    case 'BOOKING_CREATE': return `📅 Booking Created`;
+    case 'SHIPMENT_CREATE': return `🚚 Shipment Created`;
+    case 'PO_CREATE': return `📋 Purchase Order Created`;
+    case 'STOCK_ADJUST': return `🔧 Stock Adjustment`;
+    case 'STOCK_MOVE': return `↔️ Stock Movement`;
+    default: return `${operation.toUpperCase()} ${table}`;
   }
 }
 
@@ -2382,11 +2381,11 @@ async function writeOperationLog({ schema, table, operation, data, filters, resu
       schema: 'public',
       table: 'audit_logs',
       data: {
-        user_email:    user_email  || 'system@espressgo.local',
-        user_role:     user_role   || 'system',
-        action:        auditAction,
+        user_email: user_email || 'system@espressgo.local',
+        user_role: user_role || 'system',
+        action: auditAction,
         table_affected: `${schema}.${table}`,
-        record_id:     targetId,
+        record_id: targetId,
         description,
         new_value: { data: data || null, filters: filters || null },
       },
@@ -2401,10 +2400,10 @@ async function writeOperationLog({ schema, table, operation, data, filters, resu
       schema: 'public',
       table: 'alerts',
       data: {
-        title:      buildAlertTitle({ schema, table, operation }),
-        message:    buildAlertMessage({ schema, table, operation, data, targetId }),
+        title: buildAlertTitle({ schema, table, operation }),
+        message: buildAlertMessage({ schema, table, operation, data, targetId }),
         alert_type: buildAlertType(schema, table, operation),
-        is_read:    false,
+        is_read: false,
       },
       returning: '*',
     });
@@ -2486,8 +2485,8 @@ function fulfillmentPayloadForSourceOrder(table, row) {
     // `fulfillment_orders.refund_pending` / `retail_purchases.status` to carry
     // the refund signal — those tables don't share the constraint.
     status: row.status === 'Cancelled' ? 'Cancelled'
-          : row.status === 'Refund Requested' ? 'Processing'
-          : 'Processing',
+      : row.status === 'Refund Requested' ? 'Processing'
+        : 'Processing',
     priority: isRetail ? 'normal' : 'high',
     notes: row.notes || row.product || row.item || '',
     items_json: itemsList.length > 0 ? JSON.stringify(itemsList) : null,
@@ -2774,7 +2773,7 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
   for (const item of items) {
     const productName = item.item_name || item.name || '';
     const productCode = item.item_code || item.code || '';
-    const qtyNeeded  = parseFloat(item.qty || item.quantity || 0);
+    const qtyNeeded = parseFloat(item.qty || item.quantity || 0);
 
     if (!qtyNeeded || qtyNeeded <= 0) continue;
 
@@ -2985,39 +2984,39 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
       const qtyAllocated = Math.min(remaining, info.available);
       if (qtyAllocated <= 0) continue;
 
-      const unitPrice   = parseFloat(item.unit_price || item.price || 0);
-      const lineTotal   = qtyAllocated * unitPrice;
-      const segment     = (sourceTable === 'retail_purchases') ? 'b2c' : 'b2b';
+      const unitPrice = parseFloat(item.unit_price || item.price || 0);
+      const lineTotal = qtyAllocated * unitPrice;
+      const segment = (sourceTable === 'retail_purchases') ? 'b2c' : 'b2b';
 
       const record = {
         fulfillment_record_id: fulfillmentId, // we'll set this after inserting fulfillment
-        fulfillment_id:        fulfillmentId,
-        source_table:          sourceTable,
-        source_order_id:      orderRow.id || null,
-        source_order_number:   sourceOrderId,
-        customer_name:        orderRow.customer_name || orderRow.client_name || null,
-        customer_email:       orderRow.customer_email || null,
-        customer_phone:       orderRow.customer_phone || orderRow.phone || null,
-        shipping_address:      orderRow.shipping_address || orderRow.delivery_address || null,
+        fulfillment_id: fulfillmentId,
+        source_table: sourceTable,
+        source_order_id: orderRow.id || null,
+        source_order_number: sourceOrderId,
+        customer_name: orderRow.customer_name || orderRow.client_name || null,
+        customer_email: orderRow.customer_email || null,
+        customer_phone: orderRow.customer_phone || orderRow.phone || null,
+        shipping_address: orderRow.shipping_address || orderRow.delivery_address || null,
         segment,
-        payment_status:       orderRow.payment_status || null,
-        production_batch_id:   info.batch.id || null,
+        payment_status: orderRow.payment_status || null,
+        production_batch_id: info.batch.id || null,
         production_batch_code: batchCode,
-        fg_lot_number:        info.batch.fg_lot_number || batchCode,
-        product_name:         productName,
-        product_code:         productCode,
-        qty_allocated:        qtyAllocated,
-        qty_fulfilled:        0,
-        unit_price:           unitPrice,
-        line_total:           Math.round(lineTotal * 100) / 100,
-        fifo_order:           fifoOrder,
-        allocated_at:         new Date().toISOString(),
-        fulfilled_at:         null,
-        carrier:              orderRow.carrier || null,
-        tracking_number:      orderRow.tracking_number || 'Pending',
-        shipped_at:          null,
-        delivery_date:        null,
-        shipping_status:      'Pending'
+        fg_lot_number: info.batch.fg_lot_number || batchCode,
+        product_name: productName,
+        product_code: productCode,
+        qty_allocated: qtyAllocated,
+        qty_fulfilled: 0,
+        unit_price: unitPrice,
+        line_total: Math.round(lineTotal * 100) / 100,
+        fifo_order: fifoOrder,
+        allocated_at: new Date().toISOString(),
+        fulfilled_at: null,
+        carrier: orderRow.carrier || null,
+        tracking_number: orderRow.tracking_number || 'Pending',
+        shipped_at: null,
+        delivery_date: null,
+        shipping_status: 'Pending'
       };
 
       allocations.push(record);
@@ -3137,7 +3136,7 @@ async function sweepOrphanFGAllocations() {
             schema: 'public',
             table: 'production_fg_allocation',
             filters: { eq: { id: a.id } },
-          }).catch(() => {});
+          }).catch(() => { });
         } else if (supabaseAdmin) {
           await supabaseAdmin
             .schema('public')
@@ -3193,14 +3192,14 @@ async function backfillFGAllocations() {
       : 'orders';
 
     const orderRow = {
-      id:              fulf.order_id,
-      customer_name:    fulf.customer_name,
-      customer_email:   null,
-      customer_phone:   fulf.customer_phone,
+      id: fulf.order_id,
+      customer_name: fulf.customer_name,
+      customer_email: null,
+      customer_phone: fulf.customer_phone,
       shipping_address: fulf.shipping_address,
-      carrier:         fulf.carrier,
-      tracking_number:  fulf.tracking_number,
-      payment_status:  null
+      carrier: fulf.carrier,
+      tracking_number: fulf.tracking_number,
+      payment_status: null
     };
 
     const allocs = await allocateFGFIFO(
@@ -3291,83 +3290,83 @@ async function awaitFulfillmentSync(payload) {
 
 // Maps table → permission required per operation type.
 const TABLE_WRITE_PERMISSIONS = {
-    'profiles':             'staff:write',
-    'employees':             'staff:write',
-    'staff_salaries':       'salary:write',
-    'payroll':               'salary:write',
-    'inventory':             'inventory:write',
-    'inventory_batches':     'inventory:write',
-    'ingredients':           'raw_materials:write',
-    'purchase_orders':       'raw_materials:write',
-    'purchase_records':      'raw_materials:write',
-    'raw_material_orders':   'raw_materials:write',
-    'suppliers':             'supplier:write',
-    'supplier_quotations':   'supplier:write',
-    'production_jobs':       'production:write',
-    'production_batches':    'production:write',
-    'production_recipes':    'recipes:write',
-    'finished_goods':        'inventory:write',
-    'journal_entries':       'journal:write',
-    'journal_accounts':      'finance:write',
-    'entries':               'journal:write',
-    'entry_lines':           'journal:write',
-    'accounts':             'finance:write',
-    'orders':               'orders:write',    // legacy alias
-    'order_items':          'orders:write',
-    'support_tickets':       'support:write',
-    'support_messages':       'support:write',
-    'chat_messages':         'support:write',
-    'outreach_campaigns':     'outreach:write',
-    'factory_bookings':      'factory:write',
-    'overheads':             'finance:write',
-    'warehouse_slot_items': 'warehouse_map:write',
-    'alerts':               'alerts:write',
-    'audit_logs':           'alerts:admin',
+  'profiles': 'staff:write',
+  'employees': 'staff:write',
+  'staff_salaries': 'salary:write',
+  'payroll': 'salary:write',
+  'inventory': 'inventory:write',
+  'inventory_batches': 'inventory:write',
+  'ingredients': 'raw_materials:write',
+  'purchase_orders': 'raw_materials:write',
+  'purchase_records': 'raw_materials:write',
+  'raw_material_orders': 'raw_materials:write',
+  'suppliers': 'supplier:write',
+  'supplier_quotations': 'supplier:write',
+  'production_jobs': 'production:write',
+  'production_batches': 'production:write',
+  'production_recipes': 'recipes:write',
+  'finished_goods': 'inventory:write',
+  'journal_entries': 'journal:write',
+  'journal_accounts': 'finance:write',
+  'entries': 'journal:write',
+  'entry_lines': 'journal:write',
+  'accounts': 'finance:write',
+  'orders': 'orders:write',    // legacy alias
+  'order_items': 'orders:write',
+  'support_tickets': 'support:write',
+  'support_messages': 'support:write',
+  'chat_messages': 'support:write',
+  'outreach_campaigns': 'outreach:write',
+  'factory_bookings': 'factory:write',
+  'overheads': 'finance:write',
+  'warehouse_slot_items': 'warehouse_map:write',
+  'alerts': 'alerts:write',
+  'audit_logs': 'alerts:admin',
 };
 
 const SERVER_PERMISSIONS = {
-    'staff:read':    ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
-    'staff:write':   ['admin'],
-    'salary:read':   ['admin', 'accountant'],
-    'salary:write':  ['admin'],
-    'inventory:read':    ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
-    'inventory:write':   ['admin', 'procurement', 'production'],
-    'raw_materials:read':    ['admin', 'accountant', 'procurement', 'production', 'logistic'],
-    'raw_materials:write':   ['admin', 'procurement'],
-    'recipes:read':    ['admin', 'accountant', 'production'],
-    'recipes:write':   ['admin', 'production'],
-    'production:read':    ['admin', 'accountant', 'production', 'logistic'],
-    'production:write':   ['admin', 'production'],
-    'finance:read':    ['admin', 'accountant', 'procurement', 'production', 'logistic'],
-    'finance:write':   ['admin', 'accountant'],
-    'journal:read':    ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
-    'journal:write':   ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
-    'orders:read':    ['admin', 'accountant', 'logistic', 'sales'],
-    'orders:write':   ['admin', 'sales', 'client'],
-    'support:read':    ['admin', 'logistic', 'sales'],
-    'support:write':   ['admin', 'logistic', 'sales'],
-    'supplier:read':    ['admin', 'accountant', 'procurement', 'logistic', 'sales'],
-    'supplier:write':   ['admin', 'procurement'],
-    'outreach:read':    ['admin', 'procurement', 'sales'],
-    'outreach:write':   ['admin', 'sales'],
-    'factory:read':    ['admin', 'procurement', 'production', 'logistic'],
-    'factory:write':   ['admin', 'production', 'logistic'],
-    'warehouse_map:read':    ['admin', 'procurement', 'production', 'logistic'],
-    'warehouse_map:write':   ['admin', 'production', 'logistic'],
-    'alerts:read':    ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
-    'alerts:write':   ['admin'],
-    'alerts:admin':   ['admin'],
-    'settings:read':    ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
-    'settings:write':   ['admin'],
+  'staff:read': ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
+  'staff:write': ['admin'],
+  'salary:read': ['admin', 'accountant'],
+  'salary:write': ['admin'],
+  'inventory:read': ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
+  'inventory:write': ['admin', 'procurement', 'production'],
+  'raw_materials:read': ['admin', 'accountant', 'procurement', 'production', 'logistic'],
+  'raw_materials:write': ['admin', 'procurement'],
+  'recipes:read': ['admin', 'accountant', 'production'],
+  'recipes:write': ['admin', 'production'],
+  'production:read': ['admin', 'accountant', 'production', 'logistic'],
+  'production:write': ['admin', 'production'],
+  'finance:read': ['admin', 'accountant', 'procurement', 'production', 'logistic'],
+  'finance:write': ['admin', 'accountant'],
+  'journal:read': ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
+  'journal:write': ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
+  'orders:read': ['admin', 'accountant', 'logistic', 'sales'],
+  'orders:write': ['admin', 'sales', 'client'],
+  'support:read': ['admin', 'logistic', 'sales'],
+  'support:write': ['admin', 'logistic', 'sales'],
+  'supplier:read': ['admin', 'accountant', 'procurement', 'logistic', 'sales'],
+  'supplier:write': ['admin', 'procurement'],
+  'outreach:read': ['admin', 'procurement', 'sales'],
+  'outreach:write': ['admin', 'sales'],
+  'factory:read': ['admin', 'procurement', 'production', 'logistic'],
+  'factory:write': ['admin', 'production', 'logistic'],
+  'warehouse_map:read': ['admin', 'procurement', 'production', 'logistic'],
+  'warehouse_map:write': ['admin', 'production', 'logistic'],
+  'alerts:read': ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
+  'alerts:write': ['admin'],
+  'alerts:admin': ['admin'],
+  'settings:read': ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'],
+  'settings:write': ['admin'],
 };
 
 /**
  * Returns true if the given user_role is allowed to perform the given permission.
  */
 function serverCan(userRole, permission) {
-    const allowed = SERVER_PERMISSIONS[permission];
-    if (!allowed) return false; // unknown permission → deny by default
-    return allowed.includes(userRole);
+  const allowed = SERVER_PERMISSIONS[permission];
+  if (!allowed) return false; // unknown permission → deny by default
+  return allowed.includes(userRole);
 }
 
 /**
@@ -3375,21 +3374,21 @@ function serverCan(userRole, permission) {
  * Returns null if no special permission is needed.
  */
 function requiredPermissionForTable(table) {
-    return TABLE_WRITE_PERMISSIONS[table] || null;
+  return TABLE_WRITE_PERMISSIONS[table] || null;
 }
 
 function enforceServerRBAC(operation, table, userRole) {
-    // Only enforce on write operations
-    const writeOps = new Set(['insert', 'upsert', 'update', 'delete']);
-    if (!writeOps.has(operation)) return null;
+  // Only enforce on write operations
+  const writeOps = new Set(['insert', 'upsert', 'update', 'delete']);
+  if (!writeOps.has(operation)) return null;
 
-    const required = requiredPermissionForTable(table);
-    if (!required) return null; // no special permission required for this table
+  const required = requiredPermissionForTable(table);
+  if (!required) return null; // no special permission required for this table
 
-    if (!effectiveServerCan(userRole, required)) {
-        return `Forbidden: role "${userRole}" cannot perform "${operation}" on "${table}" (requires ${required})`;
-    }
-    return null;
+  if (!effectiveServerCan(userRole, required)) {
+    return `Forbidden: role "${userRole}" cannot perform "${operation}" on "${table}" (requires ${required})`;
+  }
+  return null;
 }
 
 // ─── Dynamic RBAC overrides ─────────────────────────────────────────────────
@@ -3409,66 +3408,66 @@ let effectiveRbacCache = null;      // { permissions: Map<permKey, Set<role>>, l
 let effectiveRbacLoadPromise = null;
 
 function defaultsHash() {
-    // Cheap fingerprint of SERVER_PERMISSIONS so a code deploy invalidates
-    // the cache without manual flush. JSON.stringify order is stable because
-    // the keys are inserted in lexical-ish order in the source above.
-    return JSON.stringify(SERVER_PERMISSIONS);
+  // Cheap fingerprint of SERVER_PERMISSIONS so a code deploy invalidates
+  // the cache without manual flush. JSON.stringify order is stable because
+  // the keys are inserted in lexical-ish order in the source above.
+  return JSON.stringify(SERVER_PERMISSIONS);
 }
 
 async function loadEffectiveRbacFromDb() {
-    if (!sqlProxyConfigured || sqlProxyDisabled) {
-        // No DB → effective = defaults. Cache as such.
-        return {
-            permissions: new Map(), // no overrides
-            loadedAt: Date.now(),
-            defaultsHash: defaultsHash(),
-            source: 'defaults-only-no-sql-proxy',
-        };
-    }
-    let overrides = [];
-    try {
-        const rows = await runManagementSql(
-            'SELECT permission_key, role, value FROM public.rbac_overrides'
-        );
-        overrides = Array.isArray(rows) ? rows : [];
-    } catch (err) {
-        // DB error: log once, fall back to defaults so the app stays usable.
-        console.warn('[rbac] failed to read rbac_overrides, using defaults:', err.message || err);
-        overrides = [];
-    }
+  if (!sqlProxyConfigured || sqlProxyDisabled) {
+    // No DB → effective = defaults. Cache as such.
     return {
-        permissions: new Map(overrides.map((r) => [r.permission_key + '|' + r.role, !!r.value])),
-        loadedAt: Date.now(),
-        defaultsHash: defaultsHash(),
-        source: 'db',
-        rowCount: overrides.length,
+      permissions: new Map(), // no overrides
+      loadedAt: Date.now(),
+      defaultsHash: defaultsHash(),
+      source: 'defaults-only-no-sql-proxy',
     };
+  }
+  let overrides = [];
+  try {
+    const rows = await runManagementSql(
+      'SELECT permission_key, role, value FROM public.rbac_overrides'
+    );
+    overrides = Array.isArray(rows) ? rows : [];
+  } catch (err) {
+    // DB error: log once, fall back to defaults so the app stays usable.
+    console.warn('[rbac] failed to read rbac_overrides, using defaults:', err.message || err);
+    overrides = [];
+  }
+  return {
+    permissions: new Map(overrides.map((r) => [r.permission_key + '|' + r.role, !!r.value])),
+    loadedAt: Date.now(),
+    defaultsHash: defaultsHash(),
+    source: 'db',
+    rowCount: overrides.length,
+  };
 }
 
 async function getEffectiveRbac() {
-    const hash = defaultsHash();
-    if (
-        effectiveRbacCache &&
-        effectiveRbacCache.defaultsHash === hash &&
-        Date.now() - effectiveRbacCache.loadedAt < RBAC_CACHE_TTL_MS
-    ) {
-        return effectiveRbacCache;
-    }
-    // Coalesce concurrent loads — if another request is already fetching,
-    // just await its promise instead of firing a second SELECT.
-    if (!effectiveRbacLoadPromise) {
-        effectiveRbacLoadPromise = loadEffectiveRbacFromDb().finally(() => {
-            effectiveRbacLoadPromise = null;
-        });
-    }
-    const fresh = await effectiveRbacLoadPromise;
-    effectiveRbacCache = fresh;
-    return fresh;
+  const hash = defaultsHash();
+  if (
+    effectiveRbacCache &&
+    effectiveRbacCache.defaultsHash === hash &&
+    Date.now() - effectiveRbacCache.loadedAt < RBAC_CACHE_TTL_MS
+  ) {
+    return effectiveRbacCache;
+  }
+  // Coalesce concurrent loads — if another request is already fetching,
+  // just await its promise instead of firing a second SELECT.
+  if (!effectiveRbacLoadPromise) {
+    effectiveRbacLoadPromise = loadEffectiveRbacFromDb().finally(() => {
+      effectiveRbacLoadPromise = null;
+    });
+  }
+  const fresh = await effectiveRbacLoadPromise;
+  effectiveRbacCache = fresh;
+  return fresh;
 }
 
 function invalidateEffectiveRbacCache() {
-    effectiveRbacCache = null;
-    effectiveRbacLoadPromise = null;
+  effectiveRbacCache = null;
+  effectiveRbacLoadPromise = null;
 }
 
 /**
@@ -3478,65 +3477,65 @@ function invalidateEffectiveRbacCache() {
  * admin rows from being inserted).
  */
 function effectiveServerCan(userRole, permission) {
-    if (userRole === 'admin') return true;
-    const allowed = SERVER_PERMISSIONS[permission];
-    const defaultAllowed = allowed ? allowed.includes(userRole) : false;
-    if (!effectiveRbacCache) return defaultAllowed; // cold cache → defaults
-    const override = effectiveRbacCache.permissions.get(permission + '|' + userRole);
-    if (override === undefined) return defaultAllowed; // no override row → default
-    return override; // explicit true OR false override
+  if (userRole === 'admin') return true;
+  const allowed = SERVER_PERMISSIONS[permission];
+  const defaultAllowed = allowed ? allowed.includes(userRole) : false;
+  if (!effectiveRbacCache) return defaultAllowed; // cold cache → defaults
+  const override = effectiveRbacCache.permissions.get(permission + '|' + userRole);
+  if (override === undefined) return defaultAllowed; // no override row → default
+  return override; // explicit true OR false override
 }
 
 const STAFF_ROLES = ['admin', 'accountant', 'procurement', 'production', 'logistic', 'sales'];
 
 function effectiveMatrix() {
-    // Build the merged {permissionKey: [roles]} map that /api/rbac/effective
-    // returns. Used both by the API endpoint and by the initial cache warm.
-    const matrix = {};
-    const keys = Object.keys(SERVER_PERMISSIONS);
-    for (const key of keys) {
-        const defaults = SERVER_PERMISSIONS[key] || [];
-        const set = new Set(defaults);
-        if (effectiveRbacCache) {
-            for (const role of STAFF_ROLES) {
-                const ov = effectiveRbacCache.permissions.get(key + '|' + role);
-                if (ov === true) set.add(role);
-                else if (ov === false) set.delete(role);
-            }
-        }
-        // admin is always present
-        set.add('admin');
-        matrix[key] = Array.from(set);
+  // Build the merged {permissionKey: [roles]} map that /api/rbac/effective
+  // returns. Used both by the API endpoint and by the initial cache warm.
+  const matrix = {};
+  const keys = Object.keys(SERVER_PERMISSIONS);
+  for (const key of keys) {
+    const defaults = SERVER_PERMISSIONS[key] || [];
+    const set = new Set(defaults);
+    if (effectiveRbacCache) {
+      for (const role of STAFF_ROLES) {
+        const ov = effectiveRbacCache.permissions.get(key + '|' + role);
+        if (ov === true) set.add(role);
+        else if (ov === false) set.delete(role);
+      }
     }
-    return matrix;
+    // admin is always present
+    set.add('admin');
+    matrix[key] = Array.from(set);
+  }
+  return matrix;
 }
 
 async function snapshotRbacState() {
-    // Captures the current rbac_overrides table as a JSON snapshot for
-    // rbac_history.snapshot_before / snapshot_after. Returns null if the
-    // table is empty.
-    if (!sqlProxyConfigured || sqlProxyDisabled) return { rows: [] };
-    try {
-        const rows = await runManagementSql(
-            'SELECT permission_key, role, value, updated_at, updated_by FROM public.rbac_overrides ORDER BY permission_key, role'
-        );
-        return { rows: Array.isArray(rows) ? rows : [] };
-    } catch (err) {
-        return { rows: [], error: err.message || String(err) };
-    }
+  // Captures the current rbac_overrides table as a JSON snapshot for
+  // rbac_history.snapshot_before / snapshot_after. Returns null if the
+  // table is empty.
+  if (!sqlProxyConfigured || sqlProxyDisabled) return { rows: [] };
+  try {
+    const rows = await runManagementSql(
+      'SELECT permission_key, role, value, updated_at, updated_by FROM public.rbac_overrides ORDER BY permission_key, role'
+    );
+    return { rows: Array.isArray(rows) ? rows : [] };
+  } catch (err) {
+    return { rows: [], error: err.message || String(err) };
+  }
 }
 
 async function writeRbacOverrides(overrides) {
-    // overrides: [{ permission_key, role, value, updated_by }]
-    // The DB CHECK constraint rejects role='admin' rows server-side; the API
-    // also rejects them defensively so the error is friendlier.
-    const safe = (overrides || []).filter((r) => r && r.role !== 'admin' && r.permission_key);
-    if (safe.length === 0) return;
-    const esc = (s) => String(s ?? '').replace(/'/g, "''");
-    const values = safe.map((r) => {
-        return `('${esc(r.permission_key)}', '${esc(r.role)}', ${r.value ? 'true' : 'false'}, now(), '${esc(r.updated_by || '')}')`;
-    }).join(',\n  ');
-    const sql = `
+  // overrides: [{ permission_key, role, value, updated_by }]
+  // The DB CHECK constraint rejects role='admin' rows server-side; the API
+  // also rejects them defensively so the error is friendlier.
+  const safe = (overrides || []).filter((r) => r && r.role !== 'admin' && r.permission_key);
+  if (safe.length === 0) return;
+  const esc = (s) => String(s ?? '').replace(/'/g, "''");
+  const values = safe.map((r) => {
+    return `('${esc(r.permission_key)}', '${esc(r.role)}', ${r.value ? 'true' : 'false'}, now(), '${esc(r.updated_by || '')}')`;
+  }).join(',\n  ');
+  const sql = `
         INSERT INTO public.rbac_overrides (permission_key, role, value, updated_at, updated_by)
         VALUES ${values}
         ON CONFLICT (permission_key, role) DO UPDATE SET
@@ -3544,31 +3543,31 @@ async function writeRbacOverrides(overrides) {
           updated_at = EXCLUDED.updated_at,
           updated_by = EXCLUDED.updated_by;
     `;
-    await runManagementSql(sql);
+  await runManagementSql(sql);
 }
 
 async function deleteRbacOverrides(overrides) {
-    const safe = (overrides || []).filter((r) => r && r.role !== 'admin' && r.permission_key);
-    if (safe.length === 0) return;
-    const esc = (s) => String(s ?? '').replace(/'/g, "''");
-    const conds = safe.map((r) => `(permission_key='${esc(r.permission_key)}' AND role='${esc(r.role)}')`).join(' OR ');
-    const sql = `DELETE FROM public.rbac_overrides WHERE ${conds};`;
-    await runManagementSql(sql);
+  const safe = (overrides || []).filter((r) => r && r.role !== 'admin' && r.permission_key);
+  if (safe.length === 0) return;
+  const esc = (s) => String(s ?? '').replace(/'/g, "''");
+  const conds = safe.map((r) => `(permission_key='${esc(r.permission_key)}' AND role='${esc(r.role)}')`).join(' OR ');
+  const sql = `DELETE FROM public.rbac_overrides WHERE ${conds};`;
+  await runManagementSql(sql);
 }
 
 function requireStaffAdmin(req, res) {
-    // Returns the session object if the caller is a logged-in staff admin,
-    // otherwise writes a 401/403 response and returns null.
-    const session = readStaffSessionFromRequest(req);
-    if (!session) {
-        sendJson(res, 401, { error: 'Not authenticated' });
-        return null;
-    }
-    if (session.role !== 'admin') {
-        sendJson(res, 403, { error: 'Admin role required' });
-        return null;
-    }
-    return session;
+  // Returns the session object if the caller is a logged-in staff admin,
+  // otherwise writes a 401/403 response and returns null.
+  const session = readStaffSessionFromRequest(req);
+  if (!session) {
+    sendJson(res, 401, { error: 'Not authenticated' });
+    return null;
+  }
+  if (session.role !== 'admin') {
+    sendJson(res, 403, { error: 'Admin role required' });
+    return null;
+  }
+  return session;
 }
 
 // ─── Page-access enforcement ──────────────────────────────────────────────────
@@ -3584,101 +3583,101 @@ function requireStaffAdmin(req, res) {
 //   3. Resolves a URL path to a page_id and answers "can this role open it?".
 
 const STAFF_PAGE_PATHS = {
-    'supplier-management':   '/business-management/Supplier-management/index.html',
-    'supplier-details':      '/business-management/Supplier-management/details.html',
-    'supplier-onboard':      '/business-management/Supplier-management/onboard.html',
-    'supplier-timeline':     '/business-management/Supplier-management/timeline.html',
-    'customer-master':       '/business-management/customer-management/index.html',
-    'customer-timeline':     '/business-management/customer-management/customer-timeline.html',
-    'customer-verification': '/business-management/customer-management/big-business/customer-verification.html',
-    'sales-dashboard':       '/business-management/customer-management/customer-order/index.html',
-    'sales-dashboard-b2c':   '/business-management/customer-management/customer-order/b2c.html',
-    'outreach':              '/business-management/outreach/email-outreach.html',
-    'support-hub':           '/business-management/customer-management/support.html',
-    'finance-dashboard':     '/business-management/finances/operation.html',
-    'traceability':          '/document/traceability.html',
-    'purchase-record':       '/document/purchase-record.html',
-    'fulfillment':           '/logistic/fulfillment.html',
-    'warehouse-stock':       '/warehouse/inventory.html',
-    'production':            '/production/index.html',
-    'production-recipes':    '/warehouse/recipes.html',
-    'factory-booking':       '/factory-booking/index.html',
-    'staff-management':      '/staff-management/clock-in.html',
-    'create-staff':          '/staff-management/create-staff.html',
-    'staff-salaries':        '/staff-management/salaries.html',
-    'rbac-admin':            '/settings/rbac.html',
-    'alert-center':          '/settings/alert-center.html',
-    // Protected files (account.html / account-detail.html) — never modify the
-    // .html files themselves. Gate at the catalog + server-route level so they
-    // open by default only for admin+accountant (finance:write holders).
-    'finance-account':        '/business-management/finances/account.html',
-    'finance-account-detail': '/business-management/finances/account-detail.html',
+  'supplier-management': '/business-management/Supplier-management/index.html',
+  'supplier-details': '/business-management/Supplier-management/details.html',
+  'supplier-onboard': '/business-management/Supplier-management/onboard.html',
+  'supplier-timeline': '/business-management/Supplier-management/timeline.html',
+  'customer-master': '/business-management/customer-management/index.html',
+  'customer-timeline': '/business-management/customer-management/customer-timeline.html',
+  'customer-verification': '/business-management/customer-management/big-business/customer-verification.html',
+  'sales-dashboard': '/business-management/customer-management/customer-order/index.html',
+  'sales-dashboard-b2c': '/business-management/customer-management/customer-order/b2c.html',
+  'outreach': '/business-management/outreach/email-outreach.html',
+  'support-hub': '/business-management/customer-management/support.html',
+  'finance-dashboard': '/business-management/finances/operation.html',
+  'traceability': '/document/traceability.html',
+  'purchase-record': '/document/purchase-record.html',
+  'fulfillment': '/logistic/fulfillment.html',
+  'warehouse-stock': '/warehouse/inventory.html',
+  'production': '/production/index.html',
+  'production-recipes': '/warehouse/recipes.html',
+  'factory-booking': '/factory-booking/index.html',
+  'staff-management': '/staff-management/clock-in.html',
+  'create-staff': '/staff-management/create-staff.html',
+  'staff-salaries': '/staff-management/salaries.html',
+  'rbac-admin': '/settings/rbac.html',
+  'alert-center': '/settings/alert-center.html',
+  // Protected files (account.html / account-detail.html) — never modify the
+  // .html files themselves. Gate at the catalog + server-route level so they
+  // open by default only for admin+accountant (finance:write holders).
+  'finance-account': '/business-management/finances/account.html',
+  'finance-account-detail': '/business-management/finances/account-detail.html',
 };
 
 // Reverse lookup: path → page_id
 const PAGE_ID_BY_PATH = Object.fromEntries(
-    Object.entries(STAFF_PAGE_PATHS).map(([id, path]) => [path.toLowerCase(), id]),
+  Object.entries(STAFF_PAGE_PATHS).map(([id, path]) => [path.toLowerCase(), id]),
 );
 
 // Mirror of client NAV_PERMISSIONS — which perm gates each page. The page is
 // "default-open" for a role if the role has the page's perm.
 const PAGE_PERMISSIONS = {
-    'supplier-management':   'supplier:read',
-    'customer-master':       'orders:read',
-    'sales-dashboard':       'orders:read',
-    'outreach':              'outreach:read',
-    'support-hub':           'support:read',
-    'finance-dashboard':     'finance:read',
-    'traceability':          'production:read',
-    'purchase-record':       'procurement:read',
-    'fulfillment':           'orders:read',
-    'warehouse-stock':       'inventory:read',
-    'production':            'production:read',
-    'production-recipes':    'recipes:read',
-    'factory-booking':       'factory:read',
-    'staff-management':      'staff:read',
-    'create-staff':          'staff:write',
-    'staff-salaries':        'salary:read',
-    'rbac-admin':            'staff:write',   // admin-only
-    'alert-center':          'alerts:write',  // admin-only by default
-    // Protected finance pages — gate on finance:write so only admin+accountant
-    // can open them by default. Greys out for every other role in the UI.
-    'finance-account':        'finance:write',
-    'finance-account-detail': 'finance:write',
+  'supplier-management': 'supplier:read',
+  'customer-master': 'orders:read',
+  'sales-dashboard': 'orders:read',
+  'outreach': 'outreach:read',
+  'support-hub': 'support:read',
+  'finance-dashboard': 'finance:read',
+  'traceability': 'production:read',
+  'purchase-record': 'procurement:read',
+  'fulfillment': 'orders:read',
+  'warehouse-stock': 'inventory:read',
+  'production': 'production:read',
+  'production-recipes': 'recipes:read',
+  'factory-booking': 'factory:read',
+  'staff-management': 'staff:read',
+  'create-staff': 'staff:write',
+  'staff-salaries': 'salary:read',
+  'rbac-admin': 'staff:write',   // admin-only
+  'alert-center': 'alerts:write',  // admin-only by default
+  // Protected finance pages — gate on finance:write so only admin+accountant
+  // can open them by default. Greys out for every other role in the UI.
+  'finance-account': 'finance:write',
+  'finance-account-detail': 'finance:write',
 };
 
 let effectivePageAccessCache = null; // Map<pageId, Set<role>> (granted roles)
 let effectivePageAccessLoadPromise = null;
 
 async function loadEffectivePageAccessFromDb() {
-    if (!sqlProxyConfigured || sqlProxyDisabled) return { map: new Map() };
-    let overrides = [];
-    try {
-        const rows = await runManagementSql(
-            'SELECT page_id, role, granted FROM public.rbac_page_access'
-        );
-        overrides = Array.isArray(rows) ? rows : [];
-    } catch (err) {
-        console.warn('[rbac] failed to read rbac_page_access, using defaults:', err.message || err);
-        overrides = [];
-    }
-    return { map: new Map(overrides.map((r) => [r.page_id + '|' + r.role, !!r.granted])), rowCount: overrides.length };
+  if (!sqlProxyConfigured || sqlProxyDisabled) return { map: new Map() };
+  let overrides = [];
+  try {
+    const rows = await runManagementSql(
+      'SELECT page_id, role, granted FROM public.rbac_page_access'
+    );
+    overrides = Array.isArray(rows) ? rows : [];
+  } catch (err) {
+    console.warn('[rbac] failed to read rbac_page_access, using defaults:', err.message || err);
+    overrides = [];
+  }
+  return { map: new Map(overrides.map((r) => [r.page_id + '|' + r.role, !!r.granted])), rowCount: overrides.length };
 }
 
 async function getEffectivePageAccess() {
-    if (effectivePageAccessCache) return effectivePageAccessCache;
-    if (!effectivePageAccessLoadPromise) {
-        effectivePageAccessLoadPromise = loadEffectivePageAccessFromDb().finally(() => {
-            effectivePageAccessLoadPromise = null;
-        });
-    }
-    effectivePageAccessCache = await effectivePageAccessLoadPromise;
-    return effectivePageAccessCache;
+  if (effectivePageAccessCache) return effectivePageAccessCache;
+  if (!effectivePageAccessLoadPromise) {
+    effectivePageAccessLoadPromise = loadEffectivePageAccessFromDb().finally(() => {
+      effectivePageAccessLoadPromise = null;
+    });
+  }
+  effectivePageAccessCache = await effectivePageAccessLoadPromise;
+  return effectivePageAccessCache;
 }
 
 function invalidateEffectivePageAccessCache() {
-    effectivePageAccessCache = null;
-    effectivePageAccessLoadPromise = null;
+  effectivePageAccessCache = null;
+  effectivePageAccessLoadPromise = null;
 }
 
 /**
@@ -3689,15 +3688,15 @@ function invalidateEffectivePageAccessCache() {
  *   3. Else deny.
  */
 async function effectiveCanOpenPage(pageId, userRole) {
-    if (userRole === 'admin') return true;
-    if (!pageId) return true; // not a known page → not gated
-    const { map } = await getEffectivePageAccess();
-    const override = map.get(pageId + '|' + userRole);
-    if (override !== undefined) return override;
-    // Fall back to the page's permission gate
-    const required = PAGE_PERMISSIONS[pageId];
-    if (!required) return true; // no gate configured
-    return effectiveServerCan(userRole, required);
+  if (userRole === 'admin') return true;
+  if (!pageId) return true; // not a known page → not gated
+  const { map } = await getEffectivePageAccess();
+  const override = map.get(pageId + '|' + userRole);
+  if (override !== undefined) return override;
+  // Fall back to the page's permission gate
+  const required = PAGE_PERMISSIONS[pageId];
+  if (!required) return true; // no gate configured
+  return effectiveServerCan(userRole, required);
 }
 
 /**
@@ -3705,10 +3704,10 @@ async function effectiveCanOpenPage(pageId, userRole) {
  * known staff page (public pages, assets, API routes → null = "not gated").
  */
 function pageIdFromPath(requestPath) {
-    if (!requestPath) return null;
-    let p = requestPath.split('?')[0].toLowerCase();
-    if (p.endsWith('/')) p += 'index.html';
-    return PAGE_ID_BY_PATH[p] || null;
+  if (!requestPath) return null;
+  let p = requestPath.split('?')[0].toLowerCase();
+  if (p.endsWith('/')) p += 'index.html';
+  return PAGE_ID_BY_PATH[p] || null;
 }
 
 async function handleSupabaseApi(req, res) {
@@ -3843,19 +3842,19 @@ async function handleSupabaseApi(req, res) {
           const runRows = parseSqlRows(await runManagementSql(runSql));
           if (runRows && runRows.length > 0) {
             const runId = runRows[0].id;
-            
+
             // Delete old details
             await runManagementSql(`DELETE FROM public.payroll_run_details WHERE payroll_run_id = ${sqlValue(runId, 'payroll_run_id')}`);
-            
+
             // Fetch staff details
             const staffSql = `SELECT id, name, role FROM public.staff_profiles`;
             const staffRows = parseSqlRows(await runManagementSql(staffSql)) || [];
             const staffMap = new Map(staffRows.map(s => [s.id, s]));
-            
+
             // Fetch salaries
             const salariesSql = `SELECT staff_id, salary_type, base_rate, hours_worked, bonus, deductions FROM public.salaries WHERE cycle = ${sqlValue(cycleToUpdate, 'cycle')}`;
             const currentSalaries = parseSqlRows(await runManagementSql(salariesSql)) || [];
-            
+
             let totalPaid = 0;
             for (const sal of currentSalaries) {
               const profile = staffMap.get(sal.staff_id) || { name: 'Unknown', role: 'Staff' };
@@ -3864,7 +3863,7 @@ async function handleSupabaseApi(req, res) {
                 : (parseFloat(sal.base_rate || 0) * parseFloat(sal.hours_worked || 0));
               const grossPay = Math.max(0, basePayCalculated + parseFloat(sal.bonus || 0) - parseFloat(sal.deductions || 0));
               totalPaid += grossPay;
-              
+
               await runManagementSql(`
                 INSERT INTO public.payroll_run_details (
                   payroll_run_id, staff_id, staff_name, cycle, attempt_number,
@@ -3885,7 +3884,7 @@ async function handleSupabaseApi(req, res) {
                 )
               `);
             }
-            
+
             await runManagementSql(`
               UPDATE public.payroll_runs 
               SET total_paid = ${sqlValue(totalPaid, 'total_paid')}, 
@@ -3972,7 +3971,7 @@ async function handleSupabaseApi(req, res) {
           filters: body.filters,
           resultData,
           user_email: body.user_email,
-          user_role:  body.user_role,
+          user_role: body.user_role,
         }).catch(() => {
           // Audit and alert rows are useful telemetry, but must not slow or fail user workflows.
         });
@@ -4039,7 +4038,7 @@ async function handleUpload(req, res) {
   // Wait for the upload's write stream to flush before responding. busboy's
   // 'finish' fires when parsing is done, NOT when downstream writes complete,
   // so we need a separate promise resolved inside the file handler.
-  let resolveFileWrite = () => {};
+  let resolveFileWrite = () => { };
   const fileWritePromise = new Promise((resolve) => { resolveFileWrite = resolve; });
   let fileWriteSettled = false;
   const settleFileWrite = () => {
@@ -4053,8 +4052,8 @@ async function handleUpload(req, res) {
     if (settled) return;
     settled = true;
     // Detach busboy listeners so a late 'finish' from req doesn't double-fire.
-    try { req.unpipe(busboy); } catch {}
-    try { busboy.destroy(); } catch {}
+    try { req.unpipe(busboy); } catch { }
+    try { busboy.destroy(); } catch { }
     sendJson(res, status, payload);
   };
 
@@ -4107,7 +4106,7 @@ async function handleUpload(req, res) {
         fileStream.pipe(out);
         out.on('finish', () => {
           if (truncated) {
-            unlink(absPath).catch(() => {});
+            unlink(absPath).catch(() => { });
             rejectedReason = `File exceeds ${UPLOAD_MAX_BYTES} bytes`;
             settleFileWrite();
             return;
@@ -4307,6 +4306,16 @@ export async function handleRequest(req, res, options = {}) {
     });
     return;
   }
+
+  // ── Public Runtime Environment Config ──────────────────────────────────────
+  if (url.pathname === '/api/config' && req.method === 'GET') {
+    sendJson(res, 200, {
+      supabaseUrl: supabaseUrl || '',
+      supabaseAnonKey: supabaseAnonKey || '',
+    });
+    return;
+  }
+
 
   // ─── RBAC admin endpoints ─────────────────────────────────────────────────
   // All require a logged-in staff session with role='admin'. The DB enforces
@@ -4549,8 +4558,8 @@ export async function handleRequest(req, res, options = {}) {
       const lockMin = settings.payroll_lock_min ?? 59;
 
       // Build the same window used by the UI: prev, current, next two months
-      const monthNames = ['January','February','March','April','May','June',
-                          'July','August','September','October','November','December'];
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
       const now = new Date();
       const cycles = [];
       for (let i = -1; i <= 2; i++) {
@@ -4762,7 +4771,7 @@ export async function handleRequest(req, res, options = {}) {
 
       // 2. Resolve customer email: prefer explicit field, then look up from order
       let resolvedEmail = (customerEmail || '').trim().toLowerCase();
-      let resolvedName  = (customerName  || channelName || 'Customer').trim();
+      let resolvedName = (customerName || channelName || 'Customer').trim();
 
       if (!resolvedEmail && orderId) {
         const tables = channelType === 'b2b_customer'
@@ -4777,7 +4786,7 @@ export async function handleRequest(req, res, options = {}) {
               .limit(1);
             if (rows?.length) {
               resolvedEmail = (rows[0].customer_email || '').trim().toLowerCase();
-              resolvedName = (rows[0].customer_name   || resolvedName).trim();
+              resolvedName = (rows[0].customer_name || resolvedName).trim();
               if (resolvedEmail) break;
             }
           } catch (_) { /* fall through */ }
@@ -4791,10 +4800,10 @@ export async function handleRequest(req, res, options = {}) {
 
       // 3. Send Brevo notification
       const transporter = getBrevoTransporter();
-      const fromValue  = resolveOutreachFromAddress(channelType === 'b2b_customer' ? 'b2b' : 'b2c');
-      const replyTo    = BREVO_REPLY_TO || undefined;
-      const subject    = `${resolvedName} · Espressgo Support replied to your order`;
-      const preview    = messageText.length > 120
+      const fromValue = resolveOutreachFromAddress(channelType === 'b2b_customer' ? 'b2b' : 'b2c');
+      const replyTo = BREVO_REPLY_TO || undefined;
+      const subject = `${resolvedName} · Espressgo Support replied to your order`;
+      const preview = messageText.length > 120
         ? messageText.slice(0, 117).trimEnd() + '…'
         : messageText;
       const ts = new Date(now).toLocaleString('en-SG', {
@@ -4850,11 +4859,11 @@ export async function handleRequest(req, res, options = {}) {
 
       try {
         await transporter.sendMail({
-          from:    fromValue || undefined,
+          from: fromValue || undefined,
           replyTo,
-          to:      resolvedEmail,
+          to: resolvedEmail,
           subject,
-          html:    htmlBody,
+          html: htmlBody,
           headers: { 'X-Espressgo-Support': '1' },
         });
         sendJson(res, 200, { ok: true, notified: true, email: resolvedEmail });
@@ -4926,10 +4935,10 @@ export async function handleRequest(req, res, options = {}) {
   if (url.pathname === '/api/customer-verification/notify-decision' && req.method === 'POST') {
     try {
       const body = await readJsonBody(req);
-      const decision  = String(body?.decision || '').toLowerCase();
-      const email     = String(body?.customerEmail || '').trim().toLowerCase();
-      const company   = String(body?.companyName || '').trim() || 'Customer';
-      const reason    = String(body?.reason || '').trim();
+      const decision = String(body?.decision || '').toLowerCase();
+      const email = String(body?.customerEmail || '').trim().toLowerCase();
+      const company = String(body?.companyName || '').trim() || 'Customer';
+      const reason = String(body?.reason || '').trim();
       const businessId = String(body?.businessId || '').trim();
 
       if (!email) {
@@ -4943,16 +4952,16 @@ export async function handleRequest(req, res, options = {}) {
 
       const transporter = getBrevoTransporter();
       const fromValue = resolveOutreachFromAddress('b2b');
-      const replyTo   = BREVO_REPLY_TO || undefined;
+      const replyTo = BREVO_REPLY_TO || undefined;
 
       const isApproved = decision === 'approve';
       const subject = isApproved
         ? `Welcome aboard, ${company} — your B2B account is verified`
         : `${company} · Update on your B2B verification request`;
 
-      const accent     = isApproved ? '#10B981' : '#EF4444';
-      const headline   = isApproved ? 'You’re Verified' : 'Verification Update';
-      const subhead    = isApproved
+      const accent = isApproved ? '#10B981' : '#EF4444';
+      const headline = isApproved ? 'You’re Verified' : 'Verification Update';
+      const subhead = isApproved
         ? 'Your B2B account has been approved.'
         : 'Your verification request was not approved this round.';
       const portalLine = isApproved
@@ -5018,11 +5027,11 @@ export async function handleRequest(req, res, options = {}) {
 
       try {
         await transporter.sendMail({
-          from:    fromValue || undefined,
+          from: fromValue || undefined,
           replyTo,
-          to:      email,
+          to: email,
           subject,
-          html:    htmlBody,
+          html: htmlBody,
           headers: { 'X-Espressgo-Verification-Decision': decision },
         });
         sendJson(res, 200, { ok: true, notified: true, email });
@@ -5732,8 +5741,9 @@ export async function handleRequest(req, res, options = {}) {
         `https://api.supabase.com/v1/projects/${supabaseProjectRef}/realtime`,
         { headers: { Authorization: `Bearer ${supabaseManagementToken}` } }
       );
+
       const realtimeData = await realtimeResp.json().catch(() => ({}));
-      
+
       // Check publication status
       const pubRows = await runManagementSql(
         `SELECT pubname, schemaname, tablename FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public'`
@@ -5785,6 +5795,16 @@ export async function handleRequest(req, res, options = {}) {
     return;
   }
 
+
+  // ── Public Runtime Environment Config ──────────────────────────────────────
+  if (url.pathname === '/api/config' && req.method === 'GET') {
+    sendJson(res, 200, {
+      supabaseUrl: supabaseUrl || '',
+      supabaseAnonKey: supabaseAnonKey || '',
+    });
+    return;
+  }
+
   // ── Local uploads (POST/DELETE /api/uploads) ────────────────────────────────
   // All file storage is now local disk (./uploads/<category>/<date>/<file>).
   // No Supabase Storage dependency. Public URLs are served back as
@@ -5810,7 +5830,7 @@ export async function handleRequest(req, res, options = {}) {
       const body = await readJsonBody(req);
       const { cycle } = body;
       if (!cycle) { sendJson(res, 400, { error: 'cycle is required' }); return; }
-      
+
       const stage = await getCycleStage(cycle);
       if (stage !== 'Locked' && stage !== 'Paid') {
         sendJson(res, 400, { error: 'Cannot finalize: adjustment period is still active or not yet pay day' });
@@ -5825,7 +5845,7 @@ export async function handleRequest(req, res, options = {}) {
       }
 
       await runManagementSql(`SELECT public.finalize_payroll_cycle(${sqlValue(cycle, 'target_cycle')}, ${sqlValue(session.email || 'operator', 'operator_email')})`);
-      
+
       sendJson(res, 200, { ok: true, cycle });
     } catch (err) {
       sendJson(res, 500, { error: err.message || String(err) });
@@ -6321,13 +6341,13 @@ async function handleSessionRegister(req, res, _preparsedBody = null) {
       if (existing && existing.length > 0) {
         const updateData = segment === 'b2b'
           ? {
-              name,
-              company_name: company || null,
-              segment,
-              is_active: true,
-              phone: phone || null,
-              address: address || null,
-            }
+            name,
+            company_name: company || null,
+            segment,
+            is_active: true,
+            phone: phone || null,
+            address: address || null,
+          }
           : { name, segment, is_active: true, phone: phone || null, address: address || null };
         await updateSql({
           schema: 'public',
@@ -6338,15 +6358,15 @@ async function handleSessionRegister(req, res, _preparsedBody = null) {
       } else {
         const insertRow = segment === 'b2b'
           ? {
-              email,
-              name,
-              company_name: company || null,
-              segment,
-              is_active: true,
-              verification_status: 'pending',
-              phone: phone || null,
-              address: address || null,
-            }
+            email,
+            name,
+            company_name: company || null,
+            segment,
+            is_active: true,
+            verification_status: 'pending',
+            phone: phone || null,
+            address: address || null,
+          }
           : { email, name, segment, is_active: true, phone: phone || null, address: address || null };
         await insertSqlRows({
           schema: 'public',
@@ -6363,15 +6383,15 @@ async function handleSessionRegister(req, res, _preparsedBody = null) {
       const table = segment === 'b2b' ? 'customer_accounts' : 'retail_buyers';
       const row = segment === 'b2b'
         ? {
-            email,
-            name,
-            company_name: company || null,
-            segment,
-            is_active: true,
-            verification_status: 'pending',
-            phone: phone || null,
-            address: address || null,
-          }
+          email,
+          name,
+          company_name: company || null,
+          segment,
+          is_active: true,
+          verification_status: 'pending',
+          phone: phone || null,
+          address: address || null,
+        }
         : { email, name, segment, is_active: true, phone: phone || null, address: address || null };
       const { data: existing } = await supabaseAdmin
         .schema('public')

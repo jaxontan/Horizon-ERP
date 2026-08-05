@@ -1,6 +1,9 @@
 (function () {
-const SUPABASE_URL = 'https://djvlhmuoryrjfgaztidx.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
+const SUPABASE_URL = 'https://bkegzhovgniksevjbdrc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrZWd6aG92Z25pa3NldmpiZHJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTM4NzAsImV4cCI6MjEwMTQ4OTg3MH0.fRa1wcJaaDDhEJqQbM5QS8e7Po9-tv_wafudZwH0PWM';
+
+
+
 
     const DEFAULT_API_ORIGIN = 'http://localhost:3000';
     const STATIC_DEV_PORTS = new Set(['5500', '5501', '8000', '8080']);
@@ -82,7 +85,11 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         sdk.__erpNativeCreateClient = nativeCreateClient;
         sdk.__erpCreateClientPatched = true;
         sdk.createClient = function (url, key, options = {}) {
-            const isErpProject = String(url || '') === SUPABASE_URL && String(key || '') === SUPABASE_ANON_KEY;
+            const finalUrl = url || activeUrl || SUPABASE_URL;
+            const finalKey = key || activeKey || SUPABASE_ANON_KEY;
+            if (sdk._client) return sdk._client;
+
+            const isErpProject = String(finalUrl || '') === (activeUrl || SUPABASE_URL) && String(finalKey || '') === (activeKey || SUPABASE_ANON_KEY);
             if (isErpProject && sdk._client) return sdk._client;
 
             const mergedOptions = isErpProject
@@ -95,25 +102,57 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
                 }
                 : options;
 
-            const client = nativeCreateClient(url, key, mergedOptions);
-            if (isErpProject) sdk._client = client;
+            if (!finalUrl || !finalKey) {
+                console.warn('[erp-supabase] createClient called with empty url or key, skipping');
+                return null;
+            }
+
+            const client = nativeCreateClient(finalUrl, finalKey, mergedOptions);
+            if (isErpProject || !sdk._client) sdk._client = client;
             return client;
         };
+
     }
+
+    let activeUrl = 'https://bkegzhovgniksevjbdrc.supabase.co';
+    let activeKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrZWd6aG92Z25pa3NldmpiZHJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTM4NzAsImV4cCI6MjEwMTQ4OTg3MH0.fRa1wcJaaDDhEJqQbM5QS8e7Po9-tv_wafudZwH0PWM';
+
+    async function fetchServerConfig() {
+        try {
+            const apiOrigin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : DEFAULT_API_ORIGIN;
+            const res = await fetch(apiOrigin + '/api/config');
+            if (res.ok) {
+                const cfg = await res.json();
+                if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+                    activeUrl = cfg.supabaseUrl;
+                    activeKey = cfg.supabaseAnonKey;
+                }
+            }
+        } catch (_) {}
+    }
+
 
     async function initSupabaseClient() {
         console.log('[erp-supabase] initSupabaseClient called');
+        await fetchServerConfig();
         const sdk = await loadSupabaseSdk();
         if (!sdk || !sdk.createClient) return null;
         installSupabaseSingleton(sdk);
         if (window.supabase && window.supabase._client) return window.supabase._client;
 
-        const client = sdk.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        if (!activeUrl || !activeKey) {
+            console.warn('[erp-supabase] Missing credentials, skipping client init');
+            return null;
+        }
+
+        const client = sdk.createClient(activeUrl, activeKey, {
             auth: { storageKey: 'erp-supabase-auth' },
         });
         window.supabase._client = client;
         return client;
     }
+
+
 
     async function getAccessToken() {
         try {
@@ -207,8 +246,21 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
         let query = client.from(table).select(selectStr);
 
-        if (Array.isArray(filters)) {
-            for (const f of filters) {
+        let filterList = filters;
+        if (filters && typeof filters === 'object' && !Array.isArray(filters)) {
+            filterList = [];
+            for (const [op, map] of Object.entries(filters)) {
+                if (map && typeof map === 'object' && !Array.isArray(map)) {
+                    for (const [col, val] of Object.entries(map)) {
+                        filterList.push({ col, op, val });
+                    }
+                }
+            }
+        }
+
+        if (Array.isArray(filterList)) {
+            for (const f of filterList) {
+
                 if (!f || typeof f !== 'object') continue;
                 const { col, op, val } = f;
                 if (!col || !op) continue;
@@ -252,8 +304,17 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
         }
 
         if (order) {
-            query = query.order(order, { ascending: ascending !== false });
+            let orderCol = order;
+            let orderAsc = ascending !== false;
+            if (typeof order === 'object' && order !== null) {
+                orderCol = order.column || order.col || order.field || null;
+                if (order.ascending !== undefined) orderAsc = order.ascending !== false;
+            }
+            if (orderCol) {
+                query = query.order(orderCol, { ascending: orderAsc });
+            }
         }
+
 
         if (typeof limit === 'number') {
             query = query.limit(limit);

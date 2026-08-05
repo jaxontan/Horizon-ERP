@@ -160,10 +160,10 @@
 
     <script>
         // Supabase Initialization
-        const supabaseUrl = 'https://djvlhmuoryrjfgaztidx.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdmxobXVvcnlyamZnYXp0aWR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MjExNTEsImV4cCI6MjEwMDE5NzE1MX0.QCWMNTpCYxidNXhdq9fHOxw4KT-Sz9bWHLtsCNvwaVQ';
-        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-        const supabaseB2CClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseUrl = '';
+        const supabaseKey = '';
+        const supabaseClient = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? window.supabase.createClient() : null) : null);
+        const supabaseB2CClient = (window.supabase && window.supabase._client) ? window.supabase._client : (window.supabase && window.supabase.createClient ? window.supabase.createClient() : null);
 
         const tableBody = document.getElementById('customers-table-body');
 
