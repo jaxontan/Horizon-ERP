@@ -13,25 +13,18 @@
     <!-- Central Tailwind theme: font tokens, color tokens, spacing tokens -->
     <script src="/components/tailwind-config.js?v=20260706"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/public/js/erp-supabase.js?v=20260706"></script>
+    <script src="/public/js/erp-supabase.js?v=20260803"></script>
     <script>
-        // Supplier Profile uses a slightly different color palette than the rest
-        // of the app (warmer blue `#1E3A8A` instead of the standard `#031635`),
-        // so it overrides a handful of color tokens here. Fonts and most other
-        // design tokens come from the central /components/tailwind-config.js.
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#1E3A8A',
-                        secondary: '#475569',
-                        accent: '#F59E0B',
-                        background: '#F8FAFC',
-                        surface: '#FFFFFF',
-                    }
-                }
-            }
-        }
+        // Keep the shared application typography and spacing tokens while
+        // applying the supplier profile's page-specific color palette.
+        tailwind.config.theme.extend.colors = {
+            ...tailwind.config.theme.extend.colors,
+            primary: '#1E3A8A',
+            secondary: '#475569',
+            accent: '#F59E0B',
+            background: '#F8FAFC',
+            surface: '#FFFFFF',
+        };
     </script>
     <!-- Google Material Symbols & Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800" rel="stylesheet" />
@@ -395,20 +388,21 @@
             border-bottom: 1px solid rgba(255,255,255,0.06);
         }
         .eg-info-card .eg-info-row:last-child { border-bottom: 0; }
-        .eg-info-card .eg-info-row .material-symbols-outlined { color: #93C5FD; font-size: 18px; }
+        .eg-info-card .eg-info-row .material-symbols-outlined { color: #BFDBFE; font-size: 18px; }
         .eg-info-card .eg-info-row .lbl {
             font-size: 10px;
             text-transform: uppercase; /* uppercase */
             letter-spacing: 0.1em; /* tracking-widest */
-            color: rgba(255,255,255,0.55);
+            color: rgba(219, 234, 254, 0.78);
             font-weight: 700; /* font-bold */
         }
         .eg-info-card .eg-info-row .val {
             font-size: 13px;
-            color: #fff;
+            color: #F8FAFC;
             font-weight: 700; /* font-bold */
             margin-top: 2px;
             word-break: break-word;
+            text-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
         }
 
         /* ===== MODAL ===== */
@@ -529,7 +523,7 @@
     </style>
 </head>
 
-<body class="font-body-md font-sans text-slate-800">
+<body class="font-body-md font-sans text-on-surface antialiased">
     <!-- Sidebar Component -->
     <app-sidebar layout="fixed"></app-sidebar>
 
@@ -1001,33 +995,16 @@
 
             // Load supplier from Supabase
             try {
-                // The page's URL id is a display code like 'SUP-001' that the
-                // supplier list page synthesises from the array index. The
-                // canonical identifier is the UUID stored in
-                // localStorage.suppliers[].dbId. There's no safe way to
-                // reverse-engineer a UUID from a display code, so we MUST go
-                // through localStorage — if it's missing, the user landed on
-                // this page through a stale bookmark / shared link, and the
-                // right answer is "not found", not "pick row N and pray".
+                // The URL id is now the stable UUID (`supplier_id`) assigned
+                // by the database. We query by it directly. localStorage is
+                // only used as a *fallback* for stale bookmarks that point
+                // at a synthetic "SUP-NNN" code from before this fix — those
+                // can be resolved by reading the mapping table the registry
+                // page wrote on its last load.
                 let supplierRow = null;
-                const storedSuppliers = JSON.parse(localStorage.getItem('suppliers') || '[]');
-                const stored = storedSuppliers.find(s => s.id === supId);
 
-                if (stored && stored.dbId) {
-                    // Query by the stored UUID
-                    const data = await sbClientOp({
-                        table: 'suppliers',
-                        operation: 'select',
-                        columns: '*',
-                        filters: { eq: { supplier_id: stored.dbId } }
-                    });
-                    if (data && data.length > 0) supplierRow = data[0];
-                }
-
-                // Fallback: the URL might already carry a UUID (deep link
-                // from another tool). Try a direct match on supplier_id so
-                // that path still works without depending on localStorage.
-                if (!supplierRow && /^[0-9a-f-]{36}$/i.test(supId)) {
+                // Primary path: query directly by the UUID we got from the URL.
+                if (/^[0-9a-f-]{36}$/i.test(supId)) {
                     const data = await sbClientOp({
                         table: 'suppliers',
                         operation: 'select',
@@ -1037,13 +1014,26 @@
                     if (data && data.length > 0) supplierRow = data[0];
                 }
 
-                // Otherwise: no UUID lookup succeeded. Bail out instead of
-                // silently showing whatever row happens to be at index N in
-                // the table — that was the previous bug.
+                // Legacy fallback: a stale "SUP-NNN" code from before the
+                // fix. Resolve it through the localStorage mirror that
+                // index.html writes on every load.
+                if (!supplierRow && /^SUP-\d+$/i.test(supId)) {
+                    const storedSuppliers = JSON.parse(localStorage.getItem('suppliers') || '[]');
+                    const stored = storedSuppliers.find(s => s.id === supId || s.displayId === supId);
+                    if (stored && stored.dbId) {
+                        const data = await sbClientOp({
+                            table: 'suppliers',
+                            operation: 'select',
+                            columns: '*',
+                            filters: { eq: { supplier_id: stored.dbId } }
+                        });
+                        if (data && data.length > 0) supplierRow = data[0];
+                    }
+                }
 
                 if (supplierRow && supplierRow.supplier_id) {
                     currentSupplier = {
-                        id: supId,
+                        id: supplierRow.supplier_id,
                         dbId: supplierRow.supplier_id,
                         name: supplierRow.supplier_company,
                         status: supplierRow.status_of_supplier,
@@ -1067,8 +1057,27 @@
             }
 
             // Populate Page Header and Profile elements
+            // Render a stable, friendly "SUP-NNN" tag from the supplier's
+            // position in the alphabetically-sorted supplier registry, so
+            // the UI keeps the look users expect without using the
+            // position-derived code as the navigation key.
+            let displayCode = 'SUP-XXX';
+            try {
+                const allRows = await sbClientOp({
+                    table: 'suppliers',
+                    operation: 'select',
+                    columns: 'supplier_id, supplier_company'
+                });
+                if (Array.isArray(allRows) && allRows.length > 0) {
+                    allRows.sort((a, b) => (a.supplier_company || '').localeCompare(b.supplier_company || ''));
+                    const pos = allRows.findIndex(r => r.supplier_id === currentSupplier.dbId);
+                    if (pos >= 0) displayCode = `SUP-${String(pos + 1).padStart(3, '0')}`;
+                }
+            } catch (_) { /* non-fatal — leave displayCode as SUP-XXX */ }
+            currentSupplier.displayCode = displayCode;
+
             const headerTitle = document.getElementById('header-supplier-title');
-            if (headerTitle) headerTitle.textContent = `${currentSupplier.name} (${currentSupplier.id})`;
+            if (headerTitle) headerTitle.textContent = `${currentSupplier.name} (${displayCode})`;
             
             const breadcrumb = document.getElementById('breadcrumb-supplier-name');
             if (breadcrumb) breadcrumb.textContent = currentSupplier.name;
@@ -1077,7 +1086,7 @@
             if (nameTitle) nameTitle.textContent = currentSupplier.name;
             
             const idTag = document.getElementById('supplier-id-tag');
-            if (idTag) idTag.textContent = currentSupplier.id;
+            if (idTag) idTag.textContent = displayCode;
             
             const sector = document.getElementById('supplier-sector');
             if (sector) sector.textContent = `Sector: ${currentSupplier.sector}`;
@@ -1087,7 +1096,11 @@
 
             // Populate KPIs
             const contractRef = document.getElementById('kpi-contract-ref');
-            if (contractRef) contractRef.textContent = `LA-2026-${currentSupplier.id.split('-')[1] || '990'}`;
+            // Derive the contract ref from the friendly display code (e.g.
+            // "SUP-002" -> "LA-2026-002") so it stays human-readable even
+            // though our navigation id is now the UUID.
+            const codeTail = (displayCode.match(/\d+/) || ['990'])[0];
+            if (contractRef) contractRef.textContent = `LA-2026-${codeTail}`;
 
             const contactName = document.getElementById('kpi-contact-name');
             if (contactName) contactName.textContent = currentSupplier.contactName || 'Ops Manager';
@@ -1150,7 +1163,7 @@
                 label.textContent = "Status: Active";
 
                 btn.dataset.state = "active";
-                btnText.textContent = "Inactivate";
+                btnText.textContent = "Deactivate";
                 btnIcon.textContent = "do_not_disturb_on";
                 btnLabel.textContent = "Active";
                 btnSub.textContent = "Procurement enabled";
@@ -1171,7 +1184,7 @@
             const isActive = currentSupplier.status === 'Active' || currentSupplier.status === 'Verified';
 
             if (isActive) {
-                currentSupplier.status = 'Suspended'; // Maps to Inactivate in the UI and DB
+                currentSupplier.status = 'Suspended'; // Maps to Deactivate in the UI and DB
                 alert(`Notice: ${currentSupplier.name} has been set to INACTIVE. Procurement streams have been locked.`);
             } else {
                 currentSupplier.status = 'Verified'; // Maps to Active in the UI and DB
