@@ -845,14 +845,17 @@
       document.getElementById('order-item-list').innerHTML = '';
 
       try {
-        // Load all data in parallel: suppliers, quotations, inventory
+        // Load all data in parallel: active suppliers, quotations, inventory
         const [supplierData, quoteData, invData] = await Promise.all([
-          sbClientOp({ table: 'suppliers', operation: 'select', columns: 'supplier_id,supplier_company,supplier_name' }),
+          sbClientOp({ table: 'suppliers', operation: 'select', columns: 'supplier_id,supplier_company,supplier_name,status_of_supplier' }),
           sbClientOp({ table: 'supplier_quotations', operation: 'select', columns: '*', filters: { eq: { is_active: true } } }),
           sbClientOp({ table: 'inventory', operation: 'select', columns: '*' })
         ]);
 
-        orderModalData.suppliers = supplierData || [];
+        orderModalData.suppliers = (supplierData || []).filter(s => {
+          const st = (s.status_of_supplier || '').toLowerCase().trim();
+          return st === 'active' || st === 'verified';
+        });
         orderModalData.quotations = quoteData || [];
         orderModalData.inventoryMap = {};
         (invData || []).forEach(item => {
@@ -1205,6 +1208,15 @@
       const poNumber = 'PO-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
       const supplierId = orderModalData.chosenSupplierId;
       const supplierObj = orderModalData.suppliers.find(s => String(s.supplier_id) === String(supplierId));
+
+      const status = (supplierObj?.status_of_supplier || '').toLowerCase().trim();
+      if (status !== 'active' && status !== 'verified') {
+        showToast('Cannot place order: Selected supplier is not Active.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">send</span> Submit Order';
+        return;
+      }
+
       const supplierName = supplierObj?.supplier_company || supplierObj?.supplier_name || ('Supplier ' + supplierId);
 
       // Build the multi-line items list once — used by both tables.

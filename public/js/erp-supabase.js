@@ -375,7 +375,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
                 requestCache.set(cacheKey, { data: data || [], expiry: Date.now() + CLIENT_CACHE_TTL_MS });
                 return data;
             } catch (err) {
-                console.warn('[erp-supabase] Direct read failed, falling back to proxy:', err);
+                // Direct read failed (e.g. RLS or missing client key) — silently fallback to proxy
             }
         }
 

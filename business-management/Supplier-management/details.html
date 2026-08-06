@@ -1204,6 +1204,7 @@
             }
 
             updateStatusElements();
+            populateQuotationMenu();
         }
 
         async function loadSupplierQuotations() {
@@ -1273,14 +1274,15 @@
                                 <span class="material-symbols-outlined text-[14px]">check_circle</span>
                                 <span class="hidden lg:inline">Activate</span>
                             </button>`;
-                    const procureBtn = isActive
+                    const isSupplierActive = currentSupplier && (currentSupplier.status === 'Active' || currentSupplier.status === 'Verified');
+                    const procureBtn = (isActive && isSupplierActive)
                         ? `<button onclick="openOrderModal('${item.id}')" class="eg-btn eg-btn-primary ml-auto">
                                 <span class="material-symbols-outlined text-[14px]">shopping_cart</span>
                                 Procure
                             </button>`
-                        : `<span class="eg-pill eg-pill-slate ml-auto">
-                                <span class="material-symbols-outlined text-[14px]">block</span>
-                                Unavailable
+                        : `<span class="eg-pill eg-pill-slate ml-auto" title="${!isSupplierActive ? 'Supplier is inactive / procurement locked' : 'Item is inactive'}">
+                                <span class="material-symbols-outlined text-[14px]">lock</span>
+                                Procure Locked
                             </span>`;
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
@@ -1349,6 +1351,11 @@
 
         // Interactive Order Modal Logic
         function openOrderModal(itemId) {
+            const isActive = currentSupplier && (currentSupplier.status === 'Active' || currentSupplier.status === 'Verified');
+            if (!isActive) {
+                alert(`Cannot place order: ${currentSupplier.name || 'This supplier'} is currently INACTIVE/SUSPENDED. Please activate the supplier first.`);
+                return;
+            }
             const item = supplierQuotations.find(x => x.id === itemId);
             if (!item) return;
 

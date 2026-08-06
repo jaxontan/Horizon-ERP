@@ -1540,9 +1540,11 @@
         function renderIngredients(rows) {
             const tbody = document.getElementById('rm-table-body');
             const empty = document.getElementById('rm-empty');
+            const countBadge = document.getElementById('tab-ingredient-count');
             tbody.innerHTML = '';
 
-            const rmRows = rows.filter(r => r.rm_lot_number);
+            const rmRows = rows.filter(r => r.rm_lot_number || r.rm_item_code || r.rm_item_name);
+            if (countBadge) countBadge.textContent = rmRows.length;
 
             if (rmRows.length === 0) {
                 hide(tbody.parentElement);

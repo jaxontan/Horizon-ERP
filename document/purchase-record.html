@@ -93,7 +93,7 @@
             <!-- Filters & Controls -->
             <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-wrap gap-4 items-center justify-between shrink-0">
                 <div class="flex gap-4">
-                    <select class="bg-surface-container-low border-none rounded-lg text-body-md py-2 px-4 text-on-surface">
+                    <select id="status-filter" onchange="filterTable()" class="bg-surface-container-low border-none rounded-lg text-body-md py-2 px-4 text-on-surface">
                         <option value="">All Statuses</option>
                         <option value="Submitted Order">Submitted Order</option>
                         <option value="Received">Received</option>
@@ -101,7 +101,7 @@
                     <select id="supplier-filter" onchange="filterTable()" class="bg-surface-container-low border-none rounded-lg text-body-md py-2 px-4 text-on-surface">
                         <option value="">All Suppliers</option>
                     </select>
-                    <input type="date" class="bg-surface-container-low border-none rounded-lg text-body-md py-2 px-4 text-on-surface" />
+                    <input id="date-filter" type="date" onchange="filterTable()" class="bg-surface-container-low border-none rounded-lg text-body-md py-2 px-4 text-on-surface" />
                 </div>
             </div>
 
@@ -511,19 +511,48 @@
                     total_amount: r.total_amount || null,
                     unit_price: unitPriceFromItems,  // fix: carry unit_price into putaway flow
                     unit: unitFromItems,
-                    customDocs: (r.documents || []).map(d => ({
-                        name: d.name || d.filename || 'Document',
-                        icon: d.icon || 'attach_file',
-                        iconColor: d.iconColor || 'bg-gray-100 text-gray-600',
-                        size: d.size || null,
-                        uploaded: d.uploaded || null,
-                        // Defensive: if the row carries a publicUrl (from a future
-                        // PR that writes the JSON column), preserve it so the
-                        // download link survives page refresh.
-                        publicUrl: d.publicUrl || null,
-                        storedPath: d.storedPath || null,
-                        docType: d.docType || null,
-                    })),
+                    customDocs: (() => {
+                        let docsArr = r.documents;
+                        if (typeof docsArr === 'string') {
+                            try { docsArr = JSON.parse(docsArr); } catch(e) { docsArr = []; }
+                        }
+                        if (!Array.isArray(docsArr)) docsArr = [];
+                        return docsArr.map(d => ({
+                            name: d.name || d.filename || 'Document',
+                            icon: d.icon || 'attach_file',
+                            iconColor: d.iconColor || 'bg-gray-100 text-gray-600',
+                            size: d.size || null,
+                            uploaded: d.uploaded || null,
+                            publicUrl: d.publicUrl || null,
+                            storedPath: d.storedPath || null,
+                            docType: d.docType || null,
+                        }));
+                    })(),
+                    uploadLocks: (() => {
+                        let docsArr = r.documents;
+                        if (typeof docsArr === 'string') {
+                            try { docsArr = JSON.parse(docsArr); } catch(e) { docsArr = []; }
+                        }
+                        if (!Array.isArray(docsArr)) docsArr = [];
+                        const locks = {};
+                        docsArr.forEach(d => { if (d.docType) locks[d.docType] = true; });
+                        return locks;
+                    })(),
+                    uploadTrace: (() => {
+                        let docsArr = r.documents;
+                        if (typeof docsArr === 'string') {
+                            try { docsArr = JSON.parse(docsArr); } catch(e) { docsArr = []; }
+                        }
+                        if (!Array.isArray(docsArr)) docsArr = [];
+                        return docsArr.map(d => ({
+                            filename: d.name || 'Document',
+                            docType: d.docType || 'custom',
+                            category: d.docType === 'grn' ? 'Goods Received Note' : (d.docType === 'invoice' ? 'Supplier Invoice' : 'Purchase Order'),
+                            date: d.uploaded || new Date().toLocaleString(),
+                            publicUrl: d.publicUrl || null,
+                            storedPath: d.storedPath || null,
+                        }));
+                    })(),
                     // FIFO metadata
                     isFifo,
                     fifoOrderNum,
@@ -531,7 +560,7 @@
                     waybillMatched: rmoList.some(rmo => rmo.waybill_matched) || false,
                     waybillNumber: rmoList.find(rmo => rmo.waybill_matched)?.waybill_number || null,
                     batchId: r.batch_id || rmoList[0]?.batch_id || null,
-                    poCreated: r.po_created || rmoList[0]?.po_created || false,
+                    poCreated: r.po_created !== false,
                     inventory_id: r.inventory_id || null
                 };
             });
@@ -857,17 +886,31 @@
                     }
                 }
 
+                const rawDocs = (Array.isArray(record.customDocs) && record.customDocs.length > 0)
+                    ? record.customDocs.map((d) => ({
+                        name: d.name || null,
+                        icon: d.icon || null,
+                        iconColor: d.iconColor || null,
+                        size: d.size || null,
+                        uploaded: d.uploaded || null,
+                        publicUrl: d.publicUrl || null,
+                        storedPath: d.storedPath || null,
+                        docType: d.docType || null,
+                    }))
+                    : null;
+
                 const prUpdate = {
                     status: record.status,
                     expected_delivery: record.estDeliveryDate ? new Date(record.estDeliveryDate).toISOString() : null,
                     actual_delivery: record.actualDeliveryDate || null
                 };
                 if (record.batchId) prUpdate.batch_id = record.batchId;
+                if (rawDocs) prUpdate.documents = rawDocs;
 
                 let prErr = null;
                 try {
                     await erpSupabaseAPI(
-                        { table: 'purchase_records', operation: 'update', data: prUpdate, filters: { eq: { id: record.id } } }
+                        { table: 'purchase_records', operation: 'update', data: prUpdate, filters: { eq: { id: record.id } }, noCache: true }
                     );
                 } catch (e) {
                     prErr = e;
@@ -878,36 +921,7 @@
                     stepErrors.push({ step: 'purchase_records', error: prErr.message });
                 }
 
-                // Persist the uploaded document list (including publicUrl +
-                // storedPath) into purchase_records.documents so it survives a
-                // page refresh. This is a SEPARATE write from the status update
-                // above — if the documents column is missing or has a type
-                // drift (text vs jsonb), we catch and warn instead of breaking
-                // the status save. Status is load-bearing; document JSON is
-                // best-effort durability for the URLs we just minted.
-                if (Array.isArray(record.customDocs) && record.customDocs.length > 0) {
-                    try {
-                        const documentsPayload = JSON.stringify(
-                            record.customDocs.map((d) => ({
-                                name: d.name || null,
-                                icon: d.icon || null,
-                                iconColor: d.iconColor || null,
-                                size: d.size || null,
-                                uploaded: d.uploaded || null,
-                                publicUrl: d.publicUrl || null,
-                                storedPath: d.storedPath || null,
-                                docType: d.docType || null,
-                            }))
-                        );
-                        await erpSupabaseAPI(
-                            { table: 'purchase_records', operation: 'update', data: { documents: documentsPayload }, filters: { eq: { id: record.id } } }
-                        );
-                    } catch (docErr) {
-                        // Don't block the rest of sync on this — the file bytes
-                        // are still on disk under /uploads/purchase-records/.
-                        console.warn('[syncStatusToDb] documents JSON not persisted (column missing or wrong type?):', docErr?.message || docErr);
-                    }
-                }
+
 
                 // Update raw_material_orders status to keep supplier-side state in sync.
                 // Strategy (most-preferred first):
@@ -927,37 +941,15 @@
                         const matched = !!(result && (Array.isArray(result) ? result.length > 0 : result.data?.length > 0));
                         return { ok: matched, result, label };
                     } catch (e) {
-                        // "column does not exist" → this strategy not applicable; try next.
-                        console.warn(`[syncStatusToDb] rmo sync via ${label} failed:`, e?.message || e);
+                        // Strategy failed (e.g. column missing or no rows matched) — silently try next strategy
                         return { ok: false, error: e, label };
                     }
                 };
-                const attempts = [];
-                if (poBase && _poRmoColumns.has('po_number')) {
-                    attempts.push(() => trySync('po_number', { eq: { po_number: poBase } }));
-                }
-                if (poBase && _poRmoColumns.has('order_number')) {
-                    attempts.push(() => trySync('order_number LIKE', { like: { order_number: lineFilter } }));
-                    attempts.push(() => trySync('order_number exact', { eq: { order_number: poBase } }));
-                }
-                if (attempts.length === 0 && poBase && poBase !== 'N/A') {
-                    // Probe was never run (or returned empty). Force-run it now and retry.
-                    try {
-                        const probe = await apiSelect('raw_material_orders', 'po_number, order_number', { limit: 5 });
-                        const probeRows = Array.isArray(probe) ? probe : [];
-                        probeRows.forEach((r) => {
-                            if ('po_number' in r) _poRmoColumns.add('po_number');
-                            if ('order_number' in r) _poRmoColumns.add('order_number');
-                        });
-                        if (_poRmoColumns.has('po_number')) attempts.push(() => trySync('po_number (late probe)', { eq: { po_number: poBase } }));
-                        if (_poRmoColumns.has('order_number')) {
-                            attempts.push(() => trySync('order_number LIKE (late probe)', { like: { order_number: lineFilter } }));
-                            attempts.push(() => trySync('order_number exact (late probe)', { eq: { order_number: poBase } }));
-                        }
-                    } catch (probeErr) {
-                        console.warn('[syncStatusToDb] late rmo probe failed:', probeErr);
-                    }
-                }
+                const attempts = (poBase && poBase !== 'N/A') ? [
+                    () => trySync('po_number', { eq: { po_number: poBase } }),
+                    () => trySync('order_number LIKE', { like: { order_number: lineFilter } }),
+                    () => trySync('order_number exact', { eq: { order_number: poBase } })
+                ] : [];
                 try {
                     for (const run of attempts) {
                         const r = await run();
@@ -1200,15 +1192,31 @@
         }
 
         function filterTable() {
-            const term = document.getElementById('global-search').value.toLowerCase();
-            const supplierFilter = document.getElementById('supplier-filter').value;
-            let filtered = records.filter(r =>
-                r.po_number.toLowerCase().includes(term) ||
-                r.supplier.toLowerCase().includes(term) ||
-                r.items.toLowerCase().includes(term)
-            );
+            const searchEl = document.getElementById('global-search') || document.getElementById('search-input');
+            const term = (searchEl ? searchEl.value : '').toLowerCase().trim();
+            const supplierFilter = document.getElementById('supplier-filter')?.value || '';
+            const statusFilter = document.getElementById('status-filter')?.value || '';
+            const dateFilter = document.getElementById('date-filter')?.value || '';
+            
+            let filtered = records.filter(r => {
+                const poMatch = (r.po_number || '').toLowerCase().includes(term);
+                const supplierMatch = (r.supplier || '').toLowerCase().includes(term);
+                const itemsMatch = (r.items || '').toLowerCase().includes(term);
+                return poMatch || supplierMatch || itemsMatch;
+            });
+
             if (supplierFilter) {
                 filtered = filtered.filter(r => r.supplier === supplierFilter);
+            }
+            if (statusFilter) {
+                filtered = filtered.filter(r => (r.status || '').toLowerCase() === statusFilter.toLowerCase());
+            }
+            if (dateFilter) {
+                filtered = filtered.filter(r => {
+                    if (!r.date) return false;
+                    const rDateStr = new Date(r.date).toISOString().split('T')[0];
+                    return rDateStr === dateFilter;
+                });
             }
             renderTable(filtered);
         }
@@ -1280,8 +1288,8 @@
             container.innerHTML = '';
 
             // Determine which docs are actually uploaded
-            const uploadedGRN = record.customDocs.find(d => d.icon === 'local_shipping');
-            const uploadedInvoice = record.customDocs.find(d => d.icon === 'description');
+            const uploadedGRN = record.customDocs.find(d => d.docType === 'grn' || d.icon === 'local_shipping');
+            const uploadedInvoice = record.customDocs.find(d => d.docType === 'invoice' || d.icon === 'description');
 
             const documents = [
                 {
@@ -1296,46 +1304,55 @@
                 }
             ];
 
-            if (record.poCreated) {
-                documents.push({
-                    name: uploadedGRN ? uploadedGRN.name : 'Goods Received Note',
-                    type: uploadedGRN ? uploadedGRN.type : 'pdf',
-                    icon: 'local_shipping',
-                    iconColor: 'bg-secondary-container text-[#475f87]',
-                    size: uploadedGRN ? uploadedGRN.size : '—',
-                    uploaded: uploadedGRN ? uploadedGRN.uploaded : '—',
-                    locked: !uploadedGRN,
-                    onClick: null
-                });
-                documents.push({
-                    name: uploadedInvoice ? uploadedInvoice.name : 'Supplier Invoice',
-                    type: uploadedInvoice ? uploadedInvoice.type : 'pdf',
-                    icon: 'description',
-                    iconColor: 'bg-tertiary-fixed text-primary',
-                    size: uploadedInvoice ? uploadedInvoice.size : '—',
-                    uploaded: uploadedInvoice ? uploadedInvoice.uploaded : '—',
-                    locked: !uploadedInvoice,
-                    onClick: null
-                });
-            }
+            // Always include GRN and Invoice slots in Related Documents list
+            documents.push({
+                name: uploadedGRN ? uploadedGRN.name : 'Goods Received Note',
+                type: uploadedGRN ? uploadedGRN.type : 'pdf',
+                icon: 'local_shipping',
+                iconColor: 'bg-secondary-container text-[#475f87]',
+                size: uploadedGRN ? uploadedGRN.size : '—',
+                uploaded: uploadedGRN ? uploadedGRN.uploaded : '—',
+                locked: !uploadedGRN,
+                publicUrl: uploadedGRN ? uploadedGRN.publicUrl : null,
+                onClick: null
+            });
+            documents.push({
+                name: uploadedInvoice ? uploadedInvoice.name : 'Supplier Invoice',
+                type: uploadedInvoice ? uploadedInvoice.type : 'pdf',
+                icon: 'description',
+                iconColor: 'bg-tertiary-fixed text-primary',
+                size: uploadedInvoice ? uploadedInvoice.size : '—',
+                uploaded: uploadedInvoice ? uploadedInvoice.uploaded : '—',
+                locked: !uploadedInvoice,
+                publicUrl: uploadedInvoice ? uploadedInvoice.publicUrl : null,
+                onClick: null
+            });
 
-            // Append actual uploaded custom docs
+            // Append any other uploaded custom docs
             record.customDocs.forEach(doc => {
                 if (!documents.some(d => d.icon === doc.icon)) {
                     documents.push({ ...doc, locked: false, onClick: null });
+                } else {
+                    // Update matching document entry with publicUrl if available
+                    const existing = documents.find(d => d.icon === doc.icon);
+                    if (existing && doc.publicUrl) existing.publicUrl = doc.publicUrl;
                 }
             });
 
             documents.forEach(doc => {
                 const div = document.createElement('div');
                 div.className = `flex items-center justify-between p-3 border border-outline-variant rounded-lg transition-colors group bg-white ${doc.locked ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary'}`;
-                // If the doc was uploaded via /api/uploads, the newDoc row carries a
-                // publicUrl — render a real download/view anchor so the operator can
-                // open the file in a new tab. Falls back to a non-clickable check
-                // icon for docs loaded from the DB without a URL (legacy rows).
-                const action = (!doc.locked && doc.publicUrl)
-                    ? `<a href="${doc.publicUrl}" target="_blank" rel="noopener" class="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-primary/10 text-secondary hover:text-primary" title="Open file in new tab"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>`
-                    : `<span class="material-symbols-outlined ${doc.locked ? 'text-outline-variant' : 'text-outline-variant group-hover:text-primary'}">${doc.locked ? 'lock' : (doc.icon === 'picture_as_pdf' ? 'download' : 'check_circle')}</span>`;
+                
+                let action = `<span class="material-symbols-outlined ${doc.locked ? 'text-outline-variant' : 'text-outline-variant group-hover:text-primary'}">${doc.locked ? 'lock' : 'check_circle'}</span>`;
+                if (!doc.locked && doc.onClick === 'downloadPOPdf') {
+                    action = `<button onclick="downloadPOPdf(activeRecord)" class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-bold transition-all shadow-sm" title="Download Purchase Order PDF">
+                        <span class="material-symbols-outlined text-[16px]">download</span>
+                        <span>Download</span>
+                    </button>`;
+                } else if (!doc.locked && doc.publicUrl) {
+                    action = `<a href="${doc.publicUrl}" target="_blank" rel="noopener" class="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-primary/10 text-secondary hover:text-primary" title="Open file in new tab"><span class="material-symbols-outlined text-[18px]">open_in_new</span></a>`;
+                }
+
                 div.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 ${doc.iconColor} rounded flex items-center justify-center">
@@ -1365,14 +1382,19 @@
 
             // Step logic
             const poDone = record.poCreated === true;
-            const grnDone = record.customDocs.some(d => d.icon === 'local_shipping') || record.status === 'Received' || record.status === 'Completed';
-            const invDone = record.customDocs.some(d => d.icon === 'description');
+            const grnDone = record.customDocs.some(d => d.docType === 'grn' || d.icon === 'local_shipping') || record.status === 'Received' || record.status === 'Completed';
+            const invDone = record.customDocs.some(d => d.docType === 'invoice' || d.icon === 'description');
 
             const doneCount = [poDone, grnDone, invDone].filter(Boolean).length;
 
             let bannerBg = 'bg-surface-container-low border-outline-variant';
             let bannerIcon = 'pending';
-            let bannerLabel = `Step ${doneCount}/3 — ${doneCount === 0 ? 'Awaiting PO Creation' : doneCount === 1 ? 'PO Created' : doneCount === 2 ? 'GRN Uploaded' : 'All Matched'}`;
+            let stepDescription = 'Awaiting Documents';
+            if (doneCount === 1) stepDescription = poDone ? 'PO Created' : (grnDone ? 'GRN Uploaded' : 'Invoice Uploaded');
+            else if (doneCount === 2) stepDescription = !poDone ? 'GRN & Invoice Uploaded' : (!grnDone ? 'PO & Invoice Uploaded' : 'PO & GRN Uploaded');
+            else if (doneCount === 3) stepDescription = 'All Matched';
+
+            let bannerLabel = `Step ${doneCount}/3 — ${stepDescription}`;
             let bannerIconColor = 'text-outline-variant';
             let bannerStatusBg = 'bg-surface-container text-on-surface-variant';
 
@@ -1391,12 +1413,13 @@
             // Alert box for 3-way match progress
             let alertBox = '';
             if (doneCount < 3 && doneCount > 0) {
+                let missingDocsText = !grnDone ? 'Upload the Goods Received Note (GRN) to complete.' : (!invDone ? 'Upload the Supplier Invoice to complete.' : 'Upload the remaining documents to complete verification.');
                 alertBox = `
                     <div class="bg-surface-container-low border border-outline-variant rounded-xl p-4 flex gap-3">
                         <span class="material-symbols-outlined text-outline">info</span>
                         <div>
                             <p class="text-sm font-bold text-primary">3-Way Verification In Progress</p>
-                            <p class="text-xs text-on-surface-variant mt-0.5">${doneCount === 1 ? 'Purchase Order is ready. Upload the remaining documents to complete verification.' : doneCount === 2 ? 'Two documents verified. Upload the Supplier Invoice to complete.' : ''}</p>
+                            <p class="text-xs text-on-surface-variant mt-0.5">${doneCount === 1 ? 'One document verified. ' + missingDocsText : 'Two documents verified. ' + missingDocsText}</p>
                         </div>
                     </div>
                 `;
@@ -1860,9 +1883,11 @@
         }
 
         function applyUploadLockState() {
-            if (!activeRecord || !activeRecord.uploadLocks) return;
+            if (!activeRecord) return;
+            if (!activeRecord.uploadLocks) activeRecord.uploadLocks = {};
+            if (!activeRecord.uploadTrace) activeRecord.uploadTrace = [];
             const locks = activeRecord.uploadLocks;
-            const trace = activeRecord.uploadTrace || [];
+            const trace = activeRecord.uploadTrace;
             const dropzone = document.getElementById('upload-dropzone');
             const uploadBtn = document.getElementById('upload-btn');
             const fileLabel = document.getElementById('upload-file-label');

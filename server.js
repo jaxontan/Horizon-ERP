@@ -2777,44 +2777,30 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
 
     if (!qtyNeeded || qtyNeeded <= 0) continue;
 
-    // Find confirmed production batches for this product, ordered by confirmed_at (FIFO)
-    const batches = await selectRows({
+    // Find confirmed production batches for this product, ordered by confirmed_at / created_at (FIFO)
+    const allConfirmed = await selectRows({
       table: 'production_batches',
       filters: {
         where: [
-          { column: 'status', operator: 'eq', value: 'confirmed' },
-          { column: 'product_name', operator: 'eq', value: productName }
+          { column: 'status', operator: 'eq', value: 'confirmed' }
         ],
-        order: { column: 'confirmed_at', ascending: true }
+        order: { column: 'created_at', ascending: true }
       }
     });
 
-    // Fallback: match by product_code if name match is empty
-    let confirmedBatches = batches.filter(b => b.confirmed_at);
-    if (confirmedBatches.length === 0) {
-      confirmedBatches = await selectRows({
-        table: 'production_batches',
-        filters: {
-          where: [
-            { column: 'status', operator: 'eq', value: 'confirmed' },
-            { column: 'product_code', operator: 'eq', value: productCode }
-          ],
-          order: { column: 'confirmed_at', ascending: true }
-        }
-      });
-    }
+    const targetName = (productName || '').trim().toLowerCase();
+    const targetCode = (productCode || '').trim().toLowerCase();
 
-    // Also include batches from consumed_rm_batches JSONB (for legacy batches without confirmed_at)
-    if (confirmedBatches.length === 0) {
-      confirmedBatches = await selectRows({
-        table: 'production_batches',
-        filters: {
-          where: [
-            { column: 'status', operator: 'eq', value: 'confirmed' },
-            { column: 'qty_produced', operator: 'gt', value: 0 }
-          ],
-          order: { column: 'created_at', ascending: true }
-        }
+    let confirmedBatches = (allConfirmed || []).filter(b => {
+      const bName = (b.product_name || '').trim().toLowerCase();
+      const bCode = (b.product_code || '').trim().toLowerCase();
+      return (targetName && bName === targetName) || (targetCode && bCode === targetCode);
+    });
+
+    if (confirmedBatches.length === 0 && targetName) {
+      confirmedBatches = (allConfirmed || []).filter(b => {
+        const bName = (b.product_name || '').trim().toLowerCase();
+        return bName.includes(targetName) || targetName.includes(bName);
       });
     }
 
@@ -4221,11 +4207,8 @@ async function handleStatic(req, res) {
       if (session) {
         const allowed = await effectiveCanOpenPage(pageId, session.role);
         if (!allowed) {
-          sendJson(res, 403, {
-            error: 'Forbidden',
-            message: `Your role "${session.role}" is not permitted to access this page.`,
-            pageId,
-          });
+          res.writeHead(302, { Location: '/index.html?error=forbidden' });
+          res.end();
           return;
         }
       }
