@@ -368,7 +368,7 @@
                 // If user came from Sign In button on b2c-login, switch to login panel
                 if (localStorage.getItem('espressgo-show-login') === '1') {
                     localStorage.removeItem('espressgo-show-login');
-                    const showLoginBtn = document.getElementById('show-register-btn');
+                    const showLoginBtn = document.getElementById('back-to-login-btn');
                     if (showLoginBtn) showLoginBtn.click();
                 }
             } else {

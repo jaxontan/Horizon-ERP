@@ -190,6 +190,9 @@
         </div>
     </div>
 
+    <!-- Toast notification element -->
+    <div id="toast"></div>
+
 
     <script src="/components/sidebar.js?v=20260705a"></script>
     <script>
@@ -1026,6 +1029,7 @@
     }
     function toast(msg, kind) {
         const t = document.getElementById('toast');
+        if (!t) return;
         t.textContent = msg;
         t.className = 'show ' + (kind || 'ok');
         setTimeout(() => t.className = '', 2400);

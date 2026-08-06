@@ -484,10 +484,17 @@
 
             // Search Filter
             if (currentSearchQuery) {
+                const q = currentSearchQuery.toLowerCase();
                 filtered = filtered.filter(s => 
-                    s.name.toLowerCase().includes(currentSearchQuery) ||
-                    s.sector.toLowerCase().includes(currentSearchQuery) ||
-                    s.rawGoods.toLowerCase().includes(currentSearchQuery)
+                    (s.name || '').toLowerCase().includes(q) ||
+                    (s.sector || '').toLowerCase().includes(q) ||
+                    (s.rawGoods || '').toLowerCase().includes(q) ||
+                    (s.country || '').toLowerCase().includes(q) ||
+                    (s.contactName || '').toLowerCase().includes(q) ||
+                    (s.email || '').toLowerCase().includes(q) ||
+                    (s.phone || '').toLowerCase().includes(q) ||
+                    (s.status || '').toLowerCase().includes(q) ||
+                    (s.id || s.dbId || '').toLowerCase().includes(q)
                 );
             }
 
