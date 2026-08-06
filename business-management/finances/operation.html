@@ -859,11 +859,20 @@
 
         function setPeriod(period) {
             currentActivePeriod = period;
+            // Use a class-toggle pattern instead of overwriting className, so
+            // layout classes (flex-1, border-l, ml-1, etc.) can't be stripped
+            // by accident. Previously the active branch dropped "flex-1",
+            // which made the active button collapse to its content width and
+            // caused the whole tab strip to shrink when clicked.
+            const isActive = p => p === period;
             PERIOD_KEYS.forEach(p => {
                 const btn = document.getElementById(`btn-period-${p}`);
-                if (btn) btn.className = p === period
-                    ? "px-3 py-1.5 text-xs font-bold rounded-md transition-all bg-primary text-on-primary shadow-sm"
-                    : "px-3 py-1.5 text-xs font-bold rounded-md transition-all text-on-surface-variant hover:bg-white";
+                if (!btn) return;
+                btn.classList.toggle('bg-primary', isActive(p));
+                btn.classList.toggle('text-on-primary', isActive(p));
+                btn.classList.toggle('shadow-sm', isActive(p));
+                btn.classList.toggle('text-on-surface-variant', !isActive(p));
+                btn.classList.toggle('hover:bg-white', !isActive(p));
             });
             const data = liveData[period];
             if (!data) return;

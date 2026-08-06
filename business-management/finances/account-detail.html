@@ -122,7 +122,7 @@
                         <p id="detail-stat-month" class="text-base font-extrabold text-white mt-1 font-data-tabular">$0.00</p>
                     </div>
                     <div class="bg-white/10 rounded-xl p-4 text-center">
-                        <p class="text-[10px] font-black text-white/50 uppercase tracking-wider">YTD Total</p>
+                        <p class="text-[10px] font-black text-white/50 uppercase tracking-wider">All Time</p>
                         <p id="detail-stat-ytd" class="text-base font-extrabold text-white mt-1 font-data-tabular">$0.00</p>
                     </div>
                 </div>
@@ -204,12 +204,12 @@
                         <div class="bg-surface border border-outline-variant rounded-xl p-4">
                             <p class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider">Total Debits</p>
                             <p id="stat-total-debit" class="text-xl font-extrabold text-red-600 font-data-tabular mt-2">$0.00</p>
-                            <p class="text-[10px] text-on-surface-variant mt-1">Inflows / Increases</p>
+                            <p id="stat-total-debit-desc" class="text-[10px] text-on-surface-variant mt-1">Increases</p>
                         </div>
                         <div class="bg-surface border border-outline-variant rounded-xl p-4">
                             <p class="text-[10px] font-black text-on-surface-variant uppercase tracking-wider">Total Credits</p>
                             <p id="stat-total-credit" class="text-xl font-extrabold text-green-600 font-data-tabular mt-2">$0.00</p>
-                            <p class="text-[10px] text-on-surface-variant mt-1">Outflows / Decreases</p>
+                            <p id="stat-total-credit-desc" class="text-[10px] text-on-surface-variant mt-1">Decreases</p>
                         </div>
                     </div>
                 </div>
@@ -376,10 +376,14 @@
 
                         <!-- Totals Bar -->
                         <div class="bg-[#031635] px-5 py-4 flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div id="journal-balance-status" class="flex items-center gap-2 text-green-400">
-                                    <span class="material-symbols-outlined text-[18px]">check_circle</span>
-                                    <span class="text-[11px] font-bold uppercase tracking-wider">Balanced</span>
+                            <div class="flex items-center gap-2">
+                                <div id="journal-balance-status" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 text-green-400">
+                                    <span class="material-symbols-outlined text-[14px] leading-none" style="font-variation-settings:'FILL' 1;">check_circle</span>
+                                    <span class="text-[10px] font-extrabold uppercase tracking-wider leading-none">Balanced</span>
+                                </div>
+                                <div id="journal-account-required-status" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 text-green-400">
+                                    <span class="material-symbols-outlined text-[14px] leading-none" style="font-variation-settings:'FILL' 1;">link</span>
+                                    <span class="text-[10px] font-extrabold uppercase tracking-wider leading-none"><span id="journal-account-required-name">Account</span> Linked</span>
                                 </div>
                             </div>
                             <div class="flex gap-10 font-bold">
@@ -586,56 +590,87 @@
             }
 
             container.innerHTML = filtered.map(l => {
+                // Effect on this account's balance, derived from debit/credit + the
+                // account's normal-balance (nature). Color/sign follow the effect
+                // (green = increase, red = decrease), regardless of debit/credit.
+                // For debit-nature accounts (asset, expense) a debit increases the
+                // balance; for credit-nature accounts (liability, equity, revenue)
+                // a credit increases it.
                 const isDebit = l.type === 'debit';
-                const colors = isDebit
-                    ? { row: 'border-red-100', iconBg: 'bg-red-50', icon: 'text-red-500', text: 'text-red-600', badge: 'bg-red-100 text-red-700' }
-                    : { row: 'border-green-100', iconBg: 'bg-green-50', icon: 'text-green-500', text: 'text-green-600', badge: 'bg-green-100 text-green-700' };
+                const normalBalance = (accountNature === 'credit') ? 'credit' : 'debit';
+                const isIncrease = (l.type === normalBalance);
+                // Effect-based colors: green/plus for rows that increase the
+                // account's running balance, red/minus for rows that decrease it.
+                const effectColors = isIncrease
+                    ? { row: 'border-green-100', iconBg: 'bg-green-50', icon: 'text-green-500', text: 'text-green-600', iconName: 'add' }
+                    : { row: 'border-red-100', iconBg: 'bg-red-50', icon: 'text-red-500', text: 'text-red-600', iconName: 'remove' };
+                // Bookkeeping-side badge color: neutral slate for both Debit
+                // and Credit so the badge is visually separate from the
+                // row's effect color (red/green = decrease/increase). The
+                // two labels use slightly different shades so they're still
+                // distinguishable from each other.
+                const dcBadge = isDebit ? 'bg-slate-100 text-slate-700' : 'bg-slate-50 text-slate-600 border border-slate-200';
 
                 return `
-                    <div class="bg-white border ${colors.row} rounded-xl p-4 hover:shadow-sm transition-all">
-                        <div class="flex items-center justify-between gap-4">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-11 h-11 rounded-lg ${colors.iconBg} flex items-center justify-center shrink-0">
-                                    <span class="material-symbols-outlined ${colors.icon} text-[20px]" style="font-variation-settings: 'FILL' 1;">${isDebit ? 'remove' : 'add'}</span>
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="text-sm font-bold text-[#031635] truncate">${l.details}</p>
-                                    <p class="text-[11px] text-on-surface-variant mt-0.5">${l.date} &middot; <span class="font-data-tabular">${l.groupId}</span></p>
-                                    ${l.narration ? `<p class="text-[11px] text-on-surface-variant/70 mt-1 italic truncate max-w-xs">${l.narration}</p>` : ''}
-                                </div>
+                <div class="bg-white border ${effectColors.row} rounded-xl p-4 hover:shadow-sm transition-all">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-11 h-11 rounded-lg ${effectColors.iconBg} flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined ${effectColors.icon} text-[20px]" style="font-variation-settings: 'FILL' 1;">${effectColors.iconName}</span>
                             </div>
-                            <div class="text-right shrink-0">
-                                <p class="text-base font-extrabold font-data-tabular ${isDebit ? 'text-red-600' : 'text-green-600'}">${isDebit ? '-' : '+'}$${l.rawVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                                <span class="inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${colors.badge}">${isDebit ? 'Debit' : 'Credit'}</span>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-[#031635] truncate">${l.details}</p>
+                                <p class="text-[11px] text-on-surface-variant mt-0.5">${l.date} &middot; <span class="font-data-tabular">${l.groupId}</span></p>
+                                ${l.narration ? `<p class="text-[11px] text-on-surface-variant/70 mt-1 italic truncate max-w-xs">${l.narration}</p>` : ''}
                             </div>
                         </div>
-                    </div>`;
-            }).join('');
+                        <div class="text-right shrink-0">
+                            <p class="text-base font-extrabold font-data-tabular ${effectColors.text}">${isIncrease ? '+' : '-'}$${l.rawVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <span class="inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${dcBadge}">${isDebit ? 'Debit' : 'Credit'}</span>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
         }
 
         function renderPerformance(allLines) {
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            // Each month's bar reflects the net effect on the account's
+            // balance for that month, not the absolute sum of values. Lines
+            // on the normal-balance side increase the balance; opposite-side
+            // lines decrease it.
+            const normalBalance = accountNature === 'credit' ? 'credit' : 'debit';
+            const signed = l => (l.type === normalBalance ? l.rawVal : -l.rawVal);
             const monthTotals = {};
             months.forEach(m => monthTotals[m] = 0);
             allLines.forEach(l => {
                 if (l.monthName && monthTotals.hasOwnProperty(l.monthName)) {
-                    monthTotals[l.monthName] += l.rawVal;
+                    monthTotals[l.monthName] += signed(l);
                 }
             });
             const values = months.map(m => monthTotals[m]);
-            const maxVal = Math.max(...values, 1);
+            // Bar height is scaled by magnitude, so dips below baseline still
+            // read correctly. Use the absolute max so a large negative month
+            // doesn't collapse the chart.
+            const maxVal = Math.max(...values.map(v => Math.abs(v)), 1);
 
             const barsContainer = document.getElementById('chart-bars');
             const labelsContainer = document.getElementById('chart-labels');
             const currentMonth = new Date().getMonth();
 
             barsContainer.innerHTML = months.map((m, i) => {
-                const h = Math.round((values[i] / maxVal) * 100) || 2;
+                const v = values[i];
+                // Bar height scales with the absolute magnitude of the month's
+                // net effect. The dot above the label marks the current
+                // month, and the label shows the signed value ($+k / $-k).
+                const absH = Math.max(Math.round((Math.abs(v) / maxVal) * 100), 4);
                 const isActive = i === currentMonth;
+                const sign = v < 0 ? '-' : (v > 0 ? '+' : '');
+                const kVal = Math.round(Math.abs(v) / 1000);
                 return `<div class="flex-1 flex flex-col items-center justify-end gap-0">
                     <div class="w-2 h-2 rounded-full ${isActive ? 'bg-[#031635]' : 'bg-slate-400'} mb-1 shrink-0"></div>
-                    <span class="text-[9px] font-black text-on-surface-variant font-data-tabular mb-1">$${Math.round(values[i] / 1000)}k</span>
-                    <div class="w-full rounded-t-sm transition-all hover:opacity-80 ${isActive ? 'bg-[#031635]' : 'bg-slate-300'}" style="height:${Math.max(h, 4)}%"></div>
+                    <span class="text-[9px] font-black text-on-surface-variant font-data-tabular mb-1">${sign}$${kVal}k</span>
+                    <div class="w-full rounded-t-sm transition-all hover:opacity-80 ${isActive ? 'bg-[#031635]' : 'bg-slate-300'}" style="height:${absH}%"></div>
                 </div>`;
             }).join('');
 
@@ -649,6 +684,21 @@
             const totalDeb = allLines.filter(l => l.type === 'debit').reduce((s, l) => s + l.rawVal, 0);
             const totalCred = allLines.filter(l => l.type === 'credit').reduce((s, l) => s + l.rawVal, 0);
 
+            // The Debits/Credits stat cards describe the *effect on the
+            // account's balance*, not raw bookkeeping sides. For debit-nature
+            // accounts (asset/expense) a debit increases the balance, so the
+            // "Debits" card is "Increases" and "Credits" is "Decreases". For
+            // credit-nature accounts (liability/equity/revenue) the opposite.
+            const isDebitNature = accountNature !== 'credit';
+            const debitDesc = document.getElementById('stat-total-debit-desc');
+            const creditDesc = document.getElementById('stat-total-credit-desc');
+            const debitCard = document.getElementById('stat-total-debit');
+            const creditCard = document.getElementById('stat-total-credit');
+            if (debitDesc) debitDesc.textContent = isDebitNature ? 'Increases' : 'Decreases';
+            if (creditDesc) creditDesc.textContent = isDebitNature ? 'Decreases' : 'Increases';
+            if (debitCard) debitCard.className = `text-xl font-extrabold font-data-tabular mt-2 ${isDebitNature ? 'text-green-600' : 'text-red-600'}`;
+            if (creditCard) creditCard.className = `text-xl font-extrabold font-data-tabular mt-2 ${isDebitNature ? 'text-red-600' : 'text-green-600'}`;
+
             document.getElementById('stat-highest').innerText = `$${highest.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             document.getElementById('stat-avg').innerText = `$${avg.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             document.getElementById('stat-total-debit').innerText = `$${totalDeb.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -657,8 +707,15 @@
 
         function populateInfo(allLines) {
             const thisMonth = new Date().toLocaleDateString('en-US', { month: 'short' });
-            const monthTotal = allLines.filter(l => l.monthName === thisMonth).reduce((s, l) => s + l.rawVal, 0);
-            const ytdTotal = allLines.reduce((s, l) => s + l.rawVal, 0);
+            // Normal-balance side for this account. Lines on the normal-balance
+            // side increase the balance; lines on the opposite side decrease
+            // it. Summing rawVal alone would treat every line as a positive
+            // addition, which is wrong (e.g. $250 debit + $200 credit would
+            // incorrectly show $450 instead of the true net $50).
+            const normalBalance = accountNature === 'credit' ? 'credit' : 'debit';
+            const signed = l => (l.type === normalBalance ? l.rawVal : -l.rawVal);
+            const monthTotal = allLines.filter(l => l.monthName === thisMonth).reduce((s, l) => s + signed(l), 0);
+            const allTimeTotal = allLines.reduce((s, l) => s + signed(l), 0);
 
             document.getElementById('info-code').innerText = accountCode;
             document.getElementById('info-category').innerText = accountType;
@@ -669,7 +726,7 @@
 
             document.getElementById('detail-stat-entries').innerText = allLines.length;
             document.getElementById('detail-stat-month').innerText = `$${monthTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            document.getElementById('detail-stat-ytd').innerText = `$${ytdTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('detail-stat-ytd').innerText = `$${allTimeTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
             const rule = ACCOUNT_RULES[accountType] || ACCOUNT_RULES.expense;
             document.getElementById('info-rule-icon').className = `w-12 h-12 rounded-xl ${rule.bg} flex items-center justify-center shrink-0`;
@@ -808,16 +865,43 @@
             const balanced = totalDeb > 0 && Math.abs(totalDeb - totalCred) < 0.01;
             const statusEl = document.getElementById('journal-balance-status');
             if (balanced) {
-                statusEl.className = 'flex items-center gap-2 text-green-400';
-                statusEl.innerHTML = `<span class="material-symbols-outlined text-[18px]">check_circle</span><span class="text-[11px] font-bold uppercase tracking-wider">Balanced</span>`;
+                statusEl.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 text-green-400';
+                statusEl.innerHTML = `<span class="material-symbols-outlined text-[14px] leading-none" style="font-variation-settings:'FILL' 1;">check_circle</span><span class="text-[10px] font-extrabold uppercase tracking-wider leading-none">Balanced</span>`;
             } else {
-                statusEl.className = 'flex items-center gap-2 text-amber-400';
-                statusEl.innerHTML = `<span class="material-symbols-outlined text-[18px]">warning</span><span class="text-[11px] font-bold uppercase tracking-wider">Unbalanced — Difference: $${diff.toFixed(2)}</span>`;
+                statusEl.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 text-amber-400';
+                statusEl.innerHTML = `<span class="material-symbols-outlined text-[14px] leading-none" style="font-variation-settings:'FILL' 1;">warning</span><span class="text-[10px] font-extrabold uppercase tracking-wider leading-none">Off by $${diff.toFixed(2)}</span>`;
             }
+
+            // Reflect whether any entry row references the account the user
+            // clicked into. The save gate uses the same `accountTitle` value.
+            const acctReqEl = document.getElementById('journal-account-required-status');
+            let accountLinked = true; // default true so a missing UI element doesn't lock the button
+            if (acctReqEl) {
+                const acctReqNameEl = document.getElementById('journal-account-required-name');
+                if (acctReqNameEl) acctReqNameEl.textContent = accountCode || accountTitle || 'Account';
+                accountLinked = (() => {
+                    const allRows = document.querySelectorAll('#journal-entries-container > div');
+                    for (const r of allRows) {
+                        const sel = r.querySelector('select');
+                        if (sel && sel.value && sel.value === accountTitle) return true;
+                    }
+                    return false;
+                })();
+                const labelText = accountCode || accountTitle || 'Account';
+                if (accountLinked) {
+                    acctReqEl.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 text-green-400';
+                    acctReqEl.innerHTML = `<span class="material-symbols-outlined text-[14px] leading-none" style="font-variation-settings:'FILL' 1;">link</span><span class="text-[10px] font-extrabold uppercase tracking-wider leading-none">${labelText} Linked</span>`;
+                } else {
+                    acctReqEl.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 text-amber-400';
+                    acctReqEl.innerHTML = `<span class="material-symbols-outlined text-[14px] leading-none" style="font-variation-settings:'FILL' 1;">link_off</span><span class="text-[10px] font-extrabold uppercase tracking-wider leading-none">Add ${labelText} to save</span>`;
+                }
+            }
+
             const btn = document.getElementById('post-journal-btn');
-            btn.disabled = !balanced;
-            btn.classList.toggle('opacity-50', !balanced);
-            btn.classList.toggle('cursor-not-allowed', !balanced);
+            const canSave = balanced && accountLinked;
+            btn.disabled = !canSave;
+            btn.classList.toggle('opacity-50', !canSave);
+            btn.classList.toggle('cursor-not-allowed', !canSave);
         }
 
         async function postJournalEntry(e) {
@@ -842,6 +926,21 @@
             });
 
             if (formLines.length === 0) {
+                return;
+            }
+
+            // The journal entry must include the account the user clicked into
+            // (page context, parsed from the URL on load). If none of the rows
+            // use it, block the save and surface a toast.
+            const clickedAccountName = accountTitle;
+            const includesClickedAccount = formLines.some(
+                l => l.accountName === clickedAccountName
+            );
+            if (!includesClickedAccount) {
+                showToast(
+                    `Add a journal line for ${clickedAccountName} (${accountCode}) before saving — this entry must reference the account you opened.`,
+                    'error'
+                );
                 return;
             }
 
