@@ -1180,6 +1180,32 @@
                 });
                 if (rpResult.error) console.error('[fulfillment] Retail purchases update error:', rpResult.error);
             }
+            // Deduct stock from inventory table upon fulfillment
+            for (const item of itemsFulfilled) {
+                const qtyToDeduct = Number(item.qty || 1);
+                if (qtyToDeduct <= 0) continue;
+                try {
+                    let invSearch = await serverSelect('inventory', 'id, current_stock', { eq: { item_code: item.item_code } });
+                    let invRows = invSearch?.data;
+                    if ((!invRows || invRows.length === 0) && item.item_name) {
+                        let invSearch2 = await serverSelect('inventory', 'id, current_stock', { ilike: { name: item.item_name } });
+                        invRows = invSearch2?.data;
+                    }
+                    if (invRows && invRows.length > 0) {
+                        const targetInv = invRows[0];
+                        const newStock = Math.max(0, (Number(targetInv.current_stock) || 0) - qtyToDeduct);
+                        console.log(`[fulfillment] Deducting inventory for ${item.item_name || item.item_code}: ${targetInv.current_stock} -> ${newStock}`);
+                        await serverOp({
+                            table: 'inventory',
+                            operation: 'update',
+                            row: { current_stock: newStock },
+                            filters: { eq: { id: targetInv.id } }
+                        });
+                    }
+                } catch (invDeductErr) {
+                    console.warn('[fulfillment] Inventory deduction error:', invDeductErr);
+                }
+            }
 
             // Remove from active in-memory list
             fulfillmentOrders = fulfillmentOrders.filter(o => o.id !== selectedOrder.id);

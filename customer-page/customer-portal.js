@@ -2289,54 +2289,7 @@
                     postCheckoutTasks.push(syncFulfillmentOrder(optimisticOrder, orderId));
                 }
 
-                // Shared stock deduction for both B2C and B2B checkouts
-                postCheckoutTasks.push(Promise.all(cartSnapshot.map(async (item) => {
-                    try {
-                        const pId = item.id || item.product_code;
-                        const qtyPurchased = Number(item.qty || 1);
-                        let targetId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pId || '') ? pId : null;
-                        
-                        if (!targetId && item.name) {
-                            const rows = await supabaseAPI({
-                                table: 'inventory',
-                                operation: 'select',
-                                columns: 'id, current_stock',
-                                filters: { eq: { name: item.name } }
-                            });
-                            if (rows && rows.length > 0) {
-                                targetId = rows[0].id;
-                                const newStock = Math.max(0, (Number(rows[0].current_stock) || 0) - qtyPurchased);
-                                console.log('[checkout] deducting stock for', item.name, 'old:', rows[0].current_stock, 'new:', newStock);
-                                return supabaseAPI({
-                                    table: 'inventory',
-                                    operation: 'update',
-                                    data: { current_stock: newStock },
-                                    filters: { eq: { id: targetId } }
-                                });
-                            }
-                        }
-                        if (targetId) {
-                            const rows = await supabaseAPI({
-                                table: 'inventory',
-                                operation: 'select',
-                                columns: 'id, current_stock',
-                                filters: { eq: { id: targetId } }
-                            });
-                            if (rows && rows.length > 0) {
-                                const newStock = Math.max(0, (Number(rows[0].current_stock) || 0) - qtyPurchased);
-                                console.log('[checkout] deducting stock for ID', targetId, 'old:', rows[0].current_stock, 'new:', newStock);
-                                return supabaseAPI({
-                                    table: 'inventory',
-                                    operation: 'update',
-                                    data: { current_stock: newStock },
-                                    filters: { eq: { id: targetId } }
-                                });
-                            }
-                        }
-                    } catch (invErr) {
-                        console.warn('[checkout] inventory deduction skipped:', invErr);
-                    }
-                })));
+                // Stock allocation & reservation is handled server-side via FIFO production batch allocation (production_fg_allocation).
 
                 checkoutSucceeded = true;
             } catch (err) {
