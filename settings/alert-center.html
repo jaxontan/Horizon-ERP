@@ -179,7 +179,7 @@
                     action_type: log.action || 'UNKNOWN_ACTION',
                     entity_type: log.table_affected || 'unknown',
                     entity_id: log.record_id || 'N/A',
-                    description: log.description || '',
+                    description: (log.description || '').replace(/:\s*undefined$/i, '').replace(/:\s*null$/i, ''),
                     time_ago: formatTimeAgo(new Date(log.created_at)),
                     timestamp: log.created_at,
                     severity: 'info',
@@ -288,7 +288,7 @@
                     action_type: log.action || 'UNKNOWN_ACTION',
                     entity_type: log.table_affected || 'unknown',
                     entity_id: log.record_id || 'N/A',
-                    description: log.description || '',
+                    description: (log.description || '').replace(/:\s*undefined$/i, '').replace(/:\s*null$/i, ''),
                     time_ago: formatTimeAgo(new Date(log.created_at)),
                     timestamp: log.created_at,
                     severity: 'info',
@@ -372,6 +372,26 @@
 
             filtered.forEach(log => {
                 const cfg = getActionConfig(log.action_type);
+                const hasOldValue = Boolean(log.diff && log.diff.old_value);
+                const newPayload = (log.diff && log.diff.new_value !== undefined) ? log.diff.new_value : log.diff;
+
+                const inspectorContent = hasOldValue ? `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Before Change (Old State)</span>
+                                <pre class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 overflow-x-auto text-[11px] font-mono text-slate-600 font-medium max-h-48 leading-relaxed shadow-inner">${JSON.stringify(log.diff.old_value, null, 2)}</pre>
+                            </div>
+                            <div class="space-y-1">
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">After Change (New State / Query Context)</span>
+                                <pre class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 overflow-x-auto text-[11px] font-mono text-slate-800 font-medium max-h-48 leading-relaxed shadow-inner">${JSON.stringify(newPayload, null, 2)}</pre>
+                            </div>
+                        </div>
+                ` : `
+                        <div class="space-y-1">
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Record Payload (New State / Query Context)</span>
+                            <pre class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 overflow-x-auto text-[11px] font-mono text-slate-800 font-medium max-h-48 leading-relaxed shadow-inner">${JSON.stringify(newPayload, null, 2)}</pre>
+                        </div>
+                `;
 
                 const logCard = document.createElement('div');
                 logCard.className = "bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm event-card slide-in";
@@ -413,16 +433,7 @@
                             <span class="material-symbols-outlined text-[15px]">code</span>
                             Database Diff Object (JSON)
                         </h5>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-1">
-                                <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Before Change (Old State)</span>
-                                <pre class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 overflow-x-auto text-[11px] font-mono text-slate-600 font-medium max-h-48 leading-relaxed shadow-inner">${log.diff.old_value ? JSON.stringify(log.diff.old_value, null, 2) : 'null (New Row Added)'}</pre>
-                            </div>
-                            <div class="space-y-1">
-                                <span class="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">After Change (New State / Query Context)</span>
-                                <pre class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 overflow-x-auto text-[11px] font-mono text-slate-800 font-medium max-h-48 leading-relaxed shadow-inner">${JSON.stringify(log.diff.new_value || log.diff, null, 2)}</pre>
-                            </div>
-                        </div>
+                        ${inspectorContent}
                     </div>
                 `;
                 container.appendChild(logCard);

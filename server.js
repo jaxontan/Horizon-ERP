@@ -2268,68 +2268,68 @@ function classifyActionType(schema, table) {
 // ─── Smart description builder ─────────────────────────────────────────────────
 function buildAuditDescription({ schema, table, operation, data, resultData, targetId }) {
   const rows = Array.isArray(data) ? data : data ? [data] : [];
+  const sample = rows[0] || {};
+  const rawId = sample.po_number || sample.order_number || sample.item_code || sample.batch_id || sample.code || sample.name || sample.id || sample.title || sample.reference || targetId;
+  const idField = (rawId !== undefined && rawId !== null && rawId !== 'undefined' && String(rawId).trim() !== '') ? String(rawId).trim() : null;
+  const labelSuffix = idField ? `: ${idField}` : '';
 
   switch (table) {
     case 'ingredients': {
-      const row = rows[0] || {};
-      if (operation === 'insert') return `Added new ingredient: ${row.name || targetId}`;
+      if (operation === 'insert') return `Added new ingredient${labelSuffix}`;
       if (operation === 'update') {
-        const qty = row.quantity ?? row.current_stock;
-        if (qty !== undefined) return `Updated ingredient stock: ${row.name || targetId} → ${qty}`;
-        return `Updated ingredient: ${row.name || targetId}`;
+        const qty = sample.quantity ?? sample.current_stock;
+        if (qty !== undefined) return `Updated ingredient stock${labelSuffix} → ${qty}`;
+        return `Updated ingredient${labelSuffix}`;
       }
-      if (operation === 'delete') return `Removed ingredient: ${row.name || targetId}`;
+      if (operation === 'delete') return `Removed ingredient${labelSuffix}`;
       break;
     }
     case 'purchase_orders': {
-      const row = rows[0] || {};
-      if (operation === 'insert') return `Created PO #${row.po_number || targetId} for ${row.supplier_name || 'Unknown supplier'}`;
-      if (operation === 'update') return `Updated PO #${row.po_number || targetId}`;
+      if (operation === 'insert') return `Created PO${idField ? ' #' + idField : ''} for ${sample.supplier_name || 'Unknown supplier'}`;
+      if (operation === 'update') return `Updated PO${idField ? ' #' + idField : ''}`;
       break;
     }
     case 'customer_orders': {
-      const row = rows[0] || {};
-      if (operation === 'insert') return `New customer order: ${row.order_number || targetId} (${row.status || 'pending'})`;
-      if (operation === 'update') return `Updated order ${row.order_number || targetId} → ${row.status || 'status changed'}`;
+      if (operation === 'insert') return `New customer order${idField ? ': ' + idField : ''} (${sample.status || 'pending'})`;
+      if (operation === 'update') return `Updated order${idField ? ' ' + idField : ''} → ${sample.status || 'status changed'}`;
       break;
     }
     case 'employees': {
-      const row = rows[0] || {};
-      if (operation === 'insert') return `Added new staff member: ${row.name || row.email || targetId}`;
-      if (operation === 'update') return `Updated staff record: ${row.name || row.email || targetId}`;
-      if (operation === 'delete') return `Removed staff member: ${row.name || row.email || targetId}`;
+      const empLabel = sample.name || sample.email || idField;
+      const empSuffix = empLabel ? `: ${empLabel}` : '';
+      if (operation === 'insert') return `Added new staff member${empSuffix}`;
+      if (operation === 'update') return `Updated staff record${empSuffix}`;
+      if (operation === 'delete') return `Removed staff member${empSuffix}`;
       break;
     }
     case 'journal_entries': {
-      const row = rows[0] || {};
-      if (operation === 'insert') return `Posted journal entry: ${row.narration || row.entry_number || targetId}`;
+      const jLabel = sample.narration || sample.entry_number || idField;
+      const jSuffix = jLabel ? `: ${jLabel}` : '';
+      if (operation === 'insert') return `Posted journal entry${jSuffix}`;
       break;
     }
     case 'accounts': {
-      const row = rows[0] || {};
-      if (operation === 'insert') return `Created account: ${row.name || targetId} (${row.code || ''})`;
-      if (operation === 'update') return `Updated account: ${row.name || targetId}`;
+      if (operation === 'insert') return `Created account${labelSuffix} (${sample.code || ''})`;
+      if (operation === 'update') return `Updated account${labelSuffix}`;
       break;
     }
     case 'stock_adjustments': {
-      const row = rows[0] || {};
-      return `Stock adjustment: ${row.reason || targetId} — ${row.variation || ''}`;
+      const adjLabel = sample.reason || idField;
+      const adjSuffix = adjLabel ? `: ${adjLabel}` : '';
+      return `Stock adjustment${adjSuffix} — ${sample.variation || ''}`;
     }
     case 'payments': {
-      const row = rows[0] || {};
-      if (operation === 'insert') return `Recorded payment: ${row.amount || targetId} for ${row.reference || 'order'}`;
+      if (operation === 'insert') return `Recorded payment${labelSuffix} for ${sample.reference || 'order'}`;
       break;
     }
     default: {
-      // Generic fallback — never generic: include table and primary key
-      const sample = rows[0] || {};
-      const idField = sample.id || sample.name || sample.code || sample.order_number || targetId;
-      if (operation === 'insert') return `Created new ${table}: ${idField}`;
-      if (operation === 'update') return `Updated ${table}: ${idField}`;
-      if (operation === 'delete') return `Deleted ${table}: ${idField}`;
+      if (operation === 'insert') return `Created new ${table}${labelSuffix}`;
+      if (operation === 'update') return `Updated ${table}${labelSuffix}`;
+      if (operation === 'delete') return `Deleted ${table}${labelSuffix}`;
+      if (operation === 'upsert') return `ERP upsert on ${schema}.${table}${labelSuffix}`;
     }
   }
-  return `ERP ${operation} on ${schema}.${table}`;
+  return `ERP ${operation} on ${schema}.${table}${labelSuffix}`;
 }
 
 function buildAlertTitle({ schema, table, operation }) {
@@ -2373,8 +2373,8 @@ async function writeOperationLog({ schema, table, operation, data, filters, resu
   if (schema === 'public' && ['audit_logs', 'alerts'].includes(table)) return;
 
   const auditAction = classifyActionType(schema, table) || operation.toUpperCase();
-  const description = buildAuditDescription({ schema, table, operation, data, resultData });
-  const targetId = Array.isArray(data) ? (data[0]?.id || data[0]?.name || null) : (data?.id || data?.name || null);
+  const targetId = Array.isArray(data) ? (data[0]?.po_number || data[0]?.order_number || data[0]?.id || data[0]?.name || null) : (data?.po_number || data?.order_number || data?.id || data?.name || null);
+  const description = buildAuditDescription({ schema, table, operation, data, resultData, targetId });
 
   try {
     await insertSqlRows({

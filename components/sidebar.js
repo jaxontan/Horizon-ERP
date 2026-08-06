@@ -115,18 +115,7 @@ class AppSidebar extends HTMLElement {
 
     updateAlertBadge() {
         const badge = document.getElementById('alert-badge-count');
-        const headerCount = document.querySelector('.sidebar-alert-header-count');
         if (badge) badge.textContent = this.alertCount;
-        if (headerCount) headerCount.textContent = `${this.alertCount} Active Tasks`;
-        // Collapsed header has no .sidebar-alert-header-count class — its "Loading…"
-        // was rendered as literal text and never re-rendered. Sweep every alert-
-        // header <p> in the shadow tree and replace any "Loading…" text with the
-        // current count so the badge never looks permanently stuck.
-        this.querySelectorAll('p').forEach((p) => {
-            if (/^\s*loading[\s…]+$/i.test(p.textContent || '')) {
-                p.textContent = `${this.alertCount} Active Tasks`;
-            }
-        });
     }
 
     /**
@@ -189,7 +178,6 @@ class AppSidebar extends HTMLElement {
 </div>
 <div class="${textHiddenClass} leading-tight">
 <h3 class="font-semibold text-[13px]">Alert Center</h3>
-<p class="text-[9px] text-[#44474e] uppercase tracking-wider leading-tight">Loading…</p>
 </div>
 </div>
 <span class="material-symbols-outlined text-[#44474e] transition-transform ${textHiddenClass} text-[18px]">chevron_right</span>
@@ -1013,7 +1001,6 @@ ${skeletonRows}
 </div>
 <div class="${textHiddenClass} leading-tight">
 <h3 class="font-semibold text-[13px]">Alert Center</h3>
-<p class="text-[9px] text-[#44474e] uppercase tracking-wider sidebar-alert-header-count leading-tight">0 Active Tasks</p>
 </div>
 </div>
 <span id="alert-chevron" class="material-symbols-outlined text-[#44474e] transition-transform ${textHiddenClass} text-[18px]">chevron_right</span>
