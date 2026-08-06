@@ -480,22 +480,31 @@
             const tbody = document.getElementById('suppliers-table-body');
             if(!tbody) return;
 
-            let filtered = [...suppliersList];
+            // Sort suppliers by name first to ensure stable display codes (SUP-001, SUP-002...)
+            const sortedSuppliers = [...suppliersList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            const suppliersWithCodes = sortedSuppliers.map((s, idx) => ({
+                ...s,
+                displayCode: `SUP-${String(idx + 1).padStart(3, '0')}`
+            }));
 
-            // Search Filter
+            let filtered = suppliersWithCodes;
+
+            // Search Filter: search by Supplier Name, Display ID (SUP-001), or Email/Phone
             if (currentSearchQuery) {
                 const q = currentSearchQuery.toLowerCase();
-                filtered = filtered.filter(s => 
-                    (s.name || '').toLowerCase().includes(q) ||
-                    (s.sector || '').toLowerCase().includes(q) ||
-                    (s.rawGoods || '').toLowerCase().includes(q) ||
-                    (s.country || '').toLowerCase().includes(q) ||
-                    (s.contactName || '').toLowerCase().includes(q) ||
-                    (s.email || '').toLowerCase().includes(q) ||
-                    (s.phone || '').toLowerCase().includes(q) ||
-                    (s.status || '').toLowerCase().includes(q) ||
-                    (s.id || s.dbId || '').toLowerCase().includes(q)
-                );
+                filtered = filtered.filter(s => {
+                    const nameMatch = (s.name || '').toLowerCase().includes(q);
+                    const codeMatch = (s.displayCode || '').toLowerCase().includes(q);
+
+                    // For short queries (1-2 chars) without '@', match strictly by Company Name or Display Code
+                    if (q.length <= 2 && !q.includes('@')) {
+                        return nameMatch || codeMatch;
+                    }
+
+                    const emailMatch = (s.email || '').toLowerCase().includes(q);
+                    const phoneMatch = (s.phone && s.phone !== 'Not specified') ? s.phone.toLowerCase().includes(q) : false;
+                    return nameMatch || codeMatch || emailMatch || phoneMatch;
+                });
             }
 
             // Status Filter
@@ -507,9 +516,6 @@
                 }
             }
 
-            // Sorting
-            filtered.sort((a, b) => a.name.localeCompare(b.name));
-
             tbody.innerHTML = '';
             
             if (filtered.length === 0) {
@@ -518,17 +524,14 @@
                 return;
             }
 
-            filtered.forEach((s, displayIndex) => {
+            filtered.forEach((s) => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-surface-bright transition-colors cursor-pointer";
                 // Navigate using the UUID (`s.id` is now the UUID, see
                 // mapDbToSupplier) so the details page loads the correct row
                 // even if the sort order or filter changes.
                 tr.onclick = () => window.location.href = `details.html?id=${encodeURIComponent(s.id)}`;
-                // Display-only ordinal that reflects the *current* sort/filter
-                // order. We do NOT use this for navigation or storage; the
-                // UUID (s.id) is the only stable identifier.
-                const displayCode = `SUP-${String(displayIndex + 1).padStart(3, '0')}`;
+                const displayCode = s.displayCode;
 
                 // Status Badge & Text Mapping
                 const isActive = s.status === 'Verified' || s.status === 'Active';

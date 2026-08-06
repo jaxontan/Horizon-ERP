@@ -214,7 +214,7 @@
 
             (orders || []).forEach((order) => {
                 const supplier = supplierById.get(String(order.supplier_id)) || supplierByName.get(String(order.supplier_name || '').toLowerCase());
-                const supplierId = supplier ? supplier.id : supplierDisplayId(order.supplier_id);
+                const supplierId = supplier ? supplier.dbId : (order.supplier_id || '');
                 const supplierName = supplier?.name || order.supplier_name || 'Supplier Partner';
                 const parts = formatDateParts(order.created_at);
                 const category = /ship|transit|received|delivered/i.test(order.status || '') ? 'delivery' : 'contract';
@@ -237,7 +237,7 @@
 
             (records || []).forEach((record) => {
                 const supplier = supplierById.get(String(record.supplier_id)) || supplierByName.get(String(record.supplier_name || '').toLowerCase());
-                const supplierId = supplier ? supplier.id : supplierDisplayId(record.supplier_id);
+                const supplierId = supplier ? supplier.dbId : (record.supplier_id || '');
                 const supplierName = supplier?.name || record.supplier_name || 'Supplier Partner';
                 const parts = formatDateParts(record.created_at || record.order_date);
                 events.push({
@@ -269,8 +269,9 @@
                 });
 
                 suppliersList = (data || []).map((row, idx) => ({
-                    id: `SUP-${String(idx + 1).padStart(3, '0')}`,
+                    id: row.supplier_id,
                     dbId: row.supplier_id,
+                    displayCode: `SUP-${String(idx + 1).padStart(3, '0')}`,
                     name: row.supplier_company,
                     status: row.status_of_supplier,
                     contactName: row.supplier_main_point_of_contact_name || "Account Executive",
