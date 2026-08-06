@@ -494,7 +494,8 @@
                 const q = currentSearchQuery.toLowerCase();
                 filtered = filtered.filter(s => {
                     const nameMatch = (s.name || '').toLowerCase().includes(q);
-                    const codeMatch = (s.displayCode || '').toLowerCase().includes(q);
+                    const displayCode = (s.displayCode || '').toLowerCase();
+                    const codeMatch = displayCode.includes(q) && (q.length >= 3 || q.startsWith('sup'));
 
                     // For short queries (1-2 chars) without '@', match strictly by Company Name or Display Code
                     if (q.length <= 2 && !q.includes('@')) {
