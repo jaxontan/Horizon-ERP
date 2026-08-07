@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict rsw4hDquQWejXqXeplZhSntWw2ae4e0TJiKSh0uoxX0ytEFKBcerXHsPOoiPGCl
+\restrict qQFDHKQq8nsUuoz9ft8o6hzaKmUf7VDxNlJOZab0GAoNC2MnPnoILLsJSj6ap12
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.10
@@ -19,548 +19,6 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
-DROP EVENT TRIGGER IF EXISTS pgrst_drop_watch;
-DROP EVENT TRIGGER IF EXISTS pgrst_ddl_watch;
-DROP EVENT TRIGGER IF EXISTS issue_pg_net_access;
-DROP EVENT TRIGGER IF EXISTS issue_pg_graphql_access;
-DROP EVENT TRIGGER IF EXISTS issue_pg_cron_access;
-DROP EVENT TRIGGER IF EXISTS issue_graphql_placeholder;
-DROP PUBLICATION IF EXISTS supabase_realtime_messages_publication;
-DROP PUBLICATION IF EXISTS supabase_realtime;
-DROP POLICY IF EXISTS "Allow Unauthenticated uploads flreew_0" ON storage.objects;
-DROP POLICY IF EXISTS "journal.entry_lines read" ON journal.entry_lines;
-DROP POLICY IF EXISTS "journal.entry_lines insert" ON journal.entry_lines;
-DROP POLICY IF EXISTS "journal.entries update" ON journal.entries;
-DROP POLICY IF EXISTS "journal.entries read" ON journal.entries;
-DROP POLICY IF EXISTS "journal.entries insert" ON journal.entries;
-DROP POLICY IF EXISTS "journal.accounts read" ON journal.accounts;
-DROP POLICY IF EXISTS "journal.accounts insert" ON journal.accounts;
-DROP POLICY IF EXISTS "Service role full access to entry lines" ON journal.entry_lines;
-DROP POLICY IF EXISTS "Service role full access to entries" ON journal.entries;
-DROP POLICY IF EXISTS "Service role full access to accounts" ON journal.accounts;
-DROP POLICY IF EXISTS "Authenticated users can read entry lines" ON journal.entry_lines;
-DROP POLICY IF EXISTS "Authenticated users can read entries" ON journal.entries;
-ALTER TABLE IF EXISTS ONLY storage.vector_indexes DROP CONSTRAINT IF EXISTS vector_indexes_bucket_id_fkey;
-ALTER TABLE IF EXISTS ONLY storage.s3_multipart_uploads_parts DROP CONSTRAINT IF EXISTS s3_multipart_uploads_parts_upload_id_fkey;
-ALTER TABLE IF EXISTS ONLY storage.s3_multipart_uploads_parts DROP CONSTRAINT IF EXISTS s3_multipart_uploads_parts_bucket_id_fkey;
-ALTER TABLE IF EXISTS ONLY storage.s3_multipart_uploads DROP CONSTRAINT IF EXISTS s3_multipart_uploads_bucket_id_fkey;
-ALTER TABLE IF EXISTS ONLY storage.objects DROP CONSTRAINT IF EXISTS "objects_bucketId_fkey";
-ALTER TABLE IF EXISTS ONLY public.support_messages DROP CONSTRAINT IF EXISTS support_messages_ticket_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.supplier_quotations DROP CONSTRAINT IF EXISTS supplier_quotations_supplier_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.supplier_quotations DROP CONSTRAINT IF EXISTS supplier_quotations_inventory_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.salaries DROP CONSTRAINT IF EXISTS salaries_staff_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.retail_purchase_items DROP CONSTRAINT IF EXISTS retail_purchase_items_purchase_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.raw_material_orders DROP CONSTRAINT IF EXISTS raw_material_orders_supplier_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.raw_material_orders DROP CONSTRAINT IF EXISTS raw_material_orders_inventory_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.production_rm_consumption DROP CONSTRAINT IF EXISTS production_rm_consumption_inventory_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.production_rm_consumption DROP CONSTRAINT IF EXISTS production_rm_consumption_batch_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.production_recipes DROP CONSTRAINT IF EXISTS production_recipes_finished_good_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.production_batches DROP CONSTRAINT IF EXISTS production_batches_second_booking_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.payroll_run_details DROP CONSTRAINT IF EXISTS payroll_run_details_staff_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.payroll_run_details DROP CONSTRAINT IF EXISTS payroll_run_details_payroll_run_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.payroll_records DROP CONSTRAINT IF EXISTS payroll_records_staff_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.outreach_unsubscribes DROP CONSTRAINT IF EXISTS outreach_unsubscribes_source_campaign_fkey;
-ALTER TABLE IF EXISTS ONLY public.outreach_dispatch_log DROP CONSTRAINT IF EXISTS outreach_dispatch_log_campaign_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.order_items DROP CONSTRAINT IF EXISTS order_items_order_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.ledger DROP CONSTRAINT IF EXISTS ledger_entry_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.ledger DROP CONSTRAINT IF EXISTS ledger_account_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.inventory_transactions DROP CONSTRAINT IF EXISTS inventory_transactions_inventory_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.inventory_transactions DROP CONSTRAINT IF EXISTS inventory_transactions_batch_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.inventory_batches DROP CONSTRAINT IF EXISTS inventory_batches_inventory_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.staff_timesheets DROP CONSTRAINT IF EXISTS fk_staff_timesheets_staff;
-ALTER TABLE IF EXISTS ONLY public.factory_bookings DROP CONSTRAINT IF EXISTS fk_staff;
-ALTER TABLE IF EXISTS ONLY public.entry_lines DROP CONSTRAINT IF EXISTS entry_lines_entry_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.entry_lines DROP CONSTRAINT IF EXISTS entry_lines_account_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.dispatch_picklists DROP CONSTRAINT IF EXISTS dispatch_picklists_assigned_to_fkey;
-ALTER TABLE IF EXISTS ONLY public.customer_support_chats DROP CONSTRAINT IF EXISTS customer_support_chats_order_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.customer_support_chats DROP CONSTRAINT IF EXISTS customer_support_chats_customer_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.customer_orders DROP CONSTRAINT IF EXISTS customer_orders_customer_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.chat_participants DROP CONSTRAINT IF EXISTS chat_participants_channel_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.chat_messages DROP CONSTRAINT IF EXISTS chat_messages_channel_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.b2b_documents DROP CONSTRAINT IF EXISTS b2b_documents_verified_by_fkey;
-ALTER TABLE IF EXISTS ONLY public.b2b_documents DROP CONSTRAINT IF EXISTS b2b_documents_customer_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.attendance_logs DROP CONSTRAINT IF EXISTS attendance_logs_staff_id_fkey;
-ALTER TABLE IF EXISTS ONLY journal.entry_lines DROP CONSTRAINT IF EXISTS entry_lines_entry_id_fkey;
-ALTER TABLE IF EXISTS ONLY journal.entry_lines DROP CONSTRAINT IF EXISTS entry_lines_account_id_fkey;
-ALTER TABLE IF EXISTS ONLY journal.entries DROP CONSTRAINT IF EXISTS entries_created_by_fkey;
-ALTER TABLE IF EXISTS ONLY auth.webauthn_credentials DROP CONSTRAINT IF EXISTS webauthn_credentials_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.webauthn_challenges DROP CONSTRAINT IF EXISTS webauthn_challenges_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.sso_domains DROP CONSTRAINT IF EXISTS sso_domains_sso_provider_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_oauth_client_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_sso_provider_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_flow_state_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.saml_providers DROP CONSTRAINT IF EXISTS saml_providers_sso_provider_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.refresh_tokens DROP CONSTRAINT IF EXISTS refresh_tokens_session_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.one_time_tokens DROP CONSTRAINT IF EXISTS one_time_tokens_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_consents DROP CONSTRAINT IF EXISTS oauth_consents_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_consents DROP CONSTRAINT IF EXISTS oauth_consents_client_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_client_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.mfa_challenges DROP CONSTRAINT IF EXISTS mfa_challenges_auth_factor_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.mfa_amr_claims DROP CONSTRAINT IF EXISTS mfa_amr_claims_session_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.identities DROP CONSTRAINT IF EXISTS identities_user_id_fkey;
-DROP TRIGGER IF EXISTS update_objects_updated_at ON storage.objects;
-DROP TRIGGER IF EXISTS protect_objects_delete ON storage.objects;
-DROP TRIGGER IF EXISTS protect_buckets_delete ON storage.buckets;
-DROP TRIGGER IF EXISTS enforce_bucket_name_length_trigger ON storage.buckets;
-DROP TRIGGER IF EXISTS tr_check_filters ON realtime.subscription;
-DROP TRIGGER IF EXISTS trigger_generate_entry_number ON journal.entries;
-DROP TRIGGER IF EXISTS trg_entry_number ON journal.entries;
-DROP INDEX IF EXISTS storage.vector_indexes_name_bucket_id_idx;
-DROP INDEX IF EXISTS storage.name_prefix_search;
-DROP INDEX IF EXISTS storage.idx_objects_bucket_id_name_lower;
-DROP INDEX IF EXISTS storage.idx_objects_bucket_id_name;
-DROP INDEX IF EXISTS storage.idx_multipart_uploads_list;
-DROP INDEX IF EXISTS storage.buckets_analytics_unique_name_idx;
-DROP INDEX IF EXISTS storage.bucketid_objname;
-DROP INDEX IF EXISTS storage.bname;
-DROP INDEX IF EXISTS realtime.subscription_subscription_id_entity_filters_action_filter_selec;
-DROP INDEX IF EXISTS realtime.messages_inserted_at_topic_index;
-DROP INDEX IF EXISTS realtime.ix_realtime_subscription_entity;
-DROP INDEX IF EXISTS public.idx_support_tickets_status_created_at;
-DROP INDEX IF EXISTS public.idx_rbac_page_access_role;
-DROP INDEX IF EXISTS public.idx_rbac_page_access_page;
-DROP INDEX IF EXISTS public.idx_rbac_overrides_role;
-DROP INDEX IF EXISTS public.idx_rbac_overrides_permission;
-DROP INDEX IF EXISTS public.idx_rbac_history_saved_at;
-DROP INDEX IF EXISTS public.idx_production_batches_status_created_at;
-DROP INDEX IF EXISTS public.idx_outreach_dispatch_log_recipient;
-DROP INDEX IF EXISTS public.idx_outreach_dispatch_log_campaign_id;
-DROP INDEX IF EXISTS public.idx_orders_status;
-DROP INDEX IF EXISTS public.idx_orders_created_at;
-DROP INDEX IF EXISTS public.idx_inventory_is_active;
-DROP INDEX IF EXISTS public.idx_inventory_current_stock;
-DROP INDEX IF EXISTS public.idx_fg_alloc_fulfillment;
-DROP INDEX IF EXISTS public.idx_fg_alloc_fifo;
-DROP INDEX IF EXISTS public.idx_fg_alloc_customer;
-DROP INDEX IF EXISTS public.idx_fg_alloc_batch;
-DROP INDEX IF EXISTS public.idx_customer_orders_status_created_at;
-DROP INDEX IF EXISTS public.idx_chat_messages_is_ai;
-DROP INDEX IF EXISTS public.idx_chat_messages_channel_id;
-DROP INDEX IF EXISTS public.idx_chat_channels_order_id;
-DROP INDEX IF EXISTS public.idx_chat_channels_id;
-DROP INDEX IF EXISTS public.idx_chat_ai_log_channel;
-DROP INDEX IF EXISTS public.idx_attendance_logs_staff_date;
-DROP INDEX IF EXISTS public.idx_attendance_logs_event_time;
-DROP INDEX IF EXISTS public.dispatch_picklists_status_idx;
-DROP INDEX IF EXISTS public.dispatch_picklists_batch_code_idx;
-DROP INDEX IF EXISTS auth.webauthn_credentials_user_id_idx;
-DROP INDEX IF EXISTS auth.webauthn_credentials_credential_id_key;
-DROP INDEX IF EXISTS auth.webauthn_challenges_user_id_idx;
-DROP INDEX IF EXISTS auth.webauthn_challenges_expires_at_idx;
-DROP INDEX IF EXISTS auth.users_is_anonymous_idx;
-DROP INDEX IF EXISTS auth.users_instance_id_idx;
-DROP INDEX IF EXISTS auth.users_instance_id_email_idx;
-DROP INDEX IF EXISTS auth.users_email_partial_key;
-DROP INDEX IF EXISTS auth.user_id_created_at_idx;
-DROP INDEX IF EXISTS auth.unique_phone_factor_per_user;
-DROP INDEX IF EXISTS auth.sso_providers_resource_id_pattern_idx;
-DROP INDEX IF EXISTS auth.sso_providers_resource_id_idx;
-DROP INDEX IF EXISTS auth.sso_domains_sso_provider_id_idx;
-DROP INDEX IF EXISTS auth.sso_domains_domain_idx;
-DROP INDEX IF EXISTS auth.sessions_user_id_idx;
-DROP INDEX IF EXISTS auth.sessions_oauth_client_id_idx;
-DROP INDEX IF EXISTS auth.sessions_not_after_idx;
-DROP INDEX IF EXISTS auth.saml_relay_states_sso_provider_id_idx;
-DROP INDEX IF EXISTS auth.saml_relay_states_for_email_idx;
-DROP INDEX IF EXISTS auth.saml_relay_states_created_at_idx;
-DROP INDEX IF EXISTS auth.saml_providers_sso_provider_id_idx;
-DROP INDEX IF EXISTS auth.refresh_tokens_updated_at_idx;
-DROP INDEX IF EXISTS auth.refresh_tokens_session_id_revoked_idx;
-DROP INDEX IF EXISTS auth.refresh_tokens_parent_idx;
-DROP INDEX IF EXISTS auth.refresh_tokens_instance_id_user_id_idx;
-DROP INDEX IF EXISTS auth.refresh_tokens_instance_id_idx;
-DROP INDEX IF EXISTS auth.recovery_token_idx;
-DROP INDEX IF EXISTS auth.reauthentication_token_idx;
-DROP INDEX IF EXISTS auth.one_time_tokens_user_id_token_type_key;
-DROP INDEX IF EXISTS auth.one_time_tokens_token_hash_hash_idx;
-DROP INDEX IF EXISTS auth.one_time_tokens_relates_to_hash_idx;
-DROP INDEX IF EXISTS auth.oauth_consents_user_order_idx;
-DROP INDEX IF EXISTS auth.oauth_consents_active_user_client_idx;
-DROP INDEX IF EXISTS auth.oauth_consents_active_client_idx;
-DROP INDEX IF EXISTS auth.oauth_clients_deleted_at_idx;
-DROP INDEX IF EXISTS auth.oauth_auth_pending_exp_idx;
-DROP INDEX IF EXISTS auth.mfa_factors_user_id_idx;
-DROP INDEX IF EXISTS auth.mfa_factors_user_friendly_name_unique;
-DROP INDEX IF EXISTS auth.mfa_challenge_created_at_idx;
-DROP INDEX IF EXISTS auth.idx_users_name;
-DROP INDEX IF EXISTS auth.idx_users_last_sign_in_at_desc;
-DROP INDEX IF EXISTS auth.idx_users_email;
-DROP INDEX IF EXISTS auth.idx_users_created_at_desc;
-DROP INDEX IF EXISTS auth.idx_user_id_auth_method;
-DROP INDEX IF EXISTS auth.idx_oauth_client_states_created_at;
-DROP INDEX IF EXISTS auth.idx_auth_code;
-DROP INDEX IF EXISTS auth.identities_user_id_idx;
-DROP INDEX IF EXISTS auth.identities_email_idx;
-DROP INDEX IF EXISTS auth.flow_state_created_at_idx;
-DROP INDEX IF EXISTS auth.factor_id_created_at_idx;
-DROP INDEX IF EXISTS auth.email_change_token_new_idx;
-DROP INDEX IF EXISTS auth.email_change_token_current_idx;
-DROP INDEX IF EXISTS auth.custom_oauth_providers_provider_type_idx;
-DROP INDEX IF EXISTS auth.custom_oauth_providers_identifier_idx;
-DROP INDEX IF EXISTS auth.custom_oauth_providers_enabled_idx;
-DROP INDEX IF EXISTS auth.custom_oauth_providers_created_at_idx;
-DROP INDEX IF EXISTS auth.confirmation_token_idx;
-DROP INDEX IF EXISTS auth.audit_logs_instance_id_idx;
-ALTER TABLE IF EXISTS ONLY supabase_migrations.schema_migrations DROP CONSTRAINT IF EXISTS schema_migrations_pkey;
-ALTER TABLE IF EXISTS ONLY supabase_migrations.schema_migrations DROP CONSTRAINT IF EXISTS schema_migrations_idempotency_key_key;
-ALTER TABLE IF EXISTS ONLY storage.vector_indexes DROP CONSTRAINT IF EXISTS vector_indexes_pkey;
-ALTER TABLE IF EXISTS ONLY storage.s3_multipart_uploads DROP CONSTRAINT IF EXISTS s3_multipart_uploads_pkey;
-ALTER TABLE IF EXISTS ONLY storage.s3_multipart_uploads_parts DROP CONSTRAINT IF EXISTS s3_multipart_uploads_parts_pkey;
-ALTER TABLE IF EXISTS ONLY storage.objects DROP CONSTRAINT IF EXISTS objects_pkey;
-ALTER TABLE IF EXISTS ONLY storage.migrations DROP CONSTRAINT IF EXISTS migrations_pkey;
-ALTER TABLE IF EXISTS ONLY storage.migrations DROP CONSTRAINT IF EXISTS migrations_name_key;
-ALTER TABLE IF EXISTS ONLY storage.buckets_vectors DROP CONSTRAINT IF EXISTS buckets_vectors_pkey;
-ALTER TABLE IF EXISTS ONLY storage.buckets DROP CONSTRAINT IF EXISTS buckets_pkey;
-ALTER TABLE IF EXISTS ONLY storage.buckets_analytics DROP CONSTRAINT IF EXISTS buckets_analytics_pkey;
-ALTER TABLE IF EXISTS ONLY realtime.schema_migrations DROP CONSTRAINT IF EXISTS schema_migrations_pkey;
-ALTER TABLE IF EXISTS ONLY realtime.subscription DROP CONSTRAINT IF EXISTS pk_subscription;
-ALTER TABLE IF EXISTS realtime.messages DROP CONSTRAINT IF EXISTS messages_payload_exclusive;
-ALTER TABLE IF EXISTS ONLY realtime.messages_2026_07_23 DROP CONSTRAINT IF EXISTS messages_2026_07_23_pkey;
-ALTER TABLE IF EXISTS ONLY realtime.messages_2026_07_22 DROP CONSTRAINT IF EXISTS messages_2026_07_22_pkey;
-ALTER TABLE IF EXISTS ONLY realtime.messages_2026_07_21 DROP CONSTRAINT IF EXISTS messages_2026_07_21_pkey;
-ALTER TABLE IF EXISTS ONLY realtime.messages_2026_07_20 DROP CONSTRAINT IF EXISTS messages_2026_07_20_pkey;
-ALTER TABLE IF EXISTS ONLY realtime.messages_2026_07_19 DROP CONSTRAINT IF EXISTS messages_2026_07_19_pkey;
-ALTER TABLE IF EXISTS ONLY realtime.messages_2026_07_17 DROP CONSTRAINT IF EXISTS messages_2026_07_17_pkey;
-ALTER TABLE IF EXISTS ONLY realtime.messages DROP CONSTRAINT IF EXISTS messages_pkey;
-ALTER TABLE IF EXISTS ONLY public.salaries DROP CONSTRAINT IF EXISTS unique_staff_cycle;
-ALTER TABLE IF EXISTS ONLY public.support_tickets DROP CONSTRAINT IF EXISTS support_tickets_ticket_number_key;
-ALTER TABLE IF EXISTS ONLY public.support_tickets DROP CONSTRAINT IF EXISTS support_tickets_pkey;
-ALTER TABLE IF EXISTS ONLY public.support_messages DROP CONSTRAINT IF EXISTS support_messages_pkey;
-ALTER TABLE IF EXISTS ONLY public.suppliers DROP CONSTRAINT IF EXISTS suppliers_pkey;
-ALTER TABLE IF EXISTS ONLY public.supplier_quotations DROP CONSTRAINT IF EXISTS supplier_quotations_pkey;
-ALTER TABLE IF EXISTS ONLY public.staff_timesheets DROP CONSTRAINT IF EXISTS staff_timesheets_pkey;
-ALTER TABLE IF EXISTS ONLY public.staff_profiles DROP CONSTRAINT IF EXISTS staff_profiles_staff_code_key;
-ALTER TABLE IF EXISTS ONLY public.staff_profiles DROP CONSTRAINT IF EXISTS staff_profiles_pkey;
-ALTER TABLE IF EXISTS ONLY public.staff_profiles DROP CONSTRAINT IF EXISTS staff_profiles_email_key;
-ALTER TABLE IF EXISTS ONLY public.salaries DROP CONSTRAINT IF EXISTS salaries_pkey;
-ALTER TABLE IF EXISTS ONLY public.retail_purchases DROP CONSTRAINT IF EXISTS retail_purchases_purchase_number_key;
-ALTER TABLE IF EXISTS ONLY public.retail_purchases DROP CONSTRAINT IF EXISTS retail_purchases_pkey;
-ALTER TABLE IF EXISTS ONLY public.retail_purchase_items DROP CONSTRAINT IF EXISTS retail_purchase_items_pkey;
-ALTER TABLE IF EXISTS ONLY public.retail_buyers DROP CONSTRAINT IF EXISTS retail_buyers_pkey;
-ALTER TABLE IF EXISTS ONLY public.retail_buyers DROP CONSTRAINT IF EXISTS retail_buyers_email_key;
-ALTER TABLE IF EXISTS ONLY public.recipes DROP CONSTRAINT IF EXISTS recipes_recipe_code_key;
-ALTER TABLE IF EXISTS ONLY public.recipes DROP CONSTRAINT IF EXISTS recipes_pkey;
-ALTER TABLE IF EXISTS ONLY public.rbac_page_access DROP CONSTRAINT IF EXISTS rbac_page_access_unique;
-ALTER TABLE IF EXISTS ONLY public.rbac_page_access DROP CONSTRAINT IF EXISTS rbac_page_access_pkey;
-ALTER TABLE IF EXISTS ONLY public.rbac_overrides DROP CONSTRAINT IF EXISTS rbac_overrides_unique;
-ALTER TABLE IF EXISTS ONLY public.rbac_overrides DROP CONSTRAINT IF EXISTS rbac_overrides_pkey;
-ALTER TABLE IF EXISTS ONLY public.rbac_history DROP CONSTRAINT IF EXISTS rbac_history_pkey;
-ALTER TABLE IF EXISTS ONLY public.raw_materials DROP CONSTRAINT IF EXISTS raw_materials_pkey;
-ALTER TABLE IF EXISTS ONLY public.raw_materials DROP CONSTRAINT IF EXISTS raw_materials_item_code_key;
-ALTER TABLE IF EXISTS ONLY public.raw_material_orders DROP CONSTRAINT IF EXISTS raw_material_orders_pkey;
-ALTER TABLE IF EXISTS ONLY public.raw_material_orders DROP CONSTRAINT IF EXISTS raw_material_orders_order_number_key;
-ALTER TABLE IF EXISTS ONLY public.purchase_records DROP CONSTRAINT IF EXISTS purchase_records_record_number_key;
-ALTER TABLE IF EXISTS ONLY public.purchase_records DROP CONSTRAINT IF EXISTS purchase_records_pkey;
-ALTER TABLE IF EXISTS ONLY public.products DROP CONSTRAINT IF EXISTS products_product_code_key;
-ALTER TABLE IF EXISTS ONLY public.products DROP CONSTRAINT IF EXISTS products_pkey;
-ALTER TABLE IF EXISTS ONLY public.production_rm_consumption DROP CONSTRAINT IF EXISTS production_rm_consumption_pkey;
-ALTER TABLE IF EXISTS ONLY public.production_recipes DROP CONSTRAINT IF EXISTS production_recipes_pkey;
-ALTER TABLE IF EXISTS ONLY public.production_fg_allocation DROP CONSTRAINT IF EXISTS production_fg_allocation_pkey;
-ALTER TABLE IF EXISTS ONLY public.production_batches DROP CONSTRAINT IF EXISTS production_batches_pkey;
-ALTER TABLE IF EXISTS ONLY public.production_batches DROP CONSTRAINT IF EXISTS production_batches_batch_number_key;
-ALTER TABLE IF EXISTS ONLY public.payroll_runs DROP CONSTRAINT IF EXISTS payroll_runs_run_code_key;
-ALTER TABLE IF EXISTS ONLY public.payroll_runs DROP CONSTRAINT IF EXISTS payroll_runs_pkey;
-ALTER TABLE IF EXISTS ONLY public.payroll_run_details DROP CONSTRAINT IF EXISTS payroll_run_details_pkey;
-ALTER TABLE IF EXISTS ONLY public.payroll_records DROP CONSTRAINT IF EXISTS payroll_records_pkey;
-ALTER TABLE IF EXISTS ONLY public.payroll_records DROP CONSTRAINT IF EXISTS payroll_records_payroll_id_key;
-ALTER TABLE IF EXISTS ONLY public.overheads DROP CONSTRAINT IF EXISTS overheads_pkey;
-ALTER TABLE IF EXISTS ONLY public.outreach_unsubscribes DROP CONSTRAINT IF EXISTS outreach_unsubscribes_pkey;
-ALTER TABLE IF EXISTS ONLY public.outreach_unsubscribes DROP CONSTRAINT IF EXISTS outreach_unsubscribes_email_key;
-ALTER TABLE IF EXISTS ONLY public.outreach_dispatch_log DROP CONSTRAINT IF EXISTS outreach_dispatch_log_pkey;
-ALTER TABLE IF EXISTS ONLY public.outreach_campaigns DROP CONSTRAINT IF EXISTS outreach_campaigns_pkey;
-ALTER TABLE IF EXISTS ONLY public.orders DROP CONSTRAINT IF EXISTS orders_pkey;
-ALTER TABLE IF EXISTS ONLY public.orders DROP CONSTRAINT IF EXISTS orders_order_number_key;
-ALTER TABLE IF EXISTS ONLY public.order_items DROP CONSTRAINT IF EXISTS order_items_pkey;
-ALTER TABLE IF EXISTS ONLY public.order_fulfillments DROP CONSTRAINT IF EXISTS order_fulfillments_pkey;
-ALTER TABLE IF EXISTS ONLY public.order_fulfillments DROP CONSTRAINT IF EXISTS order_fulfillments_fulfillment_id_key;
-ALTER TABLE IF EXISTS ONLY public.logistic_returns DROP CONSTRAINT IF EXISTS logistic_returns_rma_number_key;
-ALTER TABLE IF EXISTS ONLY public.logistic_returns DROP CONSTRAINT IF EXISTS logistic_returns_pkey;
-ALTER TABLE IF EXISTS ONLY public.ledger DROP CONSTRAINT IF EXISTS ledger_pkey;
-ALTER TABLE IF EXISTS ONLY public.inventory_transactions DROP CONSTRAINT IF EXISTS inventory_transactions_pkey;
-ALTER TABLE IF EXISTS ONLY public.inventory DROP CONSTRAINT IF EXISTS inventory_pkey;
-ALTER TABLE IF EXISTS ONLY public.inventory_logs DROP CONSTRAINT IF EXISTS inventory_logs_pkey;
-ALTER TABLE IF EXISTS ONLY public.inventory DROP CONSTRAINT IF EXISTS inventory_item_code_key;
-ALTER TABLE IF EXISTS ONLY public.inventory_batches DROP CONSTRAINT IF EXISTS inventory_batches_pkey;
-ALTER TABLE IF EXISTS ONLY public.inventory_batches DROP CONSTRAINT IF EXISTS inventory_batches_batch_code_key;
-ALTER TABLE IF EXISTS ONLY public.fulfillment_records DROP CONSTRAINT IF EXISTS fulfillment_records_pkey;
-ALTER TABLE IF EXISTS ONLY public.fulfillment_orders DROP CONSTRAINT IF EXISTS fulfillment_orders_pkey;
-ALTER TABLE IF EXISTS ONLY public.fulfillment_orders DROP CONSTRAINT IF EXISTS fulfillment_orders_fulfillment_id_key;
-ALTER TABLE IF EXISTS ONLY public.fulfillment_orders DROP CONSTRAINT IF EXISTS fulfillment_orders_fulfillment_code_key;
-ALTER TABLE IF EXISTS ONLY public.factory_bookings DROP CONSTRAINT IF EXISTS factory_bookings_pkey;
-ALTER TABLE IF EXISTS ONLY public.factory_bookings DROP CONSTRAINT IF EXISTS factory_bookings_booking_id_key;
-ALTER TABLE IF EXISTS ONLY public.entry_lines DROP CONSTRAINT IF EXISTS entry_lines_pkey;
-ALTER TABLE IF EXISTS ONLY public.entries DROP CONSTRAINT IF EXISTS entries_pkey;
-ALTER TABLE IF EXISTS ONLY public.entries DROP CONSTRAINT IF EXISTS entries_entry_number_key;
-ALTER TABLE IF EXISTS ONLY public.dispatch_picklists DROP CONSTRAINT IF EXISTS dispatch_picklists_pkey;
-ALTER TABLE IF EXISTS ONLY public.customer_support_chats DROP CONSTRAINT IF EXISTS customer_support_chats_pkey;
-ALTER TABLE IF EXISTS ONLY public.customer_support_chats DROP CONSTRAINT IF EXISTS customer_support_chats_chat_id_key;
-ALTER TABLE IF EXISTS ONLY public.customer_orders DROP CONSTRAINT IF EXISTS customer_orders_pkey;
-ALTER TABLE IF EXISTS ONLY public.customer_orders DROP CONSTRAINT IF EXISTS customer_orders_order_id_key;
-ALTER TABLE IF EXISTS ONLY public.customer_accounts DROP CONSTRAINT IF EXISTS customer_accounts_pkey;
-ALTER TABLE IF EXISTS ONLY public.customer_accounts DROP CONSTRAINT IF EXISTS customer_accounts_email_key;
-ALTER TABLE IF EXISTS ONLY public.customer_accounts DROP CONSTRAINT IF EXISTS customer_accounts_account_id_key;
-ALTER TABLE IF EXISTS ONLY public.company_settings DROP CONSTRAINT IF EXISTS company_settings_pkey;
-ALTER TABLE IF EXISTS ONLY public.chat_participants DROP CONSTRAINT IF EXISTS chat_participants_pkey;
-ALTER TABLE IF EXISTS ONLY public.chat_messages DROP CONSTRAINT IF EXISTS chat_messages_pkey;
-ALTER TABLE IF EXISTS ONLY public.chat_channels DROP CONSTRAINT IF EXISTS chat_channels_pkey;
-ALTER TABLE IF EXISTS ONLY public.chat_ai_log DROP CONSTRAINT IF EXISTS chat_ai_log_pkey;
-ALTER TABLE IF EXISTS ONLY public.b2b_documents DROP CONSTRAINT IF EXISTS b2b_documents_pkey;
-ALTER TABLE IF EXISTS ONLY public.audit_logs DROP CONSTRAINT IF EXISTS audit_logs_pkey;
-ALTER TABLE IF EXISTS ONLY public.attendance_logs DROP CONSTRAINT IF EXISTS attendance_logs_pkey;
-ALTER TABLE IF EXISTS ONLY public.alerts DROP CONSTRAINT IF EXISTS alerts_pkey;
-ALTER TABLE IF EXISTS ONLY public.accounts DROP CONSTRAINT IF EXISTS accounts_pkey;
-ALTER TABLE IF EXISTS ONLY public.accounts DROP CONSTRAINT IF EXISTS accounts_code_key;
-ALTER TABLE IF EXISTS ONLY journal.entry_lines DROP CONSTRAINT IF EXISTS entry_lines_pkey;
-ALTER TABLE IF EXISTS ONLY journal.entries DROP CONSTRAINT IF EXISTS entries_pkey;
-ALTER TABLE IF EXISTS ONLY journal.entries DROP CONSTRAINT IF EXISTS entries_entry_number_key;
-ALTER TABLE IF EXISTS ONLY journal.accounts DROP CONSTRAINT IF EXISTS accounts_pkey;
-ALTER TABLE IF EXISTS ONLY journal.accounts DROP CONSTRAINT IF EXISTS accounts_code_key;
-ALTER TABLE IF EXISTS ONLY auth.webauthn_credentials DROP CONSTRAINT IF EXISTS webauthn_credentials_pkey;
-ALTER TABLE IF EXISTS ONLY auth.webauthn_challenges DROP CONSTRAINT IF EXISTS webauthn_challenges_pkey;
-ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_pkey;
-ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_phone_key;
-ALTER TABLE IF EXISTS ONLY auth.sso_providers DROP CONSTRAINT IF EXISTS sso_providers_pkey;
-ALTER TABLE IF EXISTS ONLY auth.sso_domains DROP CONSTRAINT IF EXISTS sso_domains_pkey;
-ALTER TABLE IF EXISTS ONLY auth.sessions DROP CONSTRAINT IF EXISTS sessions_pkey;
-ALTER TABLE IF EXISTS ONLY auth.schema_migrations DROP CONSTRAINT IF EXISTS schema_migrations_pkey;
-ALTER TABLE IF EXISTS ONLY auth.saml_relay_states DROP CONSTRAINT IF EXISTS saml_relay_states_pkey;
-ALTER TABLE IF EXISTS ONLY auth.saml_providers DROP CONSTRAINT IF EXISTS saml_providers_pkey;
-ALTER TABLE IF EXISTS ONLY auth.saml_providers DROP CONSTRAINT IF EXISTS saml_providers_entity_id_key;
-ALTER TABLE IF EXISTS ONLY auth.refresh_tokens DROP CONSTRAINT IF EXISTS refresh_tokens_token_unique;
-ALTER TABLE IF EXISTS ONLY auth.refresh_tokens DROP CONSTRAINT IF EXISTS refresh_tokens_pkey;
-ALTER TABLE IF EXISTS ONLY auth.one_time_tokens DROP CONSTRAINT IF EXISTS one_time_tokens_pkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_consents DROP CONSTRAINT IF EXISTS oauth_consents_user_client_unique;
-ALTER TABLE IF EXISTS ONLY auth.oauth_consents DROP CONSTRAINT IF EXISTS oauth_consents_pkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_clients DROP CONSTRAINT IF EXISTS oauth_clients_pkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_client_states DROP CONSTRAINT IF EXISTS oauth_client_states_pkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_pkey;
-ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_authorization_id_key;
-ALTER TABLE IF EXISTS ONLY auth.oauth_authorizations DROP CONSTRAINT IF EXISTS oauth_authorizations_authorization_code_key;
-ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_pkey;
-ALTER TABLE IF EXISTS ONLY auth.mfa_factors DROP CONSTRAINT IF EXISTS mfa_factors_last_challenged_at_key;
-ALTER TABLE IF EXISTS ONLY auth.mfa_challenges DROP CONSTRAINT IF EXISTS mfa_challenges_pkey;
-ALTER TABLE IF EXISTS ONLY auth.mfa_amr_claims DROP CONSTRAINT IF EXISTS mfa_amr_claims_session_id_authentication_method_pkey;
-ALTER TABLE IF EXISTS ONLY auth.instances DROP CONSTRAINT IF EXISTS instances_pkey;
-ALTER TABLE IF EXISTS ONLY auth.identities DROP CONSTRAINT IF EXISTS identities_provider_id_provider_unique;
-ALTER TABLE IF EXISTS ONLY auth.identities DROP CONSTRAINT IF EXISTS identities_pkey;
-ALTER TABLE IF EXISTS ONLY auth.flow_state DROP CONSTRAINT IF EXISTS flow_state_pkey;
-ALTER TABLE IF EXISTS ONLY auth.custom_oauth_providers DROP CONSTRAINT IF EXISTS custom_oauth_providers_pkey;
-ALTER TABLE IF EXISTS ONLY auth.custom_oauth_providers DROP CONSTRAINT IF EXISTS custom_oauth_providers_identifier_key;
-ALTER TABLE IF EXISTS ONLY auth.audit_log_entries DROP CONSTRAINT IF EXISTS audit_log_entries_pkey;
-ALTER TABLE IF EXISTS ONLY auth.mfa_amr_claims DROP CONSTRAINT IF EXISTS amr_id_pk;
-ALTER TABLE IF EXISTS public.rbac_page_access ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.rbac_overrides ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.rbac_history ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.outreach_unsubscribes ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS public.outreach_dispatch_log ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS journal.entry_lines ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS journal.entries ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS journal.accounts ALTER COLUMN id DROP DEFAULT;
-ALTER TABLE IF EXISTS auth.refresh_tokens ALTER COLUMN id DROP DEFAULT;
-DROP TABLE IF EXISTS supabase_migrations.schema_migrations;
-DROP TABLE IF EXISTS storage.vector_indexes;
-DROP TABLE IF EXISTS storage.s3_multipart_uploads_parts;
-DROP TABLE IF EXISTS storage.s3_multipart_uploads;
-DROP TABLE IF EXISTS storage.objects;
-DROP TABLE IF EXISTS storage.migrations;
-DROP TABLE IF EXISTS storage.buckets_vectors;
-DROP TABLE IF EXISTS storage.buckets_analytics;
-DROP TABLE IF EXISTS storage.buckets;
-DROP TABLE IF EXISTS realtime.subscription;
-DROP TABLE IF EXISTS realtime.schema_migrations;
-DROP TABLE IF EXISTS realtime.messages_2026_07_23;
-DROP TABLE IF EXISTS realtime.messages_2026_07_22;
-DROP TABLE IF EXISTS realtime.messages_2026_07_21;
-DROP TABLE IF EXISTS realtime.messages_2026_07_20;
-DROP TABLE IF EXISTS realtime.messages_2026_07_19;
-DROP TABLE IF EXISTS realtime.messages_2026_07_17;
-DROP TABLE IF EXISTS realtime.messages;
-DROP TABLE IF EXISTS public.support_tickets;
-DROP TABLE IF EXISTS public.support_messages;
-DROP TABLE IF EXISTS public.suppliers;
-DROP TABLE IF EXISTS public.supplier_quotations;
-DROP TABLE IF EXISTS public.staff_timesheets;
-DROP TABLE IF EXISTS public.staff_profiles;
-DROP TABLE IF EXISTS public.salaries;
-DROP TABLE IF EXISTS public.retail_purchases;
-DROP TABLE IF EXISTS public.retail_purchase_items;
-DROP TABLE IF EXISTS public.retail_buyers;
-DROP TABLE IF EXISTS public.recipes;
-DROP SEQUENCE IF EXISTS public.rbac_page_access_id_seq;
-DROP TABLE IF EXISTS public.rbac_page_access;
-DROP SEQUENCE IF EXISTS public.rbac_overrides_id_seq;
-DROP TABLE IF EXISTS public.rbac_overrides;
-DROP SEQUENCE IF EXISTS public.rbac_history_id_seq;
-DROP TABLE IF EXISTS public.rbac_history;
-DROP TABLE IF EXISTS public.raw_materials;
-DROP TABLE IF EXISTS public.raw_material_orders;
-DROP TABLE IF EXISTS public.products;
-DROP TABLE IF EXISTS public.production_recipes;
-DROP TABLE IF EXISTS public.production_fg_allocation;
-DROP TABLE IF EXISTS public.payroll_runs;
-DROP TABLE IF EXISTS public.payroll_run_details;
-DROP TABLE IF EXISTS public.payroll_records;
-DROP TABLE IF EXISTS public.overheads;
-DROP SEQUENCE IF EXISTS public.outreach_unsubscribes_id_seq;
-DROP TABLE IF EXISTS public.outreach_unsubscribes;
-DROP SEQUENCE IF EXISTS public.outreach_dispatch_log_id_seq;
-DROP TABLE IF EXISTS public.outreach_dispatch_log;
-DROP TABLE IF EXISTS public.outreach_campaigns;
-DROP TABLE IF EXISTS public.orders;
-DROP TABLE IF EXISTS public.order_items;
-DROP TABLE IF EXISTS public.order_fulfillments;
-DROP TABLE IF EXISTS public.logistic_returns;
-DROP TABLE IF EXISTS public.ledger;
-DROP TABLE IF EXISTS public.inventory_transactions;
-DROP TABLE IF EXISTS public.inventory_logs;
-DROP TABLE IF EXISTS public.fulfillment_records;
-DROP TABLE IF EXISTS public.fulfillment_orders;
-DROP TABLE IF EXISTS public.factory_bookings;
-DROP TABLE IF EXISTS public.entry_lines;
-DROP TABLE IF EXISTS public.entries;
-DROP TABLE IF EXISTS public.dispatch_picklists;
-DROP TABLE IF EXISTS public.customer_support_chats;
-DROP TABLE IF EXISTS public.customer_orders;
-DROP TABLE IF EXISTS public.customer_accounts;
-DROP TABLE IF EXISTS public.company_settings;
-DROP TABLE IF EXISTS public.chat_participants;
-DROP TABLE IF EXISTS public.chat_messages;
-DROP TABLE IF EXISTS public.chat_channels;
-DROP TABLE IF EXISTS public.chat_ai_log;
-DROP VIEW IF EXISTS public.batch_trace_view;
-DROP TABLE IF EXISTS public.purchase_records;
-DROP TABLE IF EXISTS public.production_rm_consumption;
-DROP TABLE IF EXISTS public.production_batches;
-DROP TABLE IF EXISTS public.inventory_batches;
-DROP TABLE IF EXISTS public.inventory;
-DROP TABLE IF EXISTS public.b2b_documents;
-DROP TABLE IF EXISTS public.audit_logs;
-DROP TABLE IF EXISTS public.attendance_logs;
-DROP TABLE IF EXISTS public.alerts;
-DROP TABLE IF EXISTS public.accounts;
-DROP VIEW IF EXISTS journal.ledger;
-DROP SEQUENCE IF EXISTS journal.entry_number_seq;
-DROP SEQUENCE IF EXISTS journal.entry_lines_id_seq;
-DROP TABLE IF EXISTS journal.entry_lines;
-DROP SEQUENCE IF EXISTS journal.entries_id_seq;
-DROP TABLE IF EXISTS journal.entries;
-DROP SEQUENCE IF EXISTS journal.accounts_id_seq;
-DROP TABLE IF EXISTS journal.accounts;
-DROP TABLE IF EXISTS auth.webauthn_credentials;
-DROP TABLE IF EXISTS auth.webauthn_challenges;
-DROP TABLE IF EXISTS auth.users;
-DROP TABLE IF EXISTS auth.sso_providers;
-DROP TABLE IF EXISTS auth.sso_domains;
-DROP TABLE IF EXISTS auth.sessions;
-DROP TABLE IF EXISTS auth.schema_migrations;
-DROP TABLE IF EXISTS auth.saml_relay_states;
-DROP TABLE IF EXISTS auth.saml_providers;
-DROP SEQUENCE IF EXISTS auth.refresh_tokens_id_seq;
-DROP TABLE IF EXISTS auth.refresh_tokens;
-DROP TABLE IF EXISTS auth.one_time_tokens;
-DROP TABLE IF EXISTS auth.oauth_consents;
-DROP TABLE IF EXISTS auth.oauth_clients;
-DROP TABLE IF EXISTS auth.oauth_client_states;
-DROP TABLE IF EXISTS auth.oauth_authorizations;
-DROP TABLE IF EXISTS auth.mfa_factors;
-DROP TABLE IF EXISTS auth.mfa_challenges;
-DROP TABLE IF EXISTS auth.mfa_amr_claims;
-DROP TABLE IF EXISTS auth.instances;
-DROP TABLE IF EXISTS auth.identities;
-DROP TABLE IF EXISTS auth.flow_state;
-DROP TABLE IF EXISTS auth.custom_oauth_providers;
-DROP TABLE IF EXISTS auth.audit_log_entries;
-DROP FUNCTION IF EXISTS storage.update_updated_at_column();
-DROP FUNCTION IF EXISTS storage.search_v2(prefix text, bucket_name text, limits integer, levels integer, start_after text, sort_order text, sort_column text, sort_column_after text);
-DROP FUNCTION IF EXISTS storage.search_by_timestamp(p_prefix text, p_bucket_id text, p_limit integer, p_level integer, p_start_after text, p_sort_order text, p_sort_column text, p_sort_column_after text);
-DROP FUNCTION IF EXISTS storage.search(prefix text, bucketname text, limits integer, levels integer, offsets integer, search text, sortcolumn text, sortorder text);
-DROP FUNCTION IF EXISTS storage.protect_delete();
-DROP FUNCTION IF EXISTS storage.operation();
-DROP FUNCTION IF EXISTS storage.list_objects_with_delimiter(_bucket_id text, prefix_param text, delimiter_param text, max_keys integer, start_after text, next_token text, sort_order text);
-DROP FUNCTION IF EXISTS storage.list_multipart_uploads_with_delimiter(bucket_id text, prefix_param text, delimiter_param text, max_keys integer, next_key_token text, next_upload_token text);
-DROP FUNCTION IF EXISTS storage.get_size_by_bucket();
-DROP FUNCTION IF EXISTS storage.get_common_prefix(p_key text, p_prefix text, p_delimiter text);
-DROP FUNCTION IF EXISTS storage.foldername(name text);
-DROP FUNCTION IF EXISTS storage.filename(name text);
-DROP FUNCTION IF EXISTS storage.extension(name text);
-DROP FUNCTION IF EXISTS storage.enforce_bucket_name_length();
-DROP FUNCTION IF EXISTS storage.can_insert_object(bucketid text, name text, owner uuid, metadata jsonb);
-DROP FUNCTION IF EXISTS storage.allow_only_operation(expected_operation text);
-DROP FUNCTION IF EXISTS storage.allow_any_operation(expected_operations text[]);
-DROP FUNCTION IF EXISTS realtime.wal2json_escape_identifier(name text);
-DROP FUNCTION IF EXISTS realtime.topic();
-DROP FUNCTION IF EXISTS realtime.to_regrole(role_name text);
-DROP FUNCTION IF EXISTS realtime.subscription_check_filters();
-DROP FUNCTION IF EXISTS realtime.send_binary(payload bytea, event text, topic text, private boolean);
-DROP FUNCTION IF EXISTS realtime.send(payload jsonb, event text, topic text, private boolean);
-DROP FUNCTION IF EXISTS realtime.quote_wal2json(entity regclass);
-DROP FUNCTION IF EXISTS realtime.list_changes(publication name, slot_name name, max_changes integer, max_record_bytes integer);
-DROP FUNCTION IF EXISTS realtime.is_visible_through_filters(columns realtime.wal_column[], filters realtime.user_defined_filter[]);
-DROP FUNCTION IF EXISTS realtime.check_equality_op(op realtime.equality_op, type_ regtype, val_1 text, val_2 text, negate boolean);
-DROP FUNCTION IF EXISTS realtime.check_equality_op(op realtime.equality_op, type_ regtype, val_1 text, val_2 text);
-DROP FUNCTION IF EXISTS realtime."cast"(val text, type_ regtype);
-DROP FUNCTION IF EXISTS realtime.build_prepared_statement_sql(prepared_statement_name text, entity regclass, columns realtime.wal_column[]);
-DROP FUNCTION IF EXISTS realtime.broadcast_changes(topic_name text, event_name text, operation text, table_name text, table_schema text, new record, old record, level text);
-DROP FUNCTION IF EXISTS realtime.apply_rls(wal jsonb, max_record_bytes integer);
-DROP FUNCTION IF EXISTS public.warehouse_bins_generate_label();
-DROP FUNCTION IF EXISTS public.supplier_insert_trigger_func();
-DROP FUNCTION IF EXISTS public.production_recipes_update();
-DROP FUNCTION IF EXISTS public.production_recipes_insert();
-DROP FUNCTION IF EXISTS public.production_recipes_delete();
-DROP FUNCTION IF EXISTS public.insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone, batch_id text, po_created boolean, po_pdf_url text, expected_delivery_date date);
-DROP FUNCTION IF EXISTS public.insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone);
-DROP FUNCTION IF EXISTS public.insert_purchase_record();
-DROP FUNCTION IF EXISTS public.finalize_payroll_cycle(target_cycle text, operator_email text);
-DROP FUNCTION IF EXISTS public.bin_stock_updated_at();
-DROP FUNCTION IF EXISTS public.bin_stock_default_batch();
-DROP FUNCTION IF EXISTS pgbouncer.get_auth(p_usename text);
-DROP FUNCTION IF EXISTS journal.next_entry_number();
-DROP FUNCTION IF EXISTS journal.get_account_ledger(p_account_name text);
-DROP FUNCTION IF EXISTS journal.generate_entry_number();
-DROP FUNCTION IF EXISTS graphql_public.graphql("operationName" text, query text, variables jsonb, extensions jsonb);
-DROP FUNCTION IF EXISTS extensions.set_graphql_placeholder();
-DROP FUNCTION IF EXISTS extensions.pgrst_drop_watch();
-DROP FUNCTION IF EXISTS extensions.pgrst_ddl_watch();
-DROP FUNCTION IF EXISTS extensions.grant_pg_net_access();
-DROP FUNCTION IF EXISTS extensions.grant_pg_graphql_access();
-DROP FUNCTION IF EXISTS extensions.grant_pg_cron_access();
-DROP FUNCTION IF EXISTS auth.uid();
-DROP FUNCTION IF EXISTS auth.role();
-DROP FUNCTION IF EXISTS auth.jwt();
-DROP FUNCTION IF EXISTS auth.email();
-DROP TYPE IF EXISTS storage.buckettype;
-DROP TYPE IF EXISTS realtime.wal_rls;
-DROP TYPE IF EXISTS realtime.wal_column;
-DROP TYPE IF EXISTS realtime.user_defined_filter;
-DROP TYPE IF EXISTS realtime.equality_op;
-DROP TYPE IF EXISTS realtime.action;
-DROP TYPE IF EXISTS auth.one_time_token_type;
-DROP TYPE IF EXISTS auth.oauth_response_type;
-DROP TYPE IF EXISTS auth.oauth_registration_type;
-DROP TYPE IF EXISTS auth.oauth_client_type;
-DROP TYPE IF EXISTS auth.oauth_authorization_status;
-DROP TYPE IF EXISTS auth.factor_type;
-DROP TYPE IF EXISTS auth.factor_status;
-DROP TYPE IF EXISTS auth.code_challenge_method;
-DROP TYPE IF EXISTS auth.aal_level;
-DROP EXTENSION IF EXISTS "uuid-ossp";
-DROP EXTENSION IF EXISTS supabase_vault;
-DROP EXTENSION IF EXISTS pgcrypto;
-DROP EXTENSION IF EXISTS pg_stat_statements;
-DROP SCHEMA IF EXISTS vault;
-DROP SCHEMA IF EXISTS supabase_migrations;
-DROP SCHEMA IF EXISTS storage;
-DROP SCHEMA IF EXISTS realtime;
--- *not* dropping schema, since initdb creates it
-DROP SCHEMA IF EXISTS pgbouncer;
-DROP SCHEMA IF EXISTS journal;
-DROP SCHEMA IF EXISTS graphql_public;
-DROP SCHEMA IF EXISTS graphql;
-DROP SCHEMA IF EXISTS extensions;
-DROP SCHEMA IF EXISTS auth;
 --
 -- Name: auth; Type: SCHEMA; Schema: -; Owner: supabase_admin
 --
@@ -616,16 +74,7 @@ CREATE SCHEMA pgbouncer;
 ALTER SCHEMA pgbouncer OWNER TO pgbouncer;
 
 --
--- Name: public; Type: SCHEMA; Schema: -; Owner: postgres
---
-
--- *not* creating schema, since initdb creates it
-
-
-ALTER SCHEMA public OWNER TO postgres;
-
---
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: postgres
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: pg_database_owner
 --
 
 COMMENT ON SCHEMA public IS '';
@@ -1075,54 +524,43 @@ COMMENT ON FUNCTION extensions.grant_pg_cron_access() IS 'Grants access to pg_cr
 CREATE FUNCTION extensions.grant_pg_graphql_access() RETURNS event_trigger
     LANGUAGE plpgsql
     AS $_$
-DECLARE
-    func_is_graphql_resolve bool;
-BEGIN
-    func_is_graphql_resolve = (
-        SELECT n.proname = 'resolve'
-        FROM pg_event_trigger_ddl_commands() AS ev
-        LEFT JOIN pg_catalog.pg_proc AS n
-        ON ev.objid = n.oid
-    );
+begin
+    if not exists (
+        select 1
+        from pg_event_trigger_ddl_commands() ev
+        join pg_catalog.pg_extension e on ev.objid = e.oid
+        where e.extname = 'pg_graphql'
+    ) then
+        return;
+    end if;
 
-    IF func_is_graphql_resolve
-    THEN
-        -- Update public wrapper to pass all arguments through to the pg_graphql resolve func
-        DROP FUNCTION IF EXISTS graphql_public.graphql;
-        create or replace function graphql_public.graphql(
-            "operationName" text default null,
-            query text default null,
-            variables jsonb default null,
-            extensions jsonb default null
-        )
-            returns jsonb
-            language sql
-        as $$
-            select graphql.resolve(
-                query := query,
-                variables := coalesce(variables, '{}'),
-                "operationName" := "operationName",
-                extensions := extensions
-            );
-        $$;
+    drop function if exists graphql_public.graphql;
+    create or replace function graphql_public.graphql(
+        "operationName" text default null,
+        query text default null,
+        variables jsonb default null,
+        extensions jsonb default null
+    )
+        returns jsonb
+        language sql
+    as $$
+        select graphql.resolve(
+            query := query,
+            variables := coalesce(variables, '{}'),
+            "operationName" := "operationName",
+            extensions := extensions
+        );
+    $$;
 
-        -- This hook executes when `graphql.resolve` is created. That is not necessarily the last
-        -- function in the extension so we need to grant permissions on existing entities AND
-        -- update default permissions to any others that are created after `graphql.resolve`
-        grant usage on schema graphql to postgres, anon, authenticated, service_role;
-        grant select on all tables in schema graphql to postgres, anon, authenticated, service_role;
-        grant execute on all functions in schema graphql to postgres, anon, authenticated, service_role;
-        grant all on all sequences in schema graphql to postgres, anon, authenticated, service_role;
-        alter default privileges in schema graphql grant all on tables to postgres, anon, authenticated, service_role;
-        alter default privileges in schema graphql grant all on functions to postgres, anon, authenticated, service_role;
-        alter default privileges in schema graphql grant all on sequences to postgres, anon, authenticated, service_role;
+    -- Attach the wrapper to the extension so DROP EXTENSION cascades to it,
+    -- which in turn triggers set_graphql_placeholder to reinstall the "not enabled" stub.
+    alter extension pg_graphql add function graphql_public.graphql(text, text, jsonb, jsonb);
 
-        -- Allow postgres role to allow granting usage on graphql and graphql_public schemas to custom roles
-        grant usage on schema graphql_public to postgres with grant option;
-        grant usage on schema graphql to postgres with grant option;
-    END IF;
-
-END;
+    grant usage on schema graphql to postgres, anon, authenticated, service_role;
+    grant execute on function graphql.resolve to postgres, anon, authenticated, service_role;
+    grant usage on schema graphql to postgres with grant option;
+    grant usage on schema graphql_public to postgres with grant option;
+end;
 $_$;
 
 
@@ -4251,8 +3689,8 @@ CREATE TABLE journal.accounts (
     is_active boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT accounts_nature_check CHECK (((nature)::text = ANY ((ARRAY['debit'::character varying, 'credit'::character varying])::text[]))),
-    CONSTRAINT accounts_type_check CHECK (((type)::text = ANY ((ARRAY['asset'::character varying, 'liability'::character varying, 'equity'::character varying, 'expense'::character varying, 'income'::character varying])::text[])))
+    CONSTRAINT accounts_nature_check CHECK (((nature)::text = ANY (ARRAY[('debit'::character varying)::text, ('credit'::character varying)::text]))),
+    CONSTRAINT accounts_type_check CHECK (((type)::text = ANY (ARRAY[('asset'::character varying)::text, ('liability'::character varying)::text, ('equity'::character varying)::text, ('expense'::character varying)::text, ('income'::character varying)::text])))
 );
 
 
@@ -4651,7 +4089,8 @@ CREATE TABLE public.purchase_records (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     inventory_id uuid,
-    po_number text
+    po_number text,
+    documents jsonb
 );
 
 
@@ -6013,10 +5452,10 @@ PARTITION BY RANGE (inserted_at);
 ALTER TABLE realtime.messages OWNER TO supabase_realtime_admin;
 
 --
--- Name: messages_2026_07_17; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_04; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE TABLE realtime.messages_2026_07_17 (
+CREATE TABLE realtime.messages_2026_08_04 (
     topic text NOT NULL,
     extension text NOT NULL,
     payload jsonb,
@@ -6030,13 +5469,13 @@ CREATE TABLE realtime.messages_2026_07_17 (
 );
 
 
-ALTER TABLE realtime.messages_2026_07_17 OWNER TO supabase_realtime_admin;
+ALTER TABLE realtime.messages_2026_08_04 OWNER TO supabase_realtime_admin;
 
 --
--- Name: messages_2026_07_19; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_05; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE TABLE realtime.messages_2026_07_19 (
+CREATE TABLE realtime.messages_2026_08_05 (
     topic text NOT NULL,
     extension text NOT NULL,
     payload jsonb,
@@ -6050,13 +5489,13 @@ CREATE TABLE realtime.messages_2026_07_19 (
 );
 
 
-ALTER TABLE realtime.messages_2026_07_19 OWNER TO supabase_realtime_admin;
+ALTER TABLE realtime.messages_2026_08_05 OWNER TO supabase_realtime_admin;
 
 --
--- Name: messages_2026_07_20; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_06; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE TABLE realtime.messages_2026_07_20 (
+CREATE TABLE realtime.messages_2026_08_06 (
     topic text NOT NULL,
     extension text NOT NULL,
     payload jsonb,
@@ -6070,13 +5509,13 @@ CREATE TABLE realtime.messages_2026_07_20 (
 );
 
 
-ALTER TABLE realtime.messages_2026_07_20 OWNER TO supabase_realtime_admin;
+ALTER TABLE realtime.messages_2026_08_06 OWNER TO supabase_realtime_admin;
 
 --
--- Name: messages_2026_07_21; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_07; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE TABLE realtime.messages_2026_07_21 (
+CREATE TABLE realtime.messages_2026_08_07 (
     topic text NOT NULL,
     extension text NOT NULL,
     payload jsonb,
@@ -6090,13 +5529,13 @@ CREATE TABLE realtime.messages_2026_07_21 (
 );
 
 
-ALTER TABLE realtime.messages_2026_07_21 OWNER TO supabase_realtime_admin;
+ALTER TABLE realtime.messages_2026_08_07 OWNER TO supabase_realtime_admin;
 
 --
--- Name: messages_2026_07_22; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_08; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE TABLE realtime.messages_2026_07_22 (
+CREATE TABLE realtime.messages_2026_08_08 (
     topic text NOT NULL,
     extension text NOT NULL,
     payload jsonb,
@@ -6110,13 +5549,13 @@ CREATE TABLE realtime.messages_2026_07_22 (
 );
 
 
-ALTER TABLE realtime.messages_2026_07_22 OWNER TO supabase_realtime_admin;
+ALTER TABLE realtime.messages_2026_08_08 OWNER TO supabase_realtime_admin;
 
 --
--- Name: messages_2026_07_23; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_09; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE TABLE realtime.messages_2026_07_23 (
+CREATE TABLE realtime.messages_2026_08_09 (
     topic text NOT NULL,
     extension text NOT NULL,
     payload jsonb,
@@ -6130,7 +5569,27 @@ CREATE TABLE realtime.messages_2026_07_23 (
 );
 
 
-ALTER TABLE realtime.messages_2026_07_23 OWNER TO supabase_realtime_admin;
+ALTER TABLE realtime.messages_2026_08_09 OWNER TO supabase_realtime_admin;
+
+--
+-- Name: messages_2026_08_10; Type: TABLE; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+CREATE TABLE realtime.messages_2026_08_10 (
+    topic text NOT NULL,
+    extension text NOT NULL,
+    payload jsonb,
+    event text,
+    private boolean DEFAULT false,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    inserted_at timestamp without time zone DEFAULT now() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    binary_payload bytea,
+    CONSTRAINT messages_payload_exclusive CHECK (((payload IS NULL) OR (binary_payload IS NULL)))
+);
+
+
+ALTER TABLE realtime.messages_2026_08_10 OWNER TO supabase_realtime_admin;
 
 --
 -- Name: schema_migrations; Type: TABLE; Schema: realtime; Owner: supabase_admin
@@ -6138,7 +5597,7 @@ ALTER TABLE realtime.messages_2026_07_23 OWNER TO supabase_realtime_admin;
 
 CREATE TABLE realtime.schema_migrations (
     version bigint NOT NULL,
-    inserted_at timestamp(0) without time zone
+    inserted_at timestamp(0) without time zone DEFAULT now()
 );
 
 
@@ -6356,45 +5815,52 @@ CREATE TABLE supabase_migrations.schema_migrations (
 ALTER TABLE supabase_migrations.schema_migrations OWNER TO postgres;
 
 --
--- Name: messages_2026_07_17; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_04; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_07_17 FOR VALUES FROM ('2026-07-17 00:00:00') TO ('2026-07-18 00:00:00');
-
-
---
--- Name: messages_2026_07_19; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_07_19 FOR VALUES FROM ('2026-07-19 00:00:00') TO ('2026-07-20 00:00:00');
+ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_08_04 FOR VALUES FROM ('2026-08-04 00:00:00') TO ('2026-08-05 00:00:00');
 
 
 --
--- Name: messages_2026_07_20; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_05; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_07_20 FOR VALUES FROM ('2026-07-20 00:00:00') TO ('2026-07-21 00:00:00');
-
-
---
--- Name: messages_2026_07_21; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_07_21 FOR VALUES FROM ('2026-07-21 00:00:00') TO ('2026-07-22 00:00:00');
+ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_08_05 FOR VALUES FROM ('2026-08-05 00:00:00') TO ('2026-08-06 00:00:00');
 
 
 --
--- Name: messages_2026_07_22; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_06; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_07_22 FOR VALUES FROM ('2026-07-22 00:00:00') TO ('2026-07-23 00:00:00');
+ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_08_06 FOR VALUES FROM ('2026-08-06 00:00:00') TO ('2026-08-07 00:00:00');
 
 
 --
--- Name: messages_2026_07_23; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_07; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_07_23 FOR VALUES FROM ('2026-07-23 00:00:00') TO ('2026-07-24 00:00:00');
+ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_08_07 FOR VALUES FROM ('2026-08-07 00:00:00') TO ('2026-08-08 00:00:00');
+
+
+--
+-- Name: messages_2026_08_08; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_08_08 FOR VALUES FROM ('2026-08-08 00:00:00') TO ('2026-08-09 00:00:00');
+
+
+--
+-- Name: messages_2026_08_09; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_08_09 FOR VALUES FROM ('2026-08-09 00:00:00') TO ('2026-08-10 00:00:00');
+
+
+--
+-- Name: messages_2026_08_10; Type: TABLE ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER TABLE ONLY realtime.messages ATTACH PARTITION realtime.messages_2026_08_10 FOR VALUES FROM ('2026-08-10 00:00:00') TO ('2026-08-11 00:00:00');
 
 
 --
@@ -7477,51 +6943,59 @@ ALTER TABLE ONLY realtime.messages
 
 
 --
--- Name: messages_2026_07_17 messages_2026_07_17_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_04 messages_2026_08_04_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER TABLE ONLY realtime.messages_2026_07_17
-    ADD CONSTRAINT messages_2026_07_17_pkey PRIMARY KEY (id, inserted_at);
-
-
---
--- Name: messages_2026_07_19 messages_2026_07_19_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER TABLE ONLY realtime.messages_2026_07_19
-    ADD CONSTRAINT messages_2026_07_19_pkey PRIMARY KEY (id, inserted_at);
+ALTER TABLE ONLY realtime.messages_2026_08_04
+    ADD CONSTRAINT messages_2026_08_04_pkey PRIMARY KEY (id, inserted_at);
 
 
 --
--- Name: messages_2026_07_20 messages_2026_07_20_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_05 messages_2026_08_05_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER TABLE ONLY realtime.messages_2026_07_20
-    ADD CONSTRAINT messages_2026_07_20_pkey PRIMARY KEY (id, inserted_at);
-
-
---
--- Name: messages_2026_07_21 messages_2026_07_21_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER TABLE ONLY realtime.messages_2026_07_21
-    ADD CONSTRAINT messages_2026_07_21_pkey PRIMARY KEY (id, inserted_at);
+ALTER TABLE ONLY realtime.messages_2026_08_05
+    ADD CONSTRAINT messages_2026_08_05_pkey PRIMARY KEY (id, inserted_at);
 
 
 --
--- Name: messages_2026_07_22 messages_2026_07_22_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_06 messages_2026_08_06_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER TABLE ONLY realtime.messages_2026_07_22
-    ADD CONSTRAINT messages_2026_07_22_pkey PRIMARY KEY (id, inserted_at);
+ALTER TABLE ONLY realtime.messages_2026_08_06
+    ADD CONSTRAINT messages_2026_08_06_pkey PRIMARY KEY (id, inserted_at);
 
 
 --
--- Name: messages_2026_07_23 messages_2026_07_23_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_07 messages_2026_08_07_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER TABLE ONLY realtime.messages_2026_07_23
-    ADD CONSTRAINT messages_2026_07_23_pkey PRIMARY KEY (id, inserted_at);
+ALTER TABLE ONLY realtime.messages_2026_08_07
+    ADD CONSTRAINT messages_2026_08_07_pkey PRIMARY KEY (id, inserted_at);
+
+
+--
+-- Name: messages_2026_08_08 messages_2026_08_08_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER TABLE ONLY realtime.messages_2026_08_08
+    ADD CONSTRAINT messages_2026_08_08_pkey PRIMARY KEY (id, inserted_at);
+
+
+--
+-- Name: messages_2026_08_09 messages_2026_08_09_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER TABLE ONLY realtime.messages_2026_08_09
+    ADD CONSTRAINT messages_2026_08_09_pkey PRIMARY KEY (id, inserted_at);
+
+
+--
+-- Name: messages_2026_08_10 messages_2026_08_10_pkey; Type: CONSTRAINT; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER TABLE ONLY realtime.messages_2026_08_10
+    ADD CONSTRAINT messages_2026_08_10_pkey PRIMARY KEY (id, inserted_at);
 
 
 --
@@ -8260,45 +7734,52 @@ CREATE INDEX messages_inserted_at_topic_index ON ONLY realtime.messages USING bt
 
 
 --
--- Name: messages_2026_07_17_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_04_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE INDEX messages_2026_07_17_inserted_at_topic_idx ON realtime.messages_2026_07_17 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
-
-
---
--- Name: messages_2026_07_19_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
---
-
-CREATE INDEX messages_2026_07_19_inserted_at_topic_idx ON realtime.messages_2026_07_19 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
+CREATE INDEX messages_2026_08_04_inserted_at_topic_idx ON realtime.messages_2026_08_04 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
 
 
 --
--- Name: messages_2026_07_20_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_05_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE INDEX messages_2026_07_20_inserted_at_topic_idx ON realtime.messages_2026_07_20 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
-
-
---
--- Name: messages_2026_07_21_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
---
-
-CREATE INDEX messages_2026_07_21_inserted_at_topic_idx ON realtime.messages_2026_07_21 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
+CREATE INDEX messages_2026_08_05_inserted_at_topic_idx ON realtime.messages_2026_08_05 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
 
 
 --
--- Name: messages_2026_07_22_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_06_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE INDEX messages_2026_07_22_inserted_at_topic_idx ON realtime.messages_2026_07_22 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
+CREATE INDEX messages_2026_08_06_inserted_at_topic_idx ON realtime.messages_2026_08_06 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
 
 
 --
--- Name: messages_2026_07_23_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_07_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-CREATE INDEX messages_2026_07_23_inserted_at_topic_idx ON realtime.messages_2026_07_23 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
+CREATE INDEX messages_2026_08_07_inserted_at_topic_idx ON realtime.messages_2026_08_07 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
+
+
+--
+-- Name: messages_2026_08_08_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+CREATE INDEX messages_2026_08_08_inserted_at_topic_idx ON realtime.messages_2026_08_08 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
+
+
+--
+-- Name: messages_2026_08_09_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+CREATE INDEX messages_2026_08_09_inserted_at_topic_idx ON realtime.messages_2026_08_09 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
+
+
+--
+-- Name: messages_2026_08_10_inserted_at_topic_idx; Type: INDEX; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+CREATE INDEX messages_2026_08_10_inserted_at_topic_idx ON realtime.messages_2026_08_10 USING btree (inserted_at DESC, topic) WHERE ((extension = 'broadcast'::text) AND (private IS TRUE));
 
 
 --
@@ -8365,87 +7846,101 @@ CREATE UNIQUE INDEX vector_indexes_name_bucket_id_idx ON storage.vector_indexes 
 
 
 --
--- Name: messages_2026_07_17_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_04_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_07_17_inserted_at_topic_idx;
-
-
---
--- Name: messages_2026_07_17_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_07_17_pkey;
+ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_08_04_inserted_at_topic_idx;
 
 
 --
--- Name: messages_2026_07_19_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_04_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_07_19_inserted_at_topic_idx;
-
-
---
--- Name: messages_2026_07_19_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_07_19_pkey;
+ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_08_04_pkey;
 
 
 --
--- Name: messages_2026_07_20_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_05_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_07_20_inserted_at_topic_idx;
-
-
---
--- Name: messages_2026_07_20_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_07_20_pkey;
+ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_08_05_inserted_at_topic_idx;
 
 
 --
--- Name: messages_2026_07_21_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_05_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_07_21_inserted_at_topic_idx;
-
-
---
--- Name: messages_2026_07_21_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_07_21_pkey;
+ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_08_05_pkey;
 
 
 --
--- Name: messages_2026_07_22_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_06_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_07_22_inserted_at_topic_idx;
-
-
---
--- Name: messages_2026_07_22_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
---
-
-ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_07_22_pkey;
+ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_08_06_inserted_at_topic_idx;
 
 
 --
--- Name: messages_2026_07_23_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_06_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_07_23_inserted_at_topic_idx;
+ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_08_06_pkey;
 
 
 --
--- Name: messages_2026_07_23_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: messages_2026_08_07_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_07_23_pkey;
+ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_08_07_inserted_at_topic_idx;
+
+
+--
+-- Name: messages_2026_08_07_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_08_07_pkey;
+
+
+--
+-- Name: messages_2026_08_08_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_08_08_inserted_at_topic_idx;
+
+
+--
+-- Name: messages_2026_08_08_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_08_08_pkey;
+
+
+--
+-- Name: messages_2026_08_09_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_08_09_inserted_at_topic_idx;
+
+
+--
+-- Name: messages_2026_08_09_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_08_09_pkey;
+
+
+--
+-- Name: messages_2026_08_10_inserted_at_topic_idx; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER INDEX realtime.messages_inserted_at_topic_index ATTACH PARTITION realtime.messages_2026_08_10_inserted_at_topic_idx;
+
+
+--
+-- Name: messages_2026_08_10_pkey; Type: INDEX ATTACH; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+ALTER INDEX realtime.messages_pkey ATTACH PARTITION realtime.messages_2026_08_10_pkey;
 
 
 --
@@ -9254,13 +8749,13 @@ CREATE PUBLICATION supabase_realtime WITH (publish = 'insert, update, delete, tr
 ALTER PUBLICATION supabase_realtime OWNER TO postgres;
 
 --
--- Name: supabase_realtime_messages_publication; Type: PUBLICATION; Schema: -; Owner: supabase_admin
+-- Name: supabase_realtime_messages_publication; Type: PUBLICATION; Schema: -; Owner: postgres
 --
 
 CREATE PUBLICATION supabase_realtime_messages_publication WITH (publish = 'insert, update, delete, truncate');
 
 
-ALTER PUBLICATION supabase_realtime_messages_publication OWNER TO supabase_admin;
+ALTER PUBLICATION supabase_realtime_messages_publication OWNER TO postgres;
 
 --
 -- Name: supabase_realtime alerts; Type: PUBLICATION TABLE; Schema: public; Owner: postgres
@@ -9410,7 +8905,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE ONLY public.support_tickets;
 
 
 --
--- Name: supabase_realtime_messages_publication messages; Type: PUBLICATION TABLE; Schema: realtime; Owner: supabase_admin
+-- Name: supabase_realtime_messages_publication messages; Type: PUBLICATION TABLE; Schema: realtime; Owner: postgres
 --
 
 ALTER PUBLICATION supabase_realtime_messages_publication ADD TABLE ONLY realtime.messages;
@@ -9439,13 +8934,13 @@ GRANT ALL ON SCHEMA extensions TO dashboard_user;
 
 
 --
--- Name: SCHEMA public; Type: ACL; Schema: -; Owner: postgres
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: pg_database_owner
 --
 
-REVOKE USAGE ON SCHEMA public FROM PUBLIC;
-GRANT ALL ON SCHEMA public TO anon;
-GRANT ALL ON SCHEMA public TO authenticated;
-GRANT ALL ON SCHEMA public TO service_role;
+GRANT USAGE ON SCHEMA public TO postgres;
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO service_role;
 
 
 --
@@ -9454,9 +8949,9 @@ GRANT ALL ON SCHEMA public TO service_role;
 
 GRANT USAGE ON SCHEMA realtime TO postgres WITH GRANT OPTION;
 GRANT USAGE ON SCHEMA realtime TO anon;
-GRANT USAGE ON SCHEMA realtime TO authenticated;
 GRANT USAGE ON SCHEMA realtime TO service_role;
-GRANT ALL ON SCHEMA realtime TO supabase_realtime_admin;
+GRANT ALL ON SCHEMA realtime TO supabase_realtime_admin WITH GRANT OPTION;
+GRANT USAGE ON SCHEMA realtime TO authenticated;
 
 
 --
@@ -10021,10 +9516,48 @@ GRANT ALL ON FUNCTION pgbouncer.get_auth(p_usename text) TO pgbouncer;
 
 
 --
+-- Name: FUNCTION bin_stock_default_batch(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.bin_stock_default_batch() TO anon;
+GRANT ALL ON FUNCTION public.bin_stock_default_batch() TO authenticated;
+GRANT ALL ON FUNCTION public.bin_stock_default_batch() TO service_role;
+
+
+--
+-- Name: FUNCTION bin_stock_updated_at(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.bin_stock_updated_at() TO anon;
+GRANT ALL ON FUNCTION public.bin_stock_updated_at() TO authenticated;
+GRANT ALL ON FUNCTION public.bin_stock_updated_at() TO service_role;
+
+
+--
+-- Name: FUNCTION finalize_payroll_cycle(target_cycle text, operator_email text); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.finalize_payroll_cycle(target_cycle text, operator_email text) TO anon;
+GRANT ALL ON FUNCTION public.finalize_payroll_cycle(target_cycle text, operator_email text) TO authenticated;
+GRANT ALL ON FUNCTION public.finalize_payroll_cycle(target_cycle text, operator_email text) TO service_role;
+
+
+--
+-- Name: FUNCTION insert_purchase_record(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.insert_purchase_record() TO anon;
+GRANT ALL ON FUNCTION public.insert_purchase_record() TO authenticated;
+GRANT ALL ON FUNCTION public.insert_purchase_record() TO service_role;
+
+
+--
 -- Name: FUNCTION insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone); Type: ACL; Schema: public; Owner: postgres
 --
 
 GRANT ALL ON FUNCTION public.insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone) TO anon;
+GRANT ALL ON FUNCTION public.insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone) TO authenticated;
+GRANT ALL ON FUNCTION public.insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone) TO service_role;
 
 
 --
@@ -10032,6 +9565,53 @@ GRANT ALL ON FUNCTION public.insert_purchase_record(purchase_order_number text, 
 --
 
 GRANT ALL ON FUNCTION public.insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone, batch_id text, po_created boolean, po_pdf_url text, expected_delivery_date date) TO anon;
+GRANT ALL ON FUNCTION public.insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone, batch_id text, po_created boolean, po_pdf_url text, expected_delivery_date date) TO authenticated;
+GRANT ALL ON FUNCTION public.insert_purchase_record(purchase_order_number text, supplier_name text, supplier_id text, item_name text, product_name text, quantity integer, total_amount numeric, status text, order_date timestamp with time zone, expected_delivery timestamp with time zone, batch_id text, po_created boolean, po_pdf_url text, expected_delivery_date date) TO service_role;
+
+
+--
+-- Name: FUNCTION production_recipes_delete(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.production_recipes_delete() TO anon;
+GRANT ALL ON FUNCTION public.production_recipes_delete() TO authenticated;
+GRANT ALL ON FUNCTION public.production_recipes_delete() TO service_role;
+
+
+--
+-- Name: FUNCTION production_recipes_insert(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.production_recipes_insert() TO anon;
+GRANT ALL ON FUNCTION public.production_recipes_insert() TO authenticated;
+GRANT ALL ON FUNCTION public.production_recipes_insert() TO service_role;
+
+
+--
+-- Name: FUNCTION production_recipes_update(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.production_recipes_update() TO anon;
+GRANT ALL ON FUNCTION public.production_recipes_update() TO authenticated;
+GRANT ALL ON FUNCTION public.production_recipes_update() TO service_role;
+
+
+--
+-- Name: FUNCTION supplier_insert_trigger_func(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.supplier_insert_trigger_func() TO anon;
+GRANT ALL ON FUNCTION public.supplier_insert_trigger_func() TO authenticated;
+GRANT ALL ON FUNCTION public.supplier_insert_trigger_func() TO service_role;
+
+
+--
+-- Name: FUNCTION warehouse_bins_generate_label(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.warehouse_bins_generate_label() TO anon;
+GRANT ALL ON FUNCTION public.warehouse_bins_generate_label() TO authenticated;
+GRANT ALL ON FUNCTION public.warehouse_bins_generate_label() TO service_role;
 
 
 --
@@ -10433,96 +10013,115 @@ GRANT ALL ON TABLE extensions.pg_stat_statements_info TO dashboard_user;
 -- Name: TABLE accounts; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.accounts TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.accounts TO authenticated;
+GRANT ALL ON TABLE public.accounts TO anon;
+GRANT ALL ON TABLE public.accounts TO authenticated;
+GRANT ALL ON TABLE public.accounts TO service_role;
 
 
 --
 -- Name: TABLE alerts; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.alerts TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.alerts TO authenticated;
+GRANT ALL ON TABLE public.alerts TO anon;
+GRANT ALL ON TABLE public.alerts TO authenticated;
+GRANT ALL ON TABLE public.alerts TO service_role;
+
+
+--
+-- Name: TABLE attendance_logs; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.attendance_logs TO anon;
+GRANT ALL ON TABLE public.attendance_logs TO authenticated;
+GRANT ALL ON TABLE public.attendance_logs TO service_role;
 
 
 --
 -- Name: TABLE audit_logs; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.audit_logs TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.audit_logs TO authenticated;
+GRANT ALL ON TABLE public.audit_logs TO anon;
+GRANT ALL ON TABLE public.audit_logs TO authenticated;
+GRANT ALL ON TABLE public.audit_logs TO service_role;
 
 
 --
 -- Name: TABLE b2b_documents; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.b2b_documents TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.b2b_documents TO authenticated;
+GRANT ALL ON TABLE public.b2b_documents TO anon;
+GRANT ALL ON TABLE public.b2b_documents TO authenticated;
+GRANT ALL ON TABLE public.b2b_documents TO service_role;
 
 
 --
 -- Name: TABLE inventory; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.inventory TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.inventory TO authenticated;
+GRANT ALL ON TABLE public.inventory TO anon;
+GRANT ALL ON TABLE public.inventory TO authenticated;
+GRANT ALL ON TABLE public.inventory TO service_role;
 
 
 --
 -- Name: TABLE inventory_batches; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.inventory_batches TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.inventory_batches TO authenticated;
+GRANT ALL ON TABLE public.inventory_batches TO anon;
+GRANT ALL ON TABLE public.inventory_batches TO authenticated;
+GRANT ALL ON TABLE public.inventory_batches TO service_role;
 
 
 --
 -- Name: TABLE production_batches; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.production_batches TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.production_batches TO authenticated;
+GRANT ALL ON TABLE public.production_batches TO anon;
+GRANT ALL ON TABLE public.production_batches TO authenticated;
+GRANT ALL ON TABLE public.production_batches TO service_role;
 
 
 --
 -- Name: TABLE production_rm_consumption; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.production_rm_consumption TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.production_rm_consumption TO authenticated;
+GRANT ALL ON TABLE public.production_rm_consumption TO anon;
+GRANT ALL ON TABLE public.production_rm_consumption TO authenticated;
+GRANT ALL ON TABLE public.production_rm_consumption TO service_role;
 
 
 --
 -- Name: TABLE purchase_records; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.purchase_records TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.purchase_records TO authenticated;
+GRANT ALL ON TABLE public.purchase_records TO anon;
+GRANT ALL ON TABLE public.purchase_records TO authenticated;
+GRANT ALL ON TABLE public.purchase_records TO service_role;
 
 
 --
 -- Name: TABLE batch_trace_view; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT ON TABLE public.batch_trace_view TO anon;
-GRANT SELECT ON TABLE public.batch_trace_view TO authenticated;
+GRANT ALL ON TABLE public.batch_trace_view TO anon;
+GRANT ALL ON TABLE public.batch_trace_view TO authenticated;
+GRANT ALL ON TABLE public.batch_trace_view TO service_role;
 
 
 --
 -- Name: TABLE chat_ai_log; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT ALL ON TABLE public.chat_ai_log TO service_role;
-GRANT ALL ON TABLE public.chat_ai_log TO authenticated;
 GRANT ALL ON TABLE public.chat_ai_log TO anon;
+GRANT ALL ON TABLE public.chat_ai_log TO authenticated;
+GRANT ALL ON TABLE public.chat_ai_log TO service_role;
 
 
 --
 -- Name: TABLE chat_channels; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.chat_channels TO anon;
+GRANT ALL ON TABLE public.chat_channels TO anon;
 GRANT ALL ON TABLE public.chat_channels TO authenticated;
 GRANT ALL ON TABLE public.chat_channels TO service_role;
 
@@ -10531,7 +10130,7 @@ GRANT ALL ON TABLE public.chat_channels TO service_role;
 -- Name: TABLE chat_messages; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.chat_messages TO anon;
+GRANT ALL ON TABLE public.chat_messages TO anon;
 GRANT ALL ON TABLE public.chat_messages TO authenticated;
 GRANT ALL ON TABLE public.chat_messages TO service_role;
 
@@ -10540,265 +10139,441 @@ GRANT ALL ON TABLE public.chat_messages TO service_role;
 -- Name: TABLE chat_participants; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.chat_participants TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.chat_participants TO authenticated;
+GRANT ALL ON TABLE public.chat_participants TO anon;
+GRANT ALL ON TABLE public.chat_participants TO authenticated;
+GRANT ALL ON TABLE public.chat_participants TO service_role;
+
+
+--
+-- Name: TABLE company_settings; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.company_settings TO anon;
+GRANT ALL ON TABLE public.company_settings TO authenticated;
+GRANT ALL ON TABLE public.company_settings TO service_role;
 
 
 --
 -- Name: TABLE customer_accounts; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.customer_accounts TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.customer_accounts TO authenticated;
+GRANT ALL ON TABLE public.customer_accounts TO anon;
+GRANT ALL ON TABLE public.customer_accounts TO authenticated;
+GRANT ALL ON TABLE public.customer_accounts TO service_role;
 
 
 --
 -- Name: TABLE customer_orders; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.customer_orders TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.customer_orders TO authenticated;
+GRANT ALL ON TABLE public.customer_orders TO anon;
+GRANT ALL ON TABLE public.customer_orders TO authenticated;
+GRANT ALL ON TABLE public.customer_orders TO service_role;
 
 
 --
 -- Name: TABLE customer_support_chats; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.customer_support_chats TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.customer_support_chats TO authenticated;
+GRANT ALL ON TABLE public.customer_support_chats TO anon;
+GRANT ALL ON TABLE public.customer_support_chats TO authenticated;
+GRANT ALL ON TABLE public.customer_support_chats TO service_role;
+
+
+--
+-- Name: TABLE dispatch_picklists; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.dispatch_picklists TO anon;
+GRANT ALL ON TABLE public.dispatch_picklists TO authenticated;
+GRANT ALL ON TABLE public.dispatch_picklists TO service_role;
 
 
 --
 -- Name: TABLE entries; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.entries TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.entries TO authenticated;
+GRANT ALL ON TABLE public.entries TO anon;
+GRANT ALL ON TABLE public.entries TO authenticated;
+GRANT ALL ON TABLE public.entries TO service_role;
 
 
 --
 -- Name: TABLE entry_lines; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.entry_lines TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.entry_lines TO authenticated;
+GRANT ALL ON TABLE public.entry_lines TO anon;
+GRANT ALL ON TABLE public.entry_lines TO authenticated;
+GRANT ALL ON TABLE public.entry_lines TO service_role;
 
 
 --
 -- Name: TABLE factory_bookings; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.factory_bookings TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.factory_bookings TO authenticated;
+GRANT ALL ON TABLE public.factory_bookings TO anon;
+GRANT ALL ON TABLE public.factory_bookings TO authenticated;
+GRANT ALL ON TABLE public.factory_bookings TO service_role;
 
 
 --
 -- Name: TABLE fulfillment_orders; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fulfillment_orders TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fulfillment_orders TO authenticated;
+GRANT ALL ON TABLE public.fulfillment_orders TO anon;
+GRANT ALL ON TABLE public.fulfillment_orders TO authenticated;
+GRANT ALL ON TABLE public.fulfillment_orders TO service_role;
 
 
 --
 -- Name: TABLE fulfillment_records; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fulfillment_records TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fulfillment_records TO authenticated;
+GRANT ALL ON TABLE public.fulfillment_records TO anon;
+GRANT ALL ON TABLE public.fulfillment_records TO authenticated;
+GRANT ALL ON TABLE public.fulfillment_records TO service_role;
 
 
 --
 -- Name: TABLE inventory_logs; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.inventory_logs TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.inventory_logs TO authenticated;
+GRANT ALL ON TABLE public.inventory_logs TO anon;
+GRANT ALL ON TABLE public.inventory_logs TO authenticated;
+GRANT ALL ON TABLE public.inventory_logs TO service_role;
 
 
 --
 -- Name: TABLE inventory_transactions; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.inventory_transactions TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.inventory_transactions TO authenticated;
+GRANT ALL ON TABLE public.inventory_transactions TO anon;
+GRANT ALL ON TABLE public.inventory_transactions TO authenticated;
+GRANT ALL ON TABLE public.inventory_transactions TO service_role;
 
 
 --
 -- Name: TABLE ledger; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ledger TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ledger TO authenticated;
+GRANT ALL ON TABLE public.ledger TO anon;
+GRANT ALL ON TABLE public.ledger TO authenticated;
+GRANT ALL ON TABLE public.ledger TO service_role;
 
 
 --
 -- Name: TABLE logistic_returns; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.logistic_returns TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.logistic_returns TO authenticated;
+GRANT ALL ON TABLE public.logistic_returns TO anon;
+GRANT ALL ON TABLE public.logistic_returns TO authenticated;
+GRANT ALL ON TABLE public.logistic_returns TO service_role;
 
 
 --
 -- Name: TABLE order_fulfillments; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.order_fulfillments TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.order_fulfillments TO authenticated;
+GRANT ALL ON TABLE public.order_fulfillments TO anon;
+GRANT ALL ON TABLE public.order_fulfillments TO authenticated;
+GRANT ALL ON TABLE public.order_fulfillments TO service_role;
 
 
 --
 -- Name: TABLE order_items; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.order_items TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.order_items TO authenticated;
+GRANT ALL ON TABLE public.order_items TO anon;
+GRANT ALL ON TABLE public.order_items TO authenticated;
+GRANT ALL ON TABLE public.order_items TO service_role;
 
 
 --
 -- Name: TABLE orders; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.orders TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.orders TO authenticated;
+GRANT ALL ON TABLE public.orders TO anon;
+GRANT ALL ON TABLE public.orders TO authenticated;
+GRANT ALL ON TABLE public.orders TO service_role;
 
 
 --
 -- Name: TABLE outreach_campaigns; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.outreach_campaigns TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.outreach_campaigns TO authenticated;
+GRANT ALL ON TABLE public.outreach_campaigns TO anon;
+GRANT ALL ON TABLE public.outreach_campaigns TO authenticated;
+GRANT ALL ON TABLE public.outreach_campaigns TO service_role;
+
+
+--
+-- Name: TABLE outreach_dispatch_log; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.outreach_dispatch_log TO anon;
+GRANT ALL ON TABLE public.outreach_dispatch_log TO authenticated;
+GRANT ALL ON TABLE public.outreach_dispatch_log TO service_role;
+
+
+--
+-- Name: SEQUENCE outreach_dispatch_log_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.outreach_dispatch_log_id_seq TO anon;
+GRANT ALL ON SEQUENCE public.outreach_dispatch_log_id_seq TO authenticated;
+GRANT ALL ON SEQUENCE public.outreach_dispatch_log_id_seq TO service_role;
+
+
+--
+-- Name: TABLE outreach_unsubscribes; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.outreach_unsubscribes TO anon;
+GRANT ALL ON TABLE public.outreach_unsubscribes TO authenticated;
+GRANT ALL ON TABLE public.outreach_unsubscribes TO service_role;
+
+
+--
+-- Name: SEQUENCE outreach_unsubscribes_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.outreach_unsubscribes_id_seq TO anon;
+GRANT ALL ON SEQUENCE public.outreach_unsubscribes_id_seq TO authenticated;
+GRANT ALL ON SEQUENCE public.outreach_unsubscribes_id_seq TO service_role;
 
 
 --
 -- Name: TABLE overheads; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.overheads TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.overheads TO authenticated;
+GRANT ALL ON TABLE public.overheads TO anon;
+GRANT ALL ON TABLE public.overheads TO authenticated;
+GRANT ALL ON TABLE public.overheads TO service_role;
 
 
 --
 -- Name: TABLE payroll_records; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.payroll_records TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.payroll_records TO authenticated;
+GRANT ALL ON TABLE public.payroll_records TO anon;
+GRANT ALL ON TABLE public.payroll_records TO authenticated;
+GRANT ALL ON TABLE public.payroll_records TO service_role;
+
+
+--
+-- Name: TABLE payroll_run_details; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.payroll_run_details TO anon;
+GRANT ALL ON TABLE public.payroll_run_details TO authenticated;
+GRANT ALL ON TABLE public.payroll_run_details TO service_role;
+
+
+--
+-- Name: TABLE payroll_runs; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.payroll_runs TO anon;
+GRANT ALL ON TABLE public.payroll_runs TO authenticated;
+GRANT ALL ON TABLE public.payroll_runs TO service_role;
 
 
 --
 -- Name: TABLE production_fg_allocation; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.production_fg_allocation TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.production_fg_allocation TO authenticated;
+GRANT ALL ON TABLE public.production_fg_allocation TO anon;
+GRANT ALL ON TABLE public.production_fg_allocation TO authenticated;
+GRANT ALL ON TABLE public.production_fg_allocation TO service_role;
+
+
+--
+-- Name: TABLE production_recipes; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.production_recipes TO anon;
+GRANT ALL ON TABLE public.production_recipes TO authenticated;
+GRANT ALL ON TABLE public.production_recipes TO service_role;
 
 
 --
 -- Name: TABLE products; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.products TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.products TO authenticated;
+GRANT ALL ON TABLE public.products TO anon;
+GRANT ALL ON TABLE public.products TO authenticated;
+GRANT ALL ON TABLE public.products TO service_role;
 
 
 --
 -- Name: TABLE raw_material_orders; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.raw_material_orders TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.raw_material_orders TO authenticated;
+GRANT ALL ON TABLE public.raw_material_orders TO anon;
+GRANT ALL ON TABLE public.raw_material_orders TO authenticated;
+GRANT ALL ON TABLE public.raw_material_orders TO service_role;
 
 
 --
 -- Name: TABLE raw_materials; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.raw_materials TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.raw_materials TO authenticated;
+GRANT ALL ON TABLE public.raw_materials TO anon;
+GRANT ALL ON TABLE public.raw_materials TO authenticated;
+GRANT ALL ON TABLE public.raw_materials TO service_role;
+
+
+--
+-- Name: TABLE rbac_history; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.rbac_history TO anon;
+GRANT ALL ON TABLE public.rbac_history TO authenticated;
+GRANT ALL ON TABLE public.rbac_history TO service_role;
+
+
+--
+-- Name: SEQUENCE rbac_history_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.rbac_history_id_seq TO anon;
+GRANT ALL ON SEQUENCE public.rbac_history_id_seq TO authenticated;
+GRANT ALL ON SEQUENCE public.rbac_history_id_seq TO service_role;
+
+
+--
+-- Name: TABLE rbac_overrides; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.rbac_overrides TO anon;
+GRANT ALL ON TABLE public.rbac_overrides TO authenticated;
+GRANT ALL ON TABLE public.rbac_overrides TO service_role;
+
+
+--
+-- Name: SEQUENCE rbac_overrides_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.rbac_overrides_id_seq TO anon;
+GRANT ALL ON SEQUENCE public.rbac_overrides_id_seq TO authenticated;
+GRANT ALL ON SEQUENCE public.rbac_overrides_id_seq TO service_role;
+
+
+--
+-- Name: TABLE rbac_page_access; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.rbac_page_access TO anon;
+GRANT ALL ON TABLE public.rbac_page_access TO authenticated;
+GRANT ALL ON TABLE public.rbac_page_access TO service_role;
+
+
+--
+-- Name: SEQUENCE rbac_page_access_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.rbac_page_access_id_seq TO anon;
+GRANT ALL ON SEQUENCE public.rbac_page_access_id_seq TO authenticated;
+GRANT ALL ON SEQUENCE public.rbac_page_access_id_seq TO service_role;
 
 
 --
 -- Name: TABLE recipes; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.recipes TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.recipes TO authenticated;
+GRANT ALL ON TABLE public.recipes TO anon;
+GRANT ALL ON TABLE public.recipes TO authenticated;
+GRANT ALL ON TABLE public.recipes TO service_role;
 
 
 --
 -- Name: TABLE retail_buyers; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.retail_buyers TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.retail_buyers TO authenticated;
+GRANT ALL ON TABLE public.retail_buyers TO anon;
+GRANT ALL ON TABLE public.retail_buyers TO authenticated;
+GRANT ALL ON TABLE public.retail_buyers TO service_role;
 
 
 --
 -- Name: TABLE retail_purchase_items; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.retail_purchase_items TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.retail_purchase_items TO authenticated;
+GRANT ALL ON TABLE public.retail_purchase_items TO anon;
+GRANT ALL ON TABLE public.retail_purchase_items TO authenticated;
+GRANT ALL ON TABLE public.retail_purchase_items TO service_role;
 
 
 --
 -- Name: TABLE retail_purchases; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.retail_purchases TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.retail_purchases TO authenticated;
+GRANT ALL ON TABLE public.retail_purchases TO anon;
+GRANT ALL ON TABLE public.retail_purchases TO authenticated;
+GRANT ALL ON TABLE public.retail_purchases TO service_role;
+
+
+--
+-- Name: TABLE salaries; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.salaries TO anon;
+GRANT ALL ON TABLE public.salaries TO authenticated;
+GRANT ALL ON TABLE public.salaries TO service_role;
 
 
 --
 -- Name: TABLE staff_profiles; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_profiles TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_profiles TO authenticated;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_profiles TO service_role;
+GRANT ALL ON TABLE public.staff_profiles TO anon;
+GRANT ALL ON TABLE public.staff_profiles TO authenticated;
+GRANT ALL ON TABLE public.staff_profiles TO service_role;
 
 
 --
 -- Name: TABLE staff_timesheets; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_timesheets TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.staff_timesheets TO authenticated;
+GRANT ALL ON TABLE public.staff_timesheets TO anon;
+GRANT ALL ON TABLE public.staff_timesheets TO authenticated;
+GRANT ALL ON TABLE public.staff_timesheets TO service_role;
 
 
 --
 -- Name: TABLE supplier_quotations; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.supplier_quotations TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.supplier_quotations TO authenticated;
+GRANT ALL ON TABLE public.supplier_quotations TO anon;
+GRANT ALL ON TABLE public.supplier_quotations TO authenticated;
+GRANT ALL ON TABLE public.supplier_quotations TO service_role;
 
 
 --
 -- Name: TABLE suppliers; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.suppliers TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.suppliers TO authenticated;
+GRANT ALL ON TABLE public.suppliers TO anon;
+GRANT ALL ON TABLE public.suppliers TO authenticated;
+GRANT ALL ON TABLE public.suppliers TO service_role;
 
 
 --
 -- Name: TABLE support_messages; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_messages TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_messages TO authenticated;
+GRANT ALL ON TABLE public.support_messages TO anon;
+GRANT ALL ON TABLE public.support_messages TO authenticated;
+GRANT ALL ON TABLE public.support_messages TO service_role;
 
 
 --
 -- Name: TABLE support_tickets; Type: ACL; Schema: public; Owner: postgres
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_tickets TO anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_tickets TO authenticated;
+GRANT ALL ON TABLE public.support_tickets TO anon;
+GRANT ALL ON TABLE public.support_tickets TO authenticated;
+GRANT ALL ON TABLE public.support_tickets TO service_role;
 
 
 --
@@ -10813,51 +10588,67 @@ GRANT SELECT,INSERT,UPDATE ON TABLE realtime.messages TO service_role;
 
 
 --
--- Name: TABLE messages_2026_07_17; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: TABLE messages_2026_08_04; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-GRANT ALL ON TABLE realtime.messages_2026_07_17 TO postgres;
-GRANT ALL ON TABLE realtime.messages_2026_07_17 TO dashboard_user;
-
-
---
--- Name: TABLE messages_2026_07_19; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
---
-
-GRANT ALL ON TABLE realtime.messages_2026_07_19 TO postgres;
-GRANT ALL ON TABLE realtime.messages_2026_07_19 TO dashboard_user;
+GRANT ALL ON TABLE realtime.messages_2026_08_04 TO postgres;
+GRANT ALL ON TABLE realtime.messages_2026_08_04 TO dashboard_user;
 
 
 --
--- Name: TABLE messages_2026_07_20; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: TABLE messages_2026_08_05; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-GRANT ALL ON TABLE realtime.messages_2026_07_20 TO postgres;
-GRANT ALL ON TABLE realtime.messages_2026_07_20 TO dashboard_user;
-
-
---
--- Name: TABLE messages_2026_07_21; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
---
-
-GRANT ALL ON TABLE realtime.messages_2026_07_21 TO postgres;
-GRANT ALL ON TABLE realtime.messages_2026_07_21 TO dashboard_user;
+GRANT ALL ON TABLE realtime.messages_2026_08_05 TO postgres;
+GRANT ALL ON TABLE realtime.messages_2026_08_05 TO dashboard_user;
 
 
 --
--- Name: TABLE messages_2026_07_22; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: TABLE messages_2026_08_06; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-GRANT ALL ON TABLE realtime.messages_2026_07_22 TO postgres;
-GRANT ALL ON TABLE realtime.messages_2026_07_22 TO dashboard_user;
+GRANT ALL ON TABLE realtime.messages_2026_08_06 TO postgres;
+GRANT ALL ON TABLE realtime.messages_2026_08_06 TO dashboard_user;
 
 
 --
--- Name: TABLE messages_2026_07_23; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
+-- Name: TABLE messages_2026_08_07; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
 --
 
-GRANT ALL ON TABLE realtime.messages_2026_07_23 TO postgres;
-GRANT ALL ON TABLE realtime.messages_2026_07_23 TO dashboard_user;
+GRANT ALL ON TABLE realtime.messages_2026_08_07 TO postgres;
+GRANT ALL ON TABLE realtime.messages_2026_08_07 TO dashboard_user;
+
+
+--
+-- Name: TABLE messages_2026_08_08; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+GRANT ALL ON TABLE realtime.messages_2026_08_08 TO postgres;
+GRANT ALL ON TABLE realtime.messages_2026_08_08 TO dashboard_user;
+
+
+--
+-- Name: TABLE messages_2026_08_09; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+GRANT ALL ON TABLE realtime.messages_2026_08_09 TO postgres;
+GRANT ALL ON TABLE realtime.messages_2026_08_09 TO dashboard_user;
+
+
+--
+-- Name: TABLE messages_2026_08_10; Type: ACL; Schema: realtime; Owner: supabase_realtime_admin
+--
+
+GRANT ALL ON TABLE realtime.messages_2026_08_10 TO postgres;
+GRANT ALL ON TABLE realtime.messages_2026_08_10 TO dashboard_user;
+
+
+--
+-- Name: TABLE schema_migrations; Type: ACL; Schema: realtime; Owner: supabase_admin
+--
+
+GRANT ALL ON TABLE realtime.schema_migrations TO postgres;
+GRANT ALL ON TABLE realtime.schema_migrations TO dashboard_user;
 
 
 --
@@ -11073,6 +10864,66 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA graphql_public GRANT 
 
 
 --
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+
+
+--
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: realtime; Owner: supabase_admin
 --
 
@@ -11153,7 +11004,7 @@ ALTER EVENT TRIGGER issue_pg_cron_access OWNER TO supabase_admin;
 --
 
 CREATE EVENT TRIGGER issue_pg_graphql_access ON ddl_command_end
-         WHEN TAG IN ('CREATE FUNCTION')
+         WHEN TAG IN ('CREATE EXTENSION')
    EXECUTE FUNCTION extensions.grant_pg_graphql_access();
 
 
@@ -11194,5 +11045,5 @@ ALTER EVENT TRIGGER pgrst_drop_watch OWNER TO supabase_admin;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rsw4hDquQWejXqXeplZhSntWw2ae4e0TJiKSh0uoxX0ytEFKBcerXHsPOoiPGCl
+\unrestrict qQFDHKQq8nsUuoz9ft8o6hzaKmUf7VDxNlJOZab0GAoNC2MnPnoILLsJSj6ap12
 
