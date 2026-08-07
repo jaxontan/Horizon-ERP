@@ -354,24 +354,29 @@
                     }
 
                     // Success! Proceed with animation
-                    statusMsg.textContent = "Access Granted";
-                    statusMsg.className = "text-[11px] font-extrabold text-center text-green-700 h-4 mt-1 transition-opacity opacity-100 tracking-widest uppercase";
-
-                    packetContainer.style.transform = 'scale(1.05) translateY(-20px)';
-                    gap.style.background = '#1a0d06';
+                    statusMsg.textContent = "Verifying Session & Role...";
+                    statusMsg.className = "text-[11px] font-extrabold text-center text-[#d34e0a] h-4 mt-1 transition-opacity opacity-100 tracking-widest uppercase";
 
                     setTimeout(() => {
-                        const redirects = {
-                            admin: 'business-management/finances/operation.html',
-                            accountant: 'business-management/finances/operation.html',
-                            procurement: 'business-management/Supplier-management/index.html',
-                            production: 'warehouse/inventory.html',
-                            logistic: 'logistic/fulfillment.html',
-                            sales: 'business-management/customer-management/customer-order/index.html',
-                            client: 'customer-page/index.html'
-                        };
-                        window.location.href = redirects[userRole] || 'business-management/finances/operation.html';
-                    }, 1200);
+                        statusMsg.textContent = "Access Granted — Redirecting...";
+                        statusMsg.className = "text-[11px] font-extrabold text-center text-green-700 h-4 mt-1 transition-opacity opacity-100 tracking-widest uppercase";
+
+                        packetContainer.style.transform = 'scale(1.05) translateY(-20px)';
+                        gap.style.background = '#1a0d06';
+
+                        setTimeout(() => {
+                            const redirects = {
+                                admin: 'business-management/finances/operation.html',
+                                accountant: 'business-management/finances/operation.html',
+                                procurement: 'business-management/Supplier-management/index.html',
+                                production: 'warehouse/inventory.html',
+                                logistic: 'logistic/fulfillment.html',
+                                sales: 'business-management/customer-management/customer-order/index.html',
+                                client: 'customer-page/index.html'
+                            };
+                            window.location.href = redirects[userRole] || 'business-management/finances/operation.html';
+                        }, 1000);
+                    }, 400);
                 }
 
                 performLogin();
@@ -383,7 +388,65 @@
                 statusMsg.style.opacity = 0;
             }
         });
+
+        // ── Developer Notes Popup (User Click to Dismiss) ─────────────────────
+        function closeDevNotesModal() {
+            const modal = document.getElementById('dev-notes-modal');
+            if (modal) {
+                modal.style.opacity = '0';
+                modal.style.pointerEvents = 'none';
+                setTimeout(() => modal.remove(), 300);
+            }
+        }
     </script>
+
+    <!-- Developer to User Notes Popup Modal -->
+    <div id="dev-notes-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300">
+        <div class="relative w-full max-w-lg bg-white/95 rounded-2xl p-6 shadow-2xl border border-white/40 overflow-hidden transform transition-all duration-300 scale-100">
+            <!-- Top gradient accent -->
+            <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#d34e0a] via-amber-500 to-indigo-600"></div>
+
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-[#d34e0a]/10 flex items-center justify-center text-[#d34e0a] shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">terminal</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-headline-sm text-base font-extrabold text-[#3a1d0f]">Developer Notes to User</h3>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-200">Notice</span>
+                        </div>
+                        <p class="text-[11px] font-semibold text-gray-500">Important System Operational Guideline</p>
+                    </div>
+                </div>
+                <button onclick="closeDevNotesModal()" class="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">close</span>
+                </button>
+            </div>
+
+            <div class="bg-amber-50/90 border border-amber-200 rounded-xl p-4 mb-4 text-xs text-[#4a2e15] space-y-2">
+                <p class="font-bold text-[#3a1d0f] flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-amber-700 text-[16px]">info</span>
+                    Operational Guidelines:
+                </p>
+                <ul class="space-y-1.5 text-[11px] text-[#4a2e15] pl-5 list-disc font-medium leading-relaxed">
+                    <li><strong>Wait for Processes to Finish:</strong> When using the system, please wait for all background processes, API operations, and status checks to complete loading before making your next move.</li>
+                    <li><strong>Auto Redirection & Status Updates:</strong> The system features real-time status updates and automatic redirection — ensure steps finish loading completely for a smooth experience.</li>
+                </ul>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                <div class="flex items-center gap-2 text-xs font-bold text-gray-500">
+                    <span class="w-2 h-2 rounded-full bg-[#d34e0a]"></span>
+                    <span>Please read & acknowledge before proceeding</span>
+                </div>
+                <button onclick="closeDevNotesModal()" class="px-4 py-2 bg-[#3a1d0f] hover:bg-[#5a2e15] text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow flex items-center gap-1.5 cursor-pointer">
+                    <span>Got it, Proceed</span>
+                    <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
