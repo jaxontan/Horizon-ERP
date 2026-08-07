@@ -2709,6 +2709,7 @@ async function upsertFulfillmentRows(rows) {
     // a failed checkout (which threw) never reaches this point.
     try {
       const releaseStatuses = new Set([
+        'fulfilled', 'shipped', 'delivered', 'completed', 'complete',
         'cancelled', 'canceled',
         'refund_requested', 'refunded', 'refund rejected',
         'rejected', 'closed'
@@ -3233,19 +3234,28 @@ async function sweepOrphanFGAllocations() {
       }
     }
     if (sourceFound) {
-      // Deduplicate live order allocations: if multiple allocation passes exist for this order, re-sync it cleanly
-      const distinctFulfillments = new Set(rows.map(r => r.fulfillment_id).filter(Boolean));
-      const hasDuplicates = rows.length > 1 && (
-        new Set(rows.map(r => r.fifo_order)).size < rows.length ||
-        distinctFulfillments.size < rows.length
-      );
-      if (hasDuplicates && foundRow && foundTable) {
-        console.log(`[FIFO FG] Deduplicating allocations for live order ${orderNumber} (${rows.length} allocation rows found)`);
-        await upsertFulfillmentRows([{ ...foundRow, __sourceTable: foundTable }]).catch(err => {
-          console.warn(`[FIFO FG] Deduplication re-sync for ${orderNumber} failed:`, err?.message || err);
-        });
+      const srcStatus = String(foundRow?.status || foundRow?.shipping_status || '').trim().toLowerCase();
+      const FULFILLED_SOURCE_STATUSES = new Set([
+        'fulfilled', 'shipped', 'delivered', 'completed', 'complete',
+        'refunded', 'refund_requested', 'cancelled', 'canceled',
+        'rejected', 'closed'
+      ]);
+      if (!FULFILLED_SOURCE_STATUSES.has(srcStatus)) {
+        // Deduplicate live order allocations: if multiple allocation passes exist for this order, re-sync it cleanly
+        const distinctFulfillments = new Set(rows.map(r => r.fulfillment_id).filter(Boolean));
+        const hasDuplicates = rows.length > 1 && (
+          new Set(rows.map(r => r.fifo_order)).size < rows.length ||
+          distinctFulfillments.size < rows.length
+        );
+        if (hasDuplicates && foundRow && foundTable) {
+          console.log(`[FIFO FG] Deduplicating allocations for live order ${orderNumber} (${rows.length} allocation rows found)`);
+          await upsertFulfillmentRows([{ ...foundRow, __sourceTable: foundTable }]).catch(err => {
+            console.warn(`[FIFO FG] Deduplication re-sync for ${orderNumber} failed:`, err?.message || err);
+          });
+        }
+        continue;
       }
-      continue;
+      console.log(`[FIFO FG] Sweep: releasing allocations for terminal/fulfilled order ${orderNumber} (status=${srcStatus})`);
     }
 
     for (const a of rows) {

@@ -647,28 +647,68 @@
                         const allocs = await supabaseAPI({
                             table: 'production_fg_allocation',
                             operation: 'select',
-                            columns: 'product_name, product_code, qty_allocated, qty_fulfilled'
+                            columns: 'id, product_name, product_code, qty_allocated, qty_fulfilled, source_order_number, source_table, shipping_status'
                         });
                         if (allocs && allocs.length > 0) {
-                            const reservedMap = {};
-                            for (const a of allocs) {
-                                const codeKey = (a.product_code || '').trim().toLowerCase();
-                                const nameKey = (a.product_name || '').trim().toLowerCase();
+                            const TERMINAL_STATUSES = new Set([
+                                'fulfilled', 'shipped', 'delivered', 'completed', 'complete',
+                                'refunded', 'refund_requested', 'cancelled', 'canceled', 'rejected', 'closed'
+                            ]);
+
+                            // Fetch order statuses from orders & retail_purchases to check if source orders are terminal
+                            const terminalOrders = new Set();
+                            try {
+                                const [b2bOrders, b2cOrders] = await Promise.all([
+                                    supabaseAPI({ table: 'orders', operation: 'select', columns: 'order_number, status, shipping_status' }).catch(() => []),
+                                    supabaseAPI({ table: 'retail_purchases', operation: 'select', columns: 'purchase_number, status, shipping_status' }).catch(() => [])
+                                ]);
+                                (b2bOrders || []).forEach(o => {
+                                    const st = String(o.status || o.shipping_status || '').trim().toLowerCase();
+                                    if (TERMINAL_STATUSES.has(st) && o.order_number) {
+                                        terminalOrders.add(String(o.order_number).trim().toLowerCase());
+                                    }
+                                });
+                                (b2cOrders || []).forEach(o => {
+                                    const st = String(o.status || o.shipping_status || '').trim().toLowerCase();
+                                    if (TERMINAL_STATUSES.has(st) && o.purchase_number) {
+                                        terminalOrders.add(String(o.purchase_number).trim().toLowerCase());
+                                    }
+                                });
+                            } catch (_) { /* best effort order status lookup */ }
+
+                            const productReservedMap = {};
+                            allocs.forEach(a => {
+                                const shipStat = String(a.shipping_status || '').trim().toLowerCase();
+                                if (TERMINAL_STATUSES.has(shipStat)) return;
+
+                                const srcNum = String(a.source_order_number || '').trim().toLowerCase();
+                                if (srcNum && terminalOrders.has(srcNum)) return;
+
                                 const allocated = Number(a.qty_allocated || 0);
                                 const fulfilled = Number(a.qty_fulfilled || 0);
                                 const remainingAlloc = Math.max(0, allocated - fulfilled);
-                                if (remainingAlloc > 0) {
-                                    if (codeKey) reservedMap[codeKey] = (reservedMap[codeKey] || 0) + remainingAlloc;
-                                    if (nameKey && nameKey !== codeKey) reservedMap[nameKey] = (reservedMap[nameKey] || 0) + remainingAlloc;
+                                if (remainingAlloc <= 0) return;
+
+                                const codeKey = (a.product_code || '').trim().toLowerCase();
+                                const nameKey = (a.product_name || '').trim().toLowerCase();
+
+                                let targetProduct = null;
+                                if (codeKey) {
+                                    targetProduct = products.find(p => (p.item_code || p.product_code || '').trim().toLowerCase() === codeKey);
                                 }
-                            }
+                                if (!targetProduct && nameKey) {
+                                    targetProduct = products.find(p => (p.name || '').trim().toLowerCase() === nameKey);
+                                }
+                                if (targetProduct) {
+                                    const pKey = targetProduct.id || targetProduct.item_code || targetProduct.product_code;
+                                    productReservedMap[pKey] = (productReservedMap[pKey] || 0) + remainingAlloc;
+                                }
+                            });
+
                             products.forEach(p => {
-                                const cKey = (p.item_code || p.product_code || '').trim().toLowerCase();
-                                const nKey = (p.name || '').trim().toLowerCase();
-                                const resQtyByCode = (cKey && reservedMap[cKey] !== undefined) ? Number(reservedMap[cKey]) || 0 : 0;
-                                const resQtyByName = (nKey && reservedMap[nKey] !== undefined) ? Number(reservedMap[nKey]) || 0 : 0;
-                                const resQty = Math.max(resQtyByCode, resQtyByName);
-                                p.current_stock = Math.max(0, (Number(p.current_stock) || 0) - resQty);
+                                const pKey = p.id || p.item_code || p.product_code;
+                                const reserved = Number(productReservedMap[pKey] || 0);
+                                p.current_stock = Math.max(0, (Number(p.current_stock) || 0) - reserved);
                             });
                         }
                     } catch (_) { /* non-fatal lookup error */ }
