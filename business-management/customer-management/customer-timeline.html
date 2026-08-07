@@ -196,17 +196,7 @@
             <!-- Left Side: Interactive Timeline (8 Columns) -->
             <div class="lg:col-span-8 space-y-6">
                 
-                <!-- Filters and Quick Tabs Header -->
-                <div id="timeline-filters" class="hidden bg-white border border-outline-variant p-4 rounded-xl shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div class="flex gap-1.5 w-full sm:w-auto overflow-x-auto">
-                        <button onclick="filterTimeline('all', this)" class="px-4 py-2 bg-primary text-on-primary font-bold text-xs rounded-lg shadow-sm transition-all whitespace-nowrap">
-                            All Events
-                        </button>
-                        <button onclick="filterTimeline('orders', this)" class="px-4 py-2 text-on-surface-variant hover:bg-slate-50 font-bold text-xs rounded-lg transition-all whitespace-nowrap">
-                            Orders
-                        </button>
-                    </div>
-                </div>
+
 
                 <!-- Core Vertical Timeline Feed -->
                 <div class="relative timeline-line space-y-8 hidden" id="timeline-container">
@@ -739,7 +729,8 @@
                     renderHealthCounters();
                 }
                 
-                document.getElementById('timeline-filters').classList.remove('hidden');
+                const filtersEl = document.getElementById('timeline-filters');
+                if (filtersEl) filtersEl.classList.remove('hidden');
                 document.getElementById('timeline-container').classList.remove('hidden');
                 return true;
             } catch (err) {

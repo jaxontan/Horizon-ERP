@@ -3011,7 +3011,64 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
     }
 
     if (remaining > 0.001) {
-      // Hard-block: insufficient confirmed-batch stock for this order line.
+      // Fallback check: If no (or partial) confirmed batch stock is available,
+      // check if general stock exists in inventory.current_stock for items created
+      // directly in stock management without production batches.
+      let invStock = 0;
+      try {
+        const invRows = await selectRows({
+          table: 'inventory',
+          filters: { where: [{ column: 'is_active', operator: 'eq', value: true }] }
+        });
+        const invItem = (invRows || []).find(i =>
+          (i.name || '').trim().toLowerCase() === targetName ||
+          (i.item_code || '').trim().toLowerCase() === targetCode
+        );
+        if (invItem) {
+          invStock = parseFloat(invItem.current_stock || 0);
+        }
+      } catch (_) { /* ignore lookup errors */ }
+
+      if (invStock >= remaining) {
+        const unitPrice = parseFloat(item.unit_price || item.price || 0);
+        const lineTotal = remaining * unitPrice;
+        const segment = (sourceTable === 'retail_purchases') ? 'b2c' : 'b2b';
+        allocations.push({
+          fulfillment_record_id: fulfillmentId,
+          fulfillment_id: fulfillmentId,
+          source_table: sourceTable,
+          source_order_id: orderRow.id || null,
+          source_order_number: sourceOrderId,
+          customer_name: orderRow.customer_name || orderRow.client_name || null,
+          customer_email: orderRow.customer_email || null,
+          customer_phone: orderRow.customer_phone || orderRow.phone || null,
+          shipping_address: orderRow.shipping_address || orderRow.delivery_address || null,
+          segment,
+          payment_status: orderRow.payment_status || null,
+          production_batch_id: null,
+          production_batch_code: 'UNBATCHED',
+          fg_lot_number: 'GENERAL-STOCK',
+          product_name: productName,
+          product_code: productCode,
+          qty_allocated: remaining,
+          qty_fulfilled: 0,
+          unit_price: unitPrice,
+          line_total: Math.round(lineTotal * 100) / 100,
+          fifo_order: fifoOrder,
+          allocated_at: new Date().toISOString(),
+          fulfilled_at: null,
+          carrier: orderRow.carrier || null,
+          tracking_number: orderRow.tracking_number || 'Pending',
+          shipped_at: null,
+          delivery_date: null,
+          shipping_status: 'Pending'
+        });
+        remaining = 0;
+      }
+    }
+
+    if (remaining > 0.001) {
+      // Hard-block: insufficient stock across both production batches and inventory.
       // Throw a structured error so the caller can roll back the just-inserted
       // source row and surface a 409 to the client.
       const err = new Error(

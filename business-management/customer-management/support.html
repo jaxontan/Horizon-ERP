@@ -219,7 +219,6 @@
                 <div class="flex items-center gap-2 mt-2">
                     <select id="filter-select" class="flex-1 text-xs shadow-card-sm py-1.5 px-2 cursor-pointer">
                         <option value="all">All</option>
-                        <option value="unread">Unread</option>
                         <option value="open">Open</option>
                         <option value="resolved">Resolved</option>
                     </select>
@@ -494,9 +493,7 @@
                         (c.team_name || '').toLowerCase().includes(search)
                     );
                 }
-                if (filter === 'unread') {
-                    filtered = filtered.filter(c => !c.is_resolved);
-                } else if (filter === 'open') {
+                if (filter === 'open') {
                     filtered = filtered.filter(c => !c.is_resolved);
                 } else if (filter === 'resolved') {
                     filtered = filtered.filter(c => c.is_resolved);
@@ -641,7 +638,6 @@
                     const search = searchInput.value.toLowerCase();
                     const filter = filterSelect.value;
                     if (search && !((c.channel_name||'').toLowerCase().includes(search) || (c.order_id||'').toLowerCase().includes(search) || (c.team_name||'').toLowerCase().includes(search))) return false;
-                    if (filter === 'unread') return !c.is_resolved;
                     if (filter === 'open') return !c.is_resolved;
                     if (filter === 'resolved') return c.is_resolved;
                     return true;

@@ -184,6 +184,7 @@
         <div>
           <label class="block text-[10px] font-extrabold text-[#44474e] uppercase tracking-wider mb-1.5">Name *</label>
           <input type="text" id="f-name" placeholder="e.g. Arabica Coffee Beans" class="w-full rounded-xl border border-[#c5c6cf] text-xs py-2.5 px-3 focus:ring-2 focus:ring-[#031635] focus:border-[#031635] font-semibold" />
+          <p id="f-name-hint" class="text-[9px] text-red-600 font-semibold mt-1 hidden"></p>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div id="fg-unit-row">
@@ -582,7 +583,11 @@
       document.getElementById('f-item-code-hint').classList.add('hidden');
       document.getElementById('f-category').value = currentTab === 'raw_material' ? 'raw_material' : 'finished_good';
       onCategoryChange();
-      document.getElementById('f-name').value = '';
+      const nameEl = document.getElementById('f-name');
+      nameEl.value = '';
+      nameEl.removeEventListener('input', onItemNameInput);
+      nameEl.addEventListener('input', onItemNameInput);
+      document.getElementById('f-name-hint').classList.add('hidden');
       document.getElementById('f-unit').value = 'units';
       document.getElementById('f-unit-cost').value = '0';
       document.getElementById('f-active').checked = true;
@@ -628,6 +633,29 @@
       }
     }
 
+    function onItemNameInput() {
+      const nameInput = document.getElementById('f-name');
+      const hint = document.getElementById('f-name-hint');
+      if (!nameInput || !hint) return;
+      const value = nameInput.value.trim();
+      if (!value) {
+        hint.classList.add('hidden');
+        return;
+      }
+      const matched = allItems.find(i =>
+        (i.name || '').trim().toLowerCase() === value.toLowerCase() &&
+        (!editingItem || i.id !== editingItem.id)
+      );
+      if (matched) {
+        const catLabel = matched.category === 'raw_material' ? 'Raw Material' : 'Finished Good';
+        hint.textContent = `Already exists: "${matched.name}" (${matched.item_code} - ${catLabel}). Duplicate item names are not allowed.`;
+        hint.className = 'text-[9px] mt-1 text-red-600 font-semibold';
+        hint.classList.remove('hidden');
+      } else {
+        hint.classList.add('hidden');
+      }
+    }
+
     async function editItem(id) {
       const item = allItems.find(i => i.id === id);
       if (!item) return;
@@ -641,7 +669,11 @@
       document.getElementById('f-item-code').disabled = true;
       document.getElementById('f-item-code-hint').classList.add('hidden');
       document.getElementById('f-category').value = item.category || 'raw_material';
-      document.getElementById('f-name').value = item.name || '';
+      const nameEl = document.getElementById('f-name');
+      nameEl.value = item.name || '';
+      nameEl.removeEventListener('input', onItemNameInput);
+      nameEl.addEventListener('input', onItemNameInput);
+      document.getElementById('f-name-hint').classList.add('hidden');
       document.getElementById('f-unit').value = item.unit || 'units';
       document.getElementById('f-unit-cost').value = parseFloat(item.unit_cost) || 0;
       document.getElementById('f-active').checked = item.is_active !== false;
@@ -659,6 +691,7 @@
           regenerateItemCode();
         }
       }
+      onItemNameInput();
     }
 
     function closeModal() {
@@ -672,19 +705,30 @@
       if (!itemCode) { showToast('Item code is required', 'error'); return; }
       if (!name) { showToast('Item name is required', 'error'); return; }
 
-        const payload = {
-          item_code: itemCode,
-          name: name,
-          category: document.getElementById('f-category').value,
-          is_active: document.getElementById('f-active').checked,
-        };
+      // Check for duplicate item name (case-insensitive)
+      const duplicateNameItem = allItems.find(i =>
+        (i.name || '').trim().toLowerCase() === name.toLowerCase() &&
+        (!editingItem || i.id !== editingItem.id)
+      );
+      if (duplicateNameItem) {
+        const catLabel = duplicateNameItem.category === 'raw_material' ? 'Raw Material' : 'Finished Good';
+        showToast(`An item named "${name}" already exists (${duplicateNameItem.item_code} - ${catLabel}). Please use a unique item name.`, 'error');
+        return;
+      }
 
-        // Only save category-specific fields when that category is active
-        const isRM = payload.category === 'raw_material';
-        if (!isRM) {
-          payload.unit = document.getElementById('f-unit').value.trim() || 'units';
-          payload.unit_cost = parseFloat(document.getElementById('f-unit-cost').value) || 0;
-        }
+      const payload = {
+        item_code: itemCode,
+        name: name,
+        category: document.getElementById('f-category').value,
+        is_active: document.getElementById('f-active').checked,
+      };
+
+      // Only save category-specific fields when that category is active
+      const isRM = payload.category === 'raw_material';
+      if (!isRM) {
+        payload.unit = document.getElementById('f-unit').value.trim() || 'units';
+        payload.unit_cost = parseFloat(document.getElementById('f-unit-cost').value) || 0;
+      }
 
       try {
         if (editingItem) {

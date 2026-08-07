@@ -61,8 +61,8 @@
     <main class="ml-64 pt-20 min-h-[calc(100vh-80px)] p-margin flex flex-col gap-8">
 
         <!-- TOP ROW CARDS (Fulfillment counters) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                    <!-- Ready to Pick -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Ready to Pick (Stage 1) -->
                     <div class="bg-surface-container-lowest border border-outline-variant p-stack-lg rounded-xl shadow-sm flex justify-between items-center relative overflow-hidden group">
                         <div class="space-y-1">
                             <span class="text-label-md font-bold text-on-surface-variant uppercase tracking-wider block">Ready to Pick</span>
@@ -74,7 +74,7 @@
                         <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#F59E0B]"></div>
                     </div>
 
-                    <!-- Picking -->
+                    <!-- Picking (Stage 2) -->
                     <div class="bg-surface-container-lowest border border-outline-variant p-stack-lg rounded-xl shadow-sm flex justify-between items-center relative overflow-hidden group">
                         <div class="space-y-1">
                             <span class="text-label-md font-bold text-on-surface-variant uppercase tracking-wider block">Picking</span>
@@ -86,19 +86,19 @@
                         <div class="absolute bottom-0 left-0 right-0 h-1 bg-primary"></div>
                     </div>
 
-                    <!-- Ready to Ship -->
+                    <!-- Ready to Ship (Stage 3) -->
                     <div class="bg-surface-container-lowest border border-outline-variant p-stack-lg rounded-xl shadow-sm flex justify-between items-center relative overflow-hidden group">
                         <div class="space-y-1">
                             <span class="text-label-md font-bold text-on-surface-variant uppercase tracking-wider block">Ready to Ship</span>
                             <span class="text-3xl font-headline-lg font-extrabold text-primary block" id="cnt-ready-ship">0</span>
                         </div>
                         <div class="w-12 h-12 bg-[#F3E8FF] rounded-full flex items-center justify-center text-[#7C3AED] shadow-sm border border-[#E9D5FF]">
-                            <span class="material-symbols-outlined text-2xl font-headline-md">sell</span>
+                            <span class="material-symbols-outlined text-2xl font-headline-md">local_offer</span>
                         </div>
                         <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#7C3AED]"></div>
                     </div>
 
-                    <!-- Ready for Pickup -->
+                    <!-- Ready for Pickup (Stage 4) -->
                     <div class="bg-surface-container-lowest border border-outline-variant p-stack-lg rounded-xl shadow-sm flex justify-between items-center relative overflow-hidden group">
                         <div class="space-y-1">
                             <span class="text-label-md font-bold text-on-surface-variant uppercase tracking-wider block">Ready for Pickup</span>
@@ -106,18 +106,6 @@
                         </div>
                         <div class="w-12 h-12 bg-[#ECFDF5] rounded-full flex items-center justify-center text-[#059669] shadow-sm border border-[#A7F3D0]">
                             <span class="material-symbols-outlined text-2xl font-headline-md">local_shipping</span>
-                        </div>
-                        <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#10B981]"></div>
-                    </div>
-
-                    <!-- Returning (refund pending) -->
-                    <div class="bg-surface-container-lowest border border-outline-variant p-stack-lg rounded-xl shadow-sm flex justify-between items-center relative overflow-hidden group">
-                        <div class="space-y-1">
-                            <span class="text-label-md font-bold text-on-surface-variant uppercase tracking-wider block">Returning</span>
-                            <span class="text-3xl font-headline-lg font-extrabold text-primary block" id="cnt-returning">0</span>
-                        </div>
-                        <div class="w-12 h-12 bg-[#ECFDF5] rounded-full flex items-center justify-center text-[#059669] shadow-sm border border-[#A7F3D0]">
-                            <span class="material-symbols-outlined text-2xl font-headline-md">check_circle</span>
                         </div>
                         <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#10B981]"></div>
                     </div>
@@ -375,19 +363,21 @@
 
         // Map DB status to UI status
         function mapDbStatusToUi(dbStatus) {
-            if (dbStatus === 'Processing') return 'Ready to Pick';
-            if (dbStatus === 'Shipped') return 'Ready for Pickup';
-            if (dbStatus === 'Delivered') return 'Ready for Pickup';
-            return dbStatus || 'Ready to Pick';
+            if (!dbStatus) return 'Ready to Pick';
+            if (dbStatus === 'Processing' || dbStatus === 'Ready to Pick' || dbStatus === 'Pending') return 'Ready to Pick';
+            if (dbStatus === 'Picking') return 'Picking';
+            if (dbStatus === 'Ready to Ship') return 'Ready to Ship';
+            if (dbStatus === 'Shipped' || dbStatus === 'Ready for Pickup' || dbStatus === 'Delivered') return 'Ready for Pickup';
+            return dbStatus;
         }
 
         // Map UI status to DB status
         function mapUiStatusToDb(uiStatus) {
-            if (uiStatus === 'Ready to Pick') return 'Processing';
-            if (uiStatus === 'Picking') return 'Processing';
-            if (uiStatus === 'Ready to Ship') return 'Shipped';
+            if (uiStatus === 'Ready to Pick') return 'Ready to Pick';
+            if (uiStatus === 'Picking') return 'Picking';
+            if (uiStatus === 'Ready to Ship') return 'Ready to Ship';
             if (uiStatus === 'Ready for Pickup') return 'Shipped';
-            return 'Processing';
+            return uiStatus || 'Ready to Pick';
         }
 
         // Fetch orders from Supabase — routes through server API (project schema)
@@ -694,10 +684,14 @@
             const cntPickup = fulfillmentOrders.filter(o => o.status === 'Ready for Pickup').length;
             const cntReturning = fulfillmentOrders.filter(o => o.status === 'Returning').length;
 
-            document.getElementById('cnt-ready-pick').innerText = cntPick;
-            document.getElementById('cnt-picking').innerText = cntPicking;
-            document.getElementById('cnt-ready-ship').innerText = cntShip;
-            document.getElementById('cnt-ready-pickup').innerText = cntPickup;
+            const elReadyPick = document.getElementById('cnt-ready-pick');
+            if (elReadyPick) elReadyPick.innerText = cntPick;
+            const elPicking = document.getElementById('cnt-picking');
+            if (elPicking) elPicking.innerText = cntPicking;
+            const elReadyShip = document.getElementById('cnt-ready-ship');
+            if (elReadyShip) elReadyShip.innerText = cntShip;
+            const elReadyPickup = document.getElementById('cnt-ready-pickup');
+            if (elReadyPickup) elReadyPickup.innerText = cntPickup;
             const cntReturningEl = document.getElementById('cnt-returning');
             if (cntReturningEl) cntReturningEl.innerText = cntReturning;
 

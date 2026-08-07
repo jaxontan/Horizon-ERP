@@ -104,7 +104,7 @@
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cost of Rental ($)</label>
-                                <input type="number" id="tracking-cost" step="0.01" min="0" placeholder="0.00" required
+                                <input type="number" id="tracking-cost" step="0.01" min="0.01" placeholder="0.00" required
                                     class="w-full py-2.5 px-3 bg-slate-50 border border-outline-variant rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary">
                             </div>
                         </div>
@@ -766,8 +766,8 @@
                 showToast("Missing Batch ID", "Please enter a Batch ID / Production Reference.");
                 return;
             }
-            if (cost <= 0) {
-                showToast("Missing Cost", "Please enter a valid Cost of Rental.");
+            if (isNaN(cost) || cost <= 0) {
+                showToast("Invalid Cost", "Cost of rental must be greater than $0.00.");
                 return;
             }
             if (!staff) {

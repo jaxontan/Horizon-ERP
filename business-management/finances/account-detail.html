@@ -167,27 +167,6 @@
 
                 <!-- Performance Tab -->
                 <div id="tab-content-performance" class="tab-content hidden p-6 space-y-6">
-                    <!-- Trend Chart -->
-                    <div class="bg-surface border border-outline-variant rounded-xl p-5">
-                        <div class="flex justify-between items-center mb-5">
-                            <div>
-                                <h4 class="text-sm font-bold text-[#031635]">Balance Trend</h4>
-                                <p class="text-[10px] text-on-surface-variant mt-0.5">Monthly transaction volume over the past 12 months</p>
-                            </div>
-                            <select class="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-xs font-bold">
-                                <option>Last 12 Months</option>
-                                <option>Last 6 Months</option>
-                            </select>
-                        </div>
-                        <div class="flex items-end gap-2 h-48">
-                            <div id="chart-bars" class="flex-1 flex items-end gap-1">
-                                <!-- Bars populated by JS -->
-                            </div>
-                        </div>
-                        <div id="chart-labels" class="flex justify-between mt-2 text-[9px] font-black text-on-surface-variant uppercase">
-                            <!-- Labels populated by JS -->
-                        </div>
-                    </div>
 
                     <!-- Stats Grid -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -658,25 +637,29 @@
             const labelsContainer = document.getElementById('chart-labels');
             const currentMonth = new Date().getMonth();
 
-            barsContainer.innerHTML = months.map((m, i) => {
-                const v = values[i];
-                // Bar height scales with the absolute magnitude of the month's
-                // net effect. The dot above the label marks the current
-                // month, and the label shows the signed value ($+k / $-k).
-                const absH = Math.max(Math.round((Math.abs(v) / maxVal) * 100), 4);
-                const isActive = i === currentMonth;
-                const sign = v < 0 ? '-' : (v > 0 ? '+' : '');
-                const kVal = Math.round(Math.abs(v) / 1000);
-                return `<div class="flex-1 flex flex-col items-center justify-end gap-0">
-                    <div class="w-2 h-2 rounded-full ${isActive ? 'bg-[#031635]' : 'bg-slate-400'} mb-1 shrink-0"></div>
-                    <span class="text-[9px] font-black text-on-surface-variant font-data-tabular mb-1">${sign}$${kVal}k</span>
-                    <div class="w-full rounded-t-sm transition-all hover:opacity-80 ${isActive ? 'bg-[#031635]' : 'bg-slate-300'}" style="height:${absH}%"></div>
-                </div>`;
-            }).join('');
+            if (barsContainer) {
+                barsContainer.innerHTML = months.map((m, i) => {
+                    const v = values[i];
+                    // Bar height scales with the absolute magnitude of the month's
+                    // net effect. The dot above the label marks the current
+                    // month, and the label shows the signed value ($+k / $-k).
+                    const absH = Math.max(Math.round((Math.abs(v) / maxVal) * 100), 4);
+                    const isActive = i === currentMonth;
+                    const sign = v < 0 ? '-' : (v > 0 ? '+' : '');
+                    const kVal = Math.round(Math.abs(v) / 1000);
+                    return `<div class="flex-1 flex flex-col items-center justify-end gap-0">
+                        <div class="w-2 h-2 rounded-full ${isActive ? 'bg-[#031635]' : 'bg-slate-400'} mb-1 shrink-0"></div>
+                        <span class="text-[9px] font-black text-on-surface-variant font-data-tabular mb-1">${sign}$${kVal}k</span>
+                        <div class="w-full rounded-t-sm transition-all hover:opacity-80 ${isActive ? 'bg-[#031635]' : 'bg-slate-300'}" style="height:${absH}%"></div>
+                    </div>`;
+                }).join('');
+            }
 
-            labelsContainer.innerHTML = months.map((m, i) =>
-                `<span class="${i === currentMonth ? 'text-[#031635] font-black' : ''}">${m}</span>`
-            ).join('');
+            if (labelsContainer) {
+                labelsContainer.innerHTML = months.map((m, i) =>
+                    `<span class="${i === currentMonth ? 'text-[#031635] font-black' : ''}">${m}</span>`
+                ).join('');
+            }
 
             const vals = allLines.map(l => l.rawVal);
             const highest = vals.length ? Math.max(...vals) : 0;
