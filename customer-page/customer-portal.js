@@ -703,6 +703,43 @@
                     loadedOrders = Array.isArray(data) ? data.map(mapWholesaleOrderToOrder) : [];
                 }
 
+                // Merge fulfillment_orders live status & tracking information
+                try {
+                    let fulRows = [];
+                    const { data: fulDirect, error: fulErr } = await supabaseClient
+                        .from('fulfillment_orders')
+                        .select('fulfillment_id, order_id, purchase_id, status, carrier, tracking_number');
+                    if (!fulErr && Array.isArray(fulDirect)) {
+                        fulRows = fulDirect;
+                    } else {
+                        fulRows = await supabaseAPI({
+                            table: 'fulfillment_orders',
+                            operation: 'select'
+                        });
+                    }
+
+                    if (Array.isArray(fulRows) && fulRows.length > 0) {
+                        const fulMap = new Map();
+                        fulRows.forEach(f => {
+                            const keys = [f.fulfillment_id, f.order_id, f.purchase_id]
+                                .filter(Boolean)
+                                .map(k => String(k).replace(/^FUL-/, '').trim());
+                            keys.forEach(k => { if (k) fulMap.set(k, f); });
+                        });
+                        loadedOrders.forEach(o => {
+                            const matchKey = String(o.id || '').replace(/^FUL-/, '').trim();
+                            const match = fulMap.get(matchKey);
+                            if (match) {
+                                if (match.status) o.status = mapFulfillmentStatusToCustomerPortal(match.status);
+                                if (match.tracking_number && match.tracking_number !== 'Pending') o.trackingNum = match.tracking_number;
+                                if (match.carrier) o.carrier = match.carrier;
+                            }
+                        });
+                    }
+                } catch (fulMergeErr) {
+                    console.warn('Could not merge fulfillment_orders status into loaded orders:', fulMergeErr);
+                }
+
                 ordersState = loadedOrders;
                 if (!selectedOrderId || !ordersState.some((order) => order.id === selectedOrderId)) {
                     selectedOrderId = ordersState[0] ? ordersState[0].id : null;
@@ -711,6 +748,16 @@
                 console.warn('Error loading orders from API:', err);
                 ordersState = [];
             }
+        }
+
+        function mapFulfillmentStatusToCustomerPortal(status) {
+            if (!status) return 'Confirmed';
+            const s = String(status).trim().toLowerCase();
+            if (s === 'delivered') return 'Delivered';
+            if (s === 'shipped' || s === 'shipped out' || s === 'ready for pickup' || s === 'in_transit') return 'Shipped';
+            if (s === 'packed' || s === 'picking' || s === 'ready to ship' || s === 'processing_fulfillment') return 'Packed';
+            if (s === 'confirmed' || s === 'processing' || s === 'ready to pick' || s === 'pending') return 'Confirmed';
+            return status;
         }
 
         function persistBackend() {
@@ -2585,6 +2632,7 @@
             if (window.ERPRealtime) {
                 window.ERPRealtime.refreshOn('orders', syncOrdersFromBackend);
                 window.ERPRealtime.refreshOn('retail_purchases', syncOrdersFromBackend);
+                window.ERPRealtime.refreshOn('fulfillment_orders', syncOrdersFromBackend);
                 window.ERPRealtime.refreshOn('inventory', () => {
                     loadProductsFromSupabase()
                         .then((liveProducts) => {

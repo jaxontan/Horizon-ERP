@@ -273,15 +273,7 @@
                         </div>
                     </div>
 
-                    <!-- Tips -->
-                    <div class="bg-white border border-slate-200 rounded-xl p-5">
-                        <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Tips</h2>
-                        <ul class="space-y-2 text-sm text-slate-600">
-                            <li class="flex items-start gap-2"><span class="material-symbols-outlined text-base text-indigo-500 mt-0.5">bolt</span><span>Use the <kbd class="px-1.5 py-0.5 rounded bg-slate-100 text-[11px] font-semibold text-slate-700 border border-slate-200">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 rounded bg-slate-100 text-[11px] font-semibold text-slate-700 border border-slate-200">Enter</kbd> shortcut to send a reply quickly.</span></li>
-                            <li class="flex items-start gap-2"><span class="material-symbols-outlined text-base text-indigo-500 mt-0.5">attach_file</span><span>Attach PDFs, images, or documents to give customers visual context.</span></li>
-                            <li class="flex items-start gap-2"><span class="material-symbols-outlined text-base text-indigo-500 mt-0.5">check_circle</span><span>Mark conversations resolved to keep the queue tidy.</span></li>
-                        </ul>
-                    </div>
+
                 </div>
             </div>
 
@@ -329,21 +321,15 @@
             <!-- Composer -->
             <div id="composer" class="hidden px-6 pb-5 pt-2">
                 <form id="reply-form" class="flex flex-col gap-2 bg-white rounded-xl border border-slate-200 p-3 shadow-card">
-                    <div id="reply-attachments" class="hidden flex-wrap items-center gap-2 pb-1"></div>
                     <div class="flex items-end gap-3">
                         <textarea id="reply-input" rows="1"
                             class="flex-1 bg-transparent text-sm resize-none focus:outline-none py-1"
                             placeholder="Reply to customer..."></textarea>
                         <div class="flex items-center gap-1 pb-0.5">
-                            <button type="button" onclick="insertEmoji()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition" title="Emoji">
-                                <span class="material-symbols-outlined text-lg leading-none">sentiment_satisfied</span>
-                            </button>
-                            <button type="button" id="attach-file-btn" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition" title="Attach file">
-                                <span class="material-symbols-outlined text-lg leading-none">attach_file</span>
-                            </button>
                             <button type="submit" id="reply-send-btn" class="w-9 h-9 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition ml-1 disabled:opacity-50 disabled:cursor-not-allowed" title="Send">
                                 <span class="material-symbols-outlined text-lg leading-none">send</span>
-                        </button>
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -1127,41 +1113,20 @@
         window.submitSupportReply = async function(e) {
             if (replySubmitting) return;
             const text = replyInput.value.trim();
-            const readyAttachments = replyAttachments.filter((a) => a.status === 'ready');
-            const failedAttachments = replyAttachments.filter((a) => a.status === 'failed');
-            const uploadingAttachments = replyAttachments.filter((a) => a.status === 'uploading');
-            if (!text && readyAttachments.length === 0) return;
+            if (!text) return;
             if (!activeChannel) return;
-            if (uploadingAttachments.length > 0) {
-                showToast('Wait for uploads to finish before sending.');
-                return;
-            }
             replySubmitting = true;
             try {
-                if (text) {
-                    await supabaseAPI({
-                        table: 'chat_messages', operation: 'insert',
-                        data: {
-                            channel_id: activeChannel.id, sender_id: STAFF_ID,
-                            sender_name: STAFF_NAME, sender_email: `${STAFF_ID}@espressgo.com`,
-                            sender_role: 'admin', is_staff: true, is_customer: false, is_system: false,
-                            message_type: 'text', message_text: text
-                        }
-                    });
-                }
-                // Forward each ready attachment as its own chat_messages row.
-                // The customer-side renderer can branch on message_type='attachment'
-                // to show a download chip; even if it doesn't, the URL is in
-                // message_text so the link is always reachable.
-                for (const att of readyAttachments) {
-                    await postChatAttachmentMessage(activeChannel.id, att);
-                }
+                await supabaseAPI({
+                    table: 'chat_messages', operation: 'insert',
+                    data: {
+                        channel_id: activeChannel.id, sender_id: STAFF_ID,
+                        sender_name: STAFF_NAME, sender_email: `${STAFF_ID}@espressgo.com`,
+                        sender_role: 'admin', is_staff: true, is_customer: false, is_system: false,
+                        message_type: 'text', message_text: text
+                    }
+                });
                 replyInput.value = '';
-                replyAttachments = [];
-                renderReplyAttachments();
-                if (failedAttachments.length > 0) {
-                    showToast(`${failedAttachments.length} attachment(s) failed to upload and were not sent.`);
-                }
                 await ensureStaffParticipant(activeChannel.id);
                 await loadMessages(activeChannel.id);
 
@@ -1189,8 +1154,6 @@
             e.preventDefault();
             window.submitSupportReply(e);
         });
-
-        document.getElementById('attach-file-btn').addEventListener('click', attachFile);
 
         async function ensureStaffParticipant(channelId) {
             try {
@@ -1271,165 +1234,18 @@
             });
         }
 
-        function insertEmoji() {
-            const emojis = ['👍', '✅', '❓', '📦', '💰', '🎉', '🙏'];
-            replyInput.value += emojis[Math.floor(Math.random() * emojis.length)];
-            replyInput.focus();
-        }
-
-        // ── Attachment queue ──────────────────────────────────────────────────────────
-        // Each entry: { id, publicUrl, fileName, size, status: 'uploading'|'ready'|'failed' }
-        let replyAttachments = [];
-        let chatMessageAttachColumns = null; // Set<string>, lazily probed + cached
-
-        function renderReplyAttachments() {
-            const host = document.getElementById('reply-attachments');
-            if (!host) return;
-            if (replyAttachments.length === 0) {
-                host.classList.add('hidden');
-                host.classList.remove('flex');
-                host.innerHTML = '';
-                return;
-            }
-            host.classList.remove('hidden');
-            host.classList.add('flex');
-            host.innerHTML = replyAttachments.map((a) => {
-                const tone = a.status === 'failed'
-                    ? 'bg-red-50 text-red-700 border-red-200'
-                    : a.status === 'uploading'
-                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                        : 'bg-indigo-50 text-indigo-700 border-indigo-200';
-                const label = a.status === 'uploading'
-                    ? `Uploading ${a.fileName}…`
-                    : a.status === 'failed'
-                        ? `Failed: ${a.fileName}`
-                        : a.fileName;
-                const sizeKb = a.size ? ` · ${(a.size / 1024).toFixed(1)} KB` : '';
-                const canRemove = a.status !== 'uploading';
-                return `
-                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[11px] font-semibold ${tone}">
-                        <span class="material-symbols-outlined text-[14px] leading-none">${a.status === 'failed' ? 'error' : 'attach_file'}</span>
-                        <span class="max-w-[160px] truncate">${escapeHtml(label)}${sizeKb}</span>
-                        ${canRemove ? `<button type="button" data-remove-attachment="${a.id}" class="ml-1 text-slate-400 hover:text-red-600" title="Remove">
-                            <span class="material-symbols-outlined text-[14px] leading-none">close</span>
-                        </button>` : ''}
-                    </span>
-                `;
-            }).join('');
-            host.querySelectorAll('[data-remove-attachment]').forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    const id = btn.getAttribute('data-remove-attachment');
-                    replyAttachments = replyAttachments.filter((a) => a.id !== id);
-                    renderReplyAttachments();
-                });
-            });
-        }
-
         function escapeHtml(s) {
             return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
-        async function uploadSupportAttachment(file) {
-            if (file.size > 10 * 1024 * 1024) throw new Error('file exceeds 10MB cap');
-            const fd = new FormData();
-            fd.append('category', 'support');
-            fd.append('file', file, file.name);
-            const res = await fetch('/api/uploads', { method: 'POST', body: fd });
-            if (!res.ok) {
-                let detail = '';
-                try { const j = await res.json(); detail = j?.error || j?.message || ''; } catch (_) {}
-                throw new Error(detail || `HTTP ${res.status}`);
-            }
-            const json = await res.json();
-            const data = json?.data || json;
-            if (!data || !data.publicUrl) throw new Error('no publicUrl in response');
-            return { publicUrl: data.publicUrl, storedPath: data.path || null, contentType: data.contentType || null };
-        }
-
-        function attachFile() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            // Mirrors the server-side `support` category allowlist: PDF, JPEG/PNG/WebP
-            // (incl. iPhone HEIC/HEIF), .txt, .json. Word documents (.doc) are
-            // excluded because the server's MIME list only accepts .docx.
-            input.accept = 'image/*,.pdf,.docx,.txt';
-            input.onchange = async (e) => {
-                const file = e.target.files && e.target.files[0];
-                if (!file) return;
-                const id = `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-                const entry = { id, fileName: file.name, size: file.size, status: 'uploading' };
-                replyAttachments.push(entry);
-                renderReplyAttachments();
-                try {
-                    const payload = await uploadSupportAttachment(file);
-                    entry.publicUrl = payload.publicUrl;
-                    entry.storedPath = payload.storedPath;
-                    entry.contentType = payload.contentType;
-                    entry.status = 'ready';
-                } catch (err) {
-                    console.warn('[support] attachment upload failed:', err?.message || err);
-                    entry.status = 'failed';
-                    showToast(`Attachment upload failed: ${err?.message || err}`);
-                }
-                renderReplyAttachments();
-            };
-            input.click();
-        }
-
-        async function postChatAttachmentMessage(channelId, attachment) {
-            // Probe chat_messages once for the columns we want. Cache the result.
-            // If a column is missing, we degrade gracefully — the URL is still
-            // persisted somewhere the customer can see.
-            if (chatMessageAttachColumns === null) {
-                chatMessageAttachColumns = new Set();
-                try {
-                    const probe = await supabaseAPI({
-                        table: 'chat_messages', operation: 'select',
-                        columns: 'attachment_url,attachment_name,attachment_size,attachment_path,attachment_content_type',
-                        filters: { eq: { channel_id: channelId } }
-                    });
-                    const row = Array.isArray(probe) ? probe[0] : probe;
-                    if (row) {
-                        ['attachment_url', 'attachment_name', 'attachment_size', 'attachment_path', 'attachment_content_type']
-                            .forEach((c) => { if (c in row) chatMessageAttachColumns.add(c); });
-                    }
-                } catch (probeErr) {
-                    console.warn('[support] chat_messages column probe failed; attachment will fall back to message_text only:', probeErr?.message || probeErr);
-                }
-            }
-
-            const data = {
-                channel_id: channelId,
-                sender_id: STAFF_ID,
-                sender_name: STAFF_NAME,
-                sender_email: `${STAFF_ID}@espressgo.com`,
-                sender_role: 'admin',
-                is_staff: true,
-                is_customer: false,
-                is_system: false,
-                message_type: 'attachment',
-                message_text: attachment.fileName || attachment.publicUrl,
-            };
-            if (chatMessageAttachColumns.has('attachment_url')) data.attachment_url = attachment.publicUrl;
-            if (chatMessageAttachColumns.has('attachment_name')) data.attachment_name = attachment.fileName;
-            if (chatMessageAttachColumns.has('attachment_size')) data.attachment_size = attachment.size;
-            if (chatMessageAttachColumns.has('attachment_path')) data.attachment_path = attachment.storedPath || null;
-            if (chatMessageAttachColumns.has('attachment_content_type')) data.attachment_content_type = attachment.contentType || null;
-            if (chatMessageAttachColumns.size === 0) {
-                // No dedicated attachment columns. Embed the URL in message_text
-                // so the customer still gets a clickable link from the existing
-                // chat renderer (which already renders message_text as text).
-                data.message_text = `${attachment.fileName || 'attachment'}: ${attachment.publicUrl}`;
-            }
-
-            try {
-                await supabaseAPI({ table: 'chat_messages', operation: 'insert', data });
-            } catch (insertErr) {
-                console.warn('[support] could not persist attachment message:', insertErr?.message || insertErr);
-            }
-        }
-
-        window.viewOrder = function(orderId) { showToast(`Order ${orderId}`); };
+        window.viewOrder = function(orderId) {
+            if (!orderId) return;
+            const isB2B = activeChannel && activeChannel.channel_type === 'b2b_customer';
+            const targetUrl = isB2B
+                ? `/business-management/customer-management/customer-order/index.html?search=${encodeURIComponent(orderId)}`
+                : `/business-management/customer-management/customer-order/b2c.html?search=${encodeURIComponent(orderId)}`;
+            window.location.href = targetUrl;
+        };
 
         searchInput.addEventListener('input', loadChannels);
         filterSelect.addEventListener('change', loadChannels);

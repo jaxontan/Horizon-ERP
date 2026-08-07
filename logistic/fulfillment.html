@@ -570,8 +570,8 @@
                     status: dbStatus,
                     carrier: order.courier || null,
                     tracking_number: order.tracking || null,
-                    shipped_at: order.status === 'Ready for Pickup' ? new Date().toISOString() : order.shippedAt || null,
-                    delivered_at: order.status === 'Delivered' ? new Date().toISOString() : order.deliveredAt || null,
+                    shipped_at: (order.status === 'Ready for Pickup' || order.status === 'Shipped Out' || dbStatus === 'Shipped') ? (order.shippedAt || new Date().toISOString()) : order.shippedAt || null,
+                    delivered_at: (order.status === 'Delivered' || dbStatus === 'Delivered') ? (order.deliveredAt || new Date().toISOString()) : order.deliveredAt || null,
                     items_json: order.items_json || null,
                     production_batch_codes: order.production_batch_codes || null
                 };
@@ -583,6 +583,50 @@
                     row: updateData,
                     filters: { eq: { fulfillment_id: order.id } }
                 });
+
+                // Also sync updated status and tracking to retail_purchases and orders tables
+                try {
+                    const cleanId = String(order.id || '').replace(/^FUL-/, '').trim();
+                    const syncRow = {
+                        status: dbStatus,
+                        updated_at: new Date().toISOString()
+                    };
+                    if (order.courier) syncRow.carrier = order.courier;
+                    if (order.tracking) syncRow.tracking_number = order.tracking;
+                    if (updateData.shipped_at) syncRow.shipped_at = updateData.shipped_at;
+                    if (updateData.delivered_at) syncRow.delivered_at = updateData.delivered_at;
+
+                    if (cleanId.startsWith('RET-')) {
+                        await serverOp({
+                            table: 'retail_purchases',
+                            operation: 'update',
+                            row: syncRow,
+                            filters: { eq: { purchase_number: cleanId } }
+                        });
+                    } else if (cleanId.startsWith('ORD-')) {
+                        await serverOp({
+                            table: 'orders',
+                            operation: 'update',
+                            row: syncRow,
+                            filters: { eq: { order_number: cleanId } }
+                        });
+                    } else {
+                        await serverOp({
+                            table: 'retail_purchases',
+                            operation: 'update',
+                            row: syncRow,
+                            filters: { eq: { purchase_number: cleanId } }
+                        });
+                        await serverOp({
+                            table: 'orders',
+                            operation: 'update',
+                            row: syncRow,
+                            filters: { eq: { order_number: cleanId } }
+                        });
+                    }
+                } catch (syncErr) {
+                    console.warn('[fulfillment] Syncing to retail_purchases/orders threw:', syncErr);
+                }
 
                 if (result.error) {
                     console.warn('[fulfillment] updateOrderInSupabase failed:', result.error);
