@@ -402,12 +402,12 @@
                                     </span>
                                 </div>
 
-                                <!-- FIFO Summary Cards -->
+                                <!-- 3 KPI Cards: Total, Already Allocated, Haven't Allocated -->
                                 <div id="fifo-summary-section" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div class="bg-[#EFF6FF] border border-[#BFDBFE] rounded-2xl p-4">
                                         <div class="flex items-center gap-2 mb-2">
                                             <span class="material-symbols-outlined text-[#1D4ED8] text-[16px]">inventory_2</span>
-                                            <span class="text-[10px] font-bold text-[#1D4ED8] uppercase tracking-wider">Batch Production</span>
+                                            <span class="text-[10px] font-bold text-[#1D4ED8] uppercase tracking-wider">Total</span>
                                         </div>
                                         <p id="fifo-batch-qty" class="text-xl font-headline-sm font-extrabold text-[#1D4ED8]">--</p>
                                         <p class="text-[10px] text-[#64748b] mt-0.5">Total units produced</p>
@@ -415,37 +415,22 @@
                                     <div class="bg-[#ECFDF5] border border-[#A7F3D0] rounded-2xl p-4">
                                         <div class="flex items-center gap-2 mb-2">
                                             <span class="material-symbols-outlined text-[#047857] text-[16px]">local_shipping</span>
-                                            <span class="text-[10px] font-bold text-[#047857] uppercase tracking-wider">Allocated to Orders</span>
+                                            <span class="text-[10px] font-bold text-[#047857] uppercase tracking-wider">Already Allocated</span>
                                         </div>
                                         <p id="fifo-allocated-qty" class="text-xl font-headline-sm font-extrabold text-[#047857]">--</p>
-                                        <p class="text-[10px] text-[#64748b] mt-0.5">Units distributed (FIFO)</p>
+                                        <p class="text-[10px] text-[#64748b] mt-0.5">Units distributed to orders</p>
                                     </div>
                                     <div class="bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl p-4">
                                         <div class="flex items-center gap-2 mb-2">
                                             <span class="material-symbols-outlined text-[#C2410C] text-[16px]">inventory</span>
-                                            <span class="text-[10px] font-bold text-[#C2410C] uppercase tracking-wider">Remaining Stock</span>
+                                            <span class="text-[10px] font-bold text-[#C2410C] uppercase tracking-wider">Haven't Allocated</span>
                                         </div>
                                         <p id="fifo-remaining-qty" class="text-xl font-headline-sm font-extrabold text-[#C2410C]">--</p>
-                                        <p class="text-[10px] text-[#64748b] mt-0.5">Units still in stock</p>
+                                        <p class="text-[10px] text-[#64748b] mt-0.5">Remaining unallocated stock</p>
                                     </div>
                                 </div>
 
-                                <!-- FIFO Allocation Breakdown -->
-                                <div id="fifo-alloc-section">
-                                    <div class="flex items-center gap-2 mb-3">
-                                        <span class="material-symbols-outlined text-[16px] text-primary">route</span>
-                                        <h4 class="text-sm font-bold text-primary">FIFO Allocation Chain</h4>
-                                        <span class="text-[10px] bg-[#EFF6FF] text-[#1D4ED8] px-2 py-0.5 rounded-full font-bold">Per Order Breakdown</span>
-                                    </div>
-                                    <div id="fifo-alloc-list" class="flex flex-col gap-3">
-                                        <!-- Filled by renderCustomers -->
-                                    </div>
-                                    <div id="fifo-alloc-empty" class="hidden flex flex-col items-center justify-center py-8 text-center bg-surface-container-low rounded-xl border border-outline-variant/60">
-                                        <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2">route</span>
-                                        <p class="text-sm font-bold text-on-surface-variant">No FIFO allocation data yet.</p>
-                                        <p class="text-xs text-on-surface-variant mt-1">Fulfillment allocations will appear here when B2B/B2C orders are processed.</p>
-                                    </div>
-                                </div>
+                                <!-- FIFO Allocation Breakdown REMOVED -->
 
                                 <!-- B2B Section -->
                                 <div>
@@ -1192,6 +1177,55 @@
                 } catch (e) { console.warn('[enrichJsonb] raw_material_orders lookup:', e); }
             }
 
+            // Fallback PR & RMO lookup for records where inventory_id link or reference_number is null
+            let fallbackPrs = [];
+            let fallbackRmos = [];
+            try {
+                const [prRes, rmoRes] = await Promise.all([
+                    client.from('purchase_records').select('record_number, po_number, supplier_name, purchase_date, items'),
+                    client.from('raw_material_orders').select('order_number, supplier_name, items')
+                ]);
+                if (prRes.data) fallbackPrs = prRes.data;
+                if (rmoRes.data) fallbackRmos = rmoRes.data;
+            } catch (e) {
+                console.warn('[enrichJsonb] fallback PR/RMO fetch error:', e);
+            }
+
+            function resolvePoFallback(batchCode, itemName, itemCode) {
+                if (!batchCode) return null;
+                const parts = String(batchCode).split('-');
+                const poSuffix = parts[1]; // e.g. '269510' from RM-269510-2026-9751
+                const poDigits = poSuffix ? poSuffix.replace(/^[0-9]{2}/, '') : null; // e.g. '9510'
+
+                // 1. Match by PO digits suffix (e.g. PO-2026-9510 ends with 9510)
+                if (poDigits) {
+                    for (const pr of fallbackPrs) {
+                        const num = String(pr.po_number || pr.record_number || '').replace(/[^0-9]/g, '');
+                        if (num.endsWith(poDigits)) return { po: pr.po_number || pr.record_number, supplier: pr.supplier_name, date: pr.purchase_date };
+                    }
+                    for (const rmo of fallbackRmos) {
+                        const num = String(rmo.order_number || '').replace(/[^0-9]/g, '');
+                        if (num.endsWith(poDigits)) return { po: rmo.order_number, supplier: rmo.supplier_name, date: null };
+                    }
+                }
+
+                // 2. Match by item_name
+                if (itemName) {
+                    const cleanName = String(itemName).toLowerCase().trim();
+                    for (const pr of fallbackPrs) {
+                        if (Array.isArray(pr.items) && pr.items.some(i => String(i?.item_name || i?.name || '').toLowerCase().trim() === cleanName)) {
+                            return { po: pr.po_number || pr.record_number, supplier: pr.supplier_name, date: pr.purchase_date };
+                        }
+                    }
+                    for (const rmo of fallbackRmos) {
+                        if (Array.isArray(rmo.items) && rmo.items.some(i => String(i?.item_name || i?.name || '').toLowerCase().trim() === cleanName)) {
+                            return { po: rmo.order_number, supplier: rmo.supplier_name, date: null };
+                        }
+                    }
+                }
+                return null;
+            }
+
             return jsonbList.map((entry) => {
                 const invId = entry.inventory_id || null;
                 const po = invId ? purchaseByInventory[invId] : null;
@@ -1229,12 +1263,17 @@
                     }
                 }
 
+                const fallbackMatch = (!perLotPo && !ib?.reference_number && !po?.record_number && !po?.po_number)
+                    ? resolvePoFallback(entry.rm_batch_code, entry.rm_item_name, entry.rm_item_code)
+                    : null;
+
                 const invoiceRef = perLotPo
                     || ib?.reference_number
                     || po?.record_number
                     || po?.po_number
+                    || fallbackMatch?.po
                     || null;
-                const supplierName = po?.supplier_name || null;
+                const supplierName = po?.supplier_name || fallbackMatch?.supplier || null;
                 return {
                     batch_id: realUuid,
                     batch_code: realBatchCode,
@@ -1250,7 +1289,7 @@
                     supplier_email: po?.supplier_email || null,
                     supplier_id: null,
                     supplier_invoice_ref: invoiceRef,
-                    supplier_invoice_date: po?.purchase_date || null,
+                    supplier_invoice_date: po?.purchase_date || fallbackMatch?.date || null,
                     material_intake_date: ib?.received_date || null,
                     raw_expiry: ib?.expiry_date || null,
                     raw_zone: null,
@@ -1583,111 +1622,117 @@
             const totalAllocated = fgAllocations.reduce((s, a) => s + parseFloat(a.qty_allocated || 0), 0);
             const remaining = totalProduced - totalAllocated;
 
-            document.getElementById('fifo-batch-qty').textContent = totalProduced;
-            document.getElementById('fifo-allocated-qty').textContent = totalAllocated;
-            document.getElementById('fifo-remaining-qty').textContent = remaining;
-            document.getElementById('dist-alloc-count').textContent = fgAllocations.length;
-
+            const batchQtyEl = document.getElementById('fifo-batch-qty');
+            if (batchQtyEl) batchQtyEl.textContent = totalProduced;
+            const allocQtyEl = document.getElementById('fifo-allocated-qty');
+            if (allocQtyEl) allocQtyEl.textContent = totalAllocated;
             const remEl = document.getElementById('fifo-remaining-qty');
-            if (remaining <= 0) {
-                remEl.parentElement.className = 'bg-[#FEF2F2] border border-[#FECACA] rounded-2xl p-4';
-                remEl.className = 'text-xl font-extrabold text-[#B91C1C]';
-            } else if (remaining < totalProduced * 0.2) {
-                remEl.parentElement.className = 'bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl p-4';
-                remEl.className = 'text-xl font-extrabold text-[#C2410C]';
+            if (remEl) {
+                remEl.textContent = remaining;
+                if (remaining <= 0) {
+                    remEl.parentElement.className = 'bg-[#FEF2F2] border border-[#FECACA] rounded-2xl p-4';
+                    remEl.className = 'text-xl font-extrabold text-[#B91C1C]';
+                } else if (remaining < totalProduced * 0.2) {
+                    remEl.parentElement.className = 'bg-[#FFF7ED] border border-[#FED7AA] rounded-2xl p-4';
+                    remEl.className = 'text-xl font-extrabold text-[#C2410C]';
+                }
             }
+            const countEl = document.getElementById('dist-alloc-count');
+            if (countEl) countEl.textContent = fgAllocations.length;
 
             // ── FIFO Allocation Chain Cards ────────────────────────
             const fifoList = document.getElementById('fifo-alloc-list');
             const fifoEmpty = document.getElementById('fifo-alloc-empty');
-            fifoList.innerHTML = '';
+            if (fifoList && fifoEmpty) {
+                fifoList.innerHTML = '';
 
-            if (fgAllocations.length === 0) {
-                show(fifoEmpty);
-                fifoList.classList.add('hidden');
-            } else {
-                hide(fifoEmpty);
-                fifoList.classList.remove('hidden');
+                if (fgAllocations.length === 0) {
+                    show(fifoEmpty);
+                    fifoList.classList.add('hidden');
+                } else {
+                    hide(fifoEmpty);
+                    fifoList.classList.remove('hidden');
 
-                const byFulfillment = {};
-                fgAllocations.forEach(a => {
-                    const key = a.fulfillment_id;
-                    if (!byFulfillment[key]) byFulfillment[key] = [];
-                    byFulfillment[key].push(a);
-                });
-
-                Object.entries(byFulfillment).forEach(([fulfId, allocs]) => {
-                    const first = allocs[0];
-                    const totalQty = allocs.reduce((s, a) => s + parseFloat(a.qty_allocated || 0), 0);
-                    const segColor = first.segment === 'b2c' ? 'border-l-[#8b5cf6]' : 'border-l-[#3b82f6]';
-                    const segIcon = first.segment === 'b2c' ? 'shopping_bag' : 'business';
-                    const segLabel = first.segment === 'b2c' ? 'B2C' : 'B2B';
-                    const segBg = first.segment === 'b2c' ? 'bg-[#f3e8ff] text-[#7c3aed]' : 'bg-[#eff6ff] text-[#1d4ed8]';
-
-                    let allocRows = '';
-                    allocs.forEach(a => {
-                        const fifoBadge = a.fifo_order === 1
-                            ? `<span class="bg-[#ECFDF5] text-[#047857] text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-[#A7F3D0]">1st pick</span>`
-                            : `<span class="bg-[#FFF7ED] text-[#C2410C] text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-[#FED7AA]">#${a.fifo_order}</span>`;
-                        const shipBadge = a.shipping_status === 'Delivered'
-                            ? 'bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]'
-                            : a.shipping_status === 'Shipped'
-                            ? 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]'
-                            : 'bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]';
-                        const totalLine = a.line_total ? `$${parseFloat(a.line_total).toFixed(2)}` : '--';
-                        allocRows += `
-                            <tr class="bg-white hover:bg-[#f8fafc] transition-colors">
-                                <td class="p-3 font-mono text-[10px] text-[#1e40af] whitespace-nowrap">${a.production_batch_code || '--'}</td>
-                                <td class="p-3 text-center">${fifoBadge}</td>
-                                <td class="p-3 text-right font-extrabold text-[#1e40af] font-mono text-xs">${parseFloat(a.qty_allocated || 0).toFixed(0)}</td>
-                                <td class="p-3 text-right font-extrabold text-[#1e40af] font-mono text-xs">${parseFloat(a.qty_fulfilled || 0).toFixed(0)}</td>
-                                <td class="p-3 text-[10px]">${fmt(a.shipped_at)}</td>
-                                <td class="p-3"><span class="px-2 py-0.5 rounded border text-[9px] font-bold ${shipBadge}">${a.shipping_status || 'Pending'}</span></td>
-                                <td class="p-3 text-right font-bold text-[#1e40af] text-xs">${totalLine}</td>
-                            </tr>`;
+                    const byFulfillment = {};
+                    fgAllocations.forEach(a => {
+                        const key = a.fulfillment_id;
+                        if (!byFulfillment[key]) byFulfillment[key] = [];
+                        byFulfillment[key].push(a);
                     });
 
-                    fifoList.innerHTML += `
-                    <div class="bg-white border border-outline-variant rounded-2xl overflow-hidden border-l-4 ${segColor} shadow-sm hover:shadow-md transition-shadow">
-                        <div class="flex items-center justify-between px-5 py-3.5 bg-surface-container-low border-b border-outline-variant/40">
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="material-symbols-outlined text-[14px] text-primary">${segIcon}</span>
-                                    <span class="text-[10px] font-extrabold ${segBg} px-1.5 py-0.5 rounded">${segLabel}</span>
+                    Object.entries(byFulfillment).forEach(([fulfId, allocs]) => {
+                        const first = allocs[0];
+                        const totalQty = allocs.reduce((s, a) => s + parseFloat(a.qty_allocated || 0), 0);
+                        const segColor = first.segment === 'b2c' ? 'border-l-[#8b5cf6]' : 'border-l-[#3b82f6]';
+                        const segIcon = first.segment === 'b2c' ? 'shopping_bag' : 'business';
+                        const segLabel = first.segment === 'b2c' ? 'B2C' : 'B2B';
+                        const segBg = first.segment === 'b2c' ? 'bg-[#f3e8ff] text-[#7c3aed]' : 'bg-[#eff6ff] text-[#1d4ed8]';
+
+                        let allocRows = '';
+                        allocs.forEach(a => {
+                            const fifoBadge = a.fifo_order === 1
+                                ? `<span class="bg-[#ECFDF5] text-[#047857] text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-[#A7F3D0]">1st pick</span>`
+                                : `<span class="bg-[#FFF7ED] text-[#C2410C] text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-[#FED7AA]">#${a.fifo_order}</span>`;
+                            const shipBadge = a.shipping_status === 'Delivered'
+                                ? 'bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]'
+                                : a.shipping_status === 'Shipped'
+                                ? 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]'
+                                : 'bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]';
+                            const totalLine = a.line_total ? `$${parseFloat(a.line_total).toFixed(2)}` : '--';
+                            allocRows += `
+                                <tr class="bg-white hover:bg-[#f8fafc] transition-colors">
+                                    <td class="p-3 font-mono text-[10px] text-[#1e40af] whitespace-nowrap">${a.production_batch_code || '--'}</td>
+                                    <td class="p-3 text-center">${fifoBadge}</td>
+                                    <td class="p-3 text-right font-extrabold text-[#1e40af] font-mono text-xs">${parseFloat(a.qty_allocated || 0).toFixed(0)}</td>
+                                    <td class="p-3 text-right font-extrabold text-[#1e40af] font-mono text-xs">${parseFloat(a.qty_fulfilled || 0).toFixed(0)}</td>
+                                    <td class="p-3 text-[10px]">${fmt(a.shipped_at)}</td>
+                                    <td class="p-3"><span class="px-2 py-0.5 rounded border text-[9px] font-bold ${shipBadge}">${a.shipping_status || 'Pending'}</span></td>
+                                    <td class="p-3 text-right font-bold text-[#1e40af] text-xs">${totalLine}</td>
+                                </tr>`;
+                        });
+
+                        fifoList.innerHTML += `
+                        <div class="bg-white border border-outline-variant rounded-2xl overflow-hidden border-l-4 ${segColor} shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex items-center justify-between px-5 py-3.5 bg-surface-container-low border-b border-outline-variant/40">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[14px] text-primary">${segIcon}</span>
+                                        <span class="text-[10px] font-extrabold ${segBg} px-1.5 py-0.5 rounded">${segLabel}</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-extrabold text-[#1e40af] leading-tight">${first.source_order_number || fulfId}</p>
+                                        <p class="text-[9px] text-[#64748b]">${first.customer_name || '--'}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p class="text-xs font-extrabold text-[#1e40af] leading-tight">${first.source_order_number || fulfId}</p>
-                                    <p class="text-[9px] text-[#64748b]">${first.customer_name || '--'}</p>
+                                <div class="flex items-center gap-4">
+                                    <div class="text-right">
+                                        <p class="text-xs font-extrabold text-[#1e40af]">${totalQty} <span class="text-[9px] font-medium text-[#64748b]">units taken</span></p>
+                                        <p class="text-[9px] text-[#64748b]">${allocs.length} allocation${allocs.length > 1 ? 's' : ''}</p>
+                                    </div>
+                                    <span class="material-symbols-outlined text-[#94a3b8] text-[16px]">chevron_right</span>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-4">
-                                <div class="text-right">
-                                    <p class="text-xs font-extrabold text-[#1e40af]">${totalQty} <span class="text-[9px] font-medium text-[#64748b]">units taken</span></p>
-                                    <p class="text-[9px] text-[#64748b]">${allocs.length} allocation${allocs.length > 1 ? 's' : ''}</p>
-                                </div>
-                                <span class="material-symbols-outlined text-[#94a3b8] text-[16px]">chevron_right</span>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-[#f8fafc] border-b border-outline-variant/20">
+                                            <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Batch</th>
+                                            <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-center">FIFO</th>
+                                            <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Qty Taken</th>
+                                            <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Shipped</th>
+                                            <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Shipped Date</th>
+                                            <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Status</th>
+                                            <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Line Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-outline-variant/20">
+                                        ${allocRows}
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-[#f8fafc] border-b border-outline-variant/20">
-                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Batch</th>
-                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-center">FIFO</th>
-                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Qty Taken</th>
-                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Shipped</th>
-                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Shipped Date</th>
-                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b]">Status</th>
-                                        <th class="p-3 text-[9px] font-extrabold uppercase tracking-wider text-[#64748b] text-right">Line Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-outline-variant/20">
-                                    ${allocRows}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>`;
-                });
+                        </div>`;
+                    });
+                }
             }
 
             // ── B2B Table ──────────────────────────────────────────
