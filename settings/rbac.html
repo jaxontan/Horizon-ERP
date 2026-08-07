@@ -982,37 +982,38 @@
     }
 
     function resetPermissionsToDefaults() {
-        // Add explicit false for every "default-true but currently true" pair
-        // across every cell, to ensure save wipes overrides. Easier: just
-        // re-render from defaults (the user is still editing the live state).
-        // We treat "reset" as "clear all overrides" by sending empty changes.
         if (!confirm('This will delete ALL permission overrides and return to the default matrix. Continue?')) return;
         pendingChanges.clear();
         for (const key of Object.keys(serverMatrix)) {
             const def = localDefaults[key];
             for (const role of EDITABLE_ROLES) {
                 if (def.has(role) !== serverMatrix[key].has(role)) {
-                    // There's a mismatch between current and default → mark
-                    // a "no-op" toggle in pendingChanges so doSave() sends a
-                    // full replace. We use the actual default value.
                     pendingChanges.set(`${key}|${role}`, def.has(role));
                 }
             }
         }
+        renderPermissions();
+        updateDirtyIndicator();
         openSaveConfirm();
     }
     function resetPagesToDefaults() {
         if (!confirm('This will delete ALL page-access overrides. Continue?')) return;
         pendingPageChanges.clear();
+        const pageAccessMap = window.__rbacPageAccessMap || new Map();
         for (const id of Object.keys(serverPages)) {
-            const def = serverPages[id].defaults;
+            const p = serverPages[id];
+            if (!p) continue;
+            const def = p.defaults;
             for (const role of EDITABLE_ROLES) {
-                // We don't know the current page access from the UI side
-                // without an extra fetch, so just mark all roles at default
-                // and trust the server PUT to wipe.
-                pendingPageChanges.set(`${id}|${role}`, def.has(role));
+                const serverOverride = pageAccessMap.get(`${id}|${role}`);
+                const currentEffective = serverOverride !== undefined ? serverOverride : def.has(role);
+                if (def.has(role) !== currentEffective) {
+                    pendingPageChanges.set(`${id}|${role}`, def.has(role));
+                }
             }
         }
+        renderPages();
+        updateDirtyIndicator();
         openSaveConfirm();
     }
 
