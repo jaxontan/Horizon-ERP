@@ -641,6 +641,41 @@
                         products = apiProducts;
                     }
                 }
+
+                if (products && products.length > 0) {
+                    try {
+                        const allocs = await supabaseAPI({
+                            table: 'production_fg_allocation',
+                            operation: 'select',
+                            columns: 'product_name, product_code, qty_allocated, qty_fulfilled'
+                        });
+                        if (allocs && allocs.length > 0) {
+                            const reservedMap = {};
+                            for (const a of allocs) {
+                                const codeKey = (a.product_code || '').trim().toLowerCase();
+                                const nameKey = (a.product_name || '').trim().toLowerCase();
+                                const allocated = Number(a.qty_allocated || 0);
+                                const fulfilled = Number(a.qty_fulfilled || 0);
+                                const remainingAlloc = Math.max(0, allocated - fulfilled);
+                                if (remainingAlloc > 0) {
+                                    const primaryKey = codeKey || nameKey;
+                                    if (primaryKey) reservedMap[primaryKey] = (reservedMap[primaryKey] || 0) + remainingAlloc;
+                                    if (nameKey && nameKey !== codeKey) reservedMap[nameKey] = (reservedMap[nameKey] || 0) + remainingAlloc;
+                                }
+                            }
+                            products.forEach(p => {
+                                const cKey = (p.item_code || '').trim().toLowerCase();
+                                const nKey = (p.name || '').trim().toLowerCase();
+                                const resQty = (cKey && reservedMap[cKey]) !== undefined
+                                    ? reservedMap[cKey]
+                                    : (nKey && reservedMap[nKey]) !== undefined
+                                        ? reservedMap[nKey]
+                                        : 0;
+                                p.current_stock = Math.max(0, (Number(p.current_stock) || 0) - resQty);
+                            });
+                        }
+                    } catch (_) { /* non-fatal lookup error */ }
+                }
                 
                 liveProducts = products.length > 0 ? products : null;
                 return liveProducts;

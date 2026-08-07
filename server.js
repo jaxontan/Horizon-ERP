@@ -2777,16 +2777,16 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
 
     if (!qtyNeeded || qtyNeeded <= 0) continue;
 
-    // Find confirmed production batches for this product, ordered by confirmed_at / created_at (FIFO)
-    const allConfirmed = await selectRows({
+    // Find confirmed/completed production batches for this product, ordered by created_at (FIFO)
+    const allBatches = await selectRows({
       table: 'production_batches',
       filters: {
-        where: [
-          { column: 'status', operator: 'eq', value: 'confirmed' }
-        ],
         order: { column: 'created_at', ascending: true }
       }
     });
+
+    const VALID_BATCH_STATUSES = new Set(['confirmed', 'completed', 'Completed', 'Confirmed']);
+    const allConfirmed = (allBatches || []).filter(b => b.status && VALID_BATCH_STATUSES.has(String(b.status).trim()));
 
     const targetName = (productName || '').trim().toLowerCase();
     const targetCode = (productCode || '').trim().toLowerCase();
@@ -3012,9 +3012,9 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
 
     if (remaining > 0.001) {
       // Fallback check: If no (or partial) confirmed batch stock is available,
-      // check if general stock exists in inventory.current_stock for items created
-      // directly in stock management without production batches.
-      let invStock = 0;
+      // check if net available general stock exists in inventory.current_stock
+      // (inventory.current_stock minus active unfulfilled allocations).
+      let availableUnbatched = 0;
       try {
         const invRows = await selectRows({
           table: 'inventory',
@@ -3025,13 +3025,34 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
           (i.item_code || '').trim().toLowerCase() === targetCode
         );
         if (invItem) {
-          invStock = parseFloat(invItem.current_stock || 0);
+          const rawStock = parseFloat(invItem.current_stock || 0);
+          const existingAllocs = await selectRows({
+            table: 'production_fg_allocation',
+            filters: { where: [{ column: 'production_batch_code', operator: 'eq', value: 'UNBATCHED' }] }
+          });
+          let reservedUnbatched = 0;
+          for (const a of existingAllocs || []) {
+            const aName = (a.product_name || '').trim().toLowerCase();
+            const aCode = (a.product_code || '').trim().toLowerCase();
+            if ((targetName && aName === targetName) || (targetCode && aCode === targetCode)) {
+              const orderNum = a.source_order_number;
+              const cached = sourceStatusCache.get(orderNum);
+              const isTerminal = cached && cached.status && FULFILLED_SOURCE_STATUSES.has(cached.status);
+              if (!isTerminal) {
+                const allocated = parseFloat(a.qty_allocated || 0);
+                const fulfilled = parseFloat(a.qty_fulfilled || 0);
+                reservedUnbatched += Math.max(0, allocated - fulfilled);
+              }
+            }
+          }
+          availableUnbatched = Math.max(0, rawStock - reservedUnbatched);
         }
       } catch (_) { /* ignore lookup errors */ }
 
-      if (invStock >= remaining) {
+      if (availableUnbatched > 0) {
+        const qtyToTake = Math.min(remaining, availableUnbatched);
         const unitPrice = parseFloat(item.unit_price || item.price || 0);
-        const lineTotal = remaining * unitPrice;
+        const lineTotal = qtyToTake * unitPrice;
         const segment = (sourceTable === 'retail_purchases') ? 'b2c' : 'b2b';
         allocations.push({
           fulfillment_record_id: fulfillmentId,
@@ -3050,7 +3071,7 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
           fg_lot_number: 'GENERAL-STOCK',
           product_name: productName,
           product_code: productCode,
-          qty_allocated: remaining,
+          qty_allocated: qtyToTake,
           qty_fulfilled: 0,
           unit_price: unitPrice,
           line_total: Math.round(lineTotal * 100) / 100,
@@ -3063,7 +3084,7 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
           delivery_date: null,
           shipping_status: 'Pending'
         });
-        remaining = 0;
+        remaining -= qtyToTake;
       }
     }
 
