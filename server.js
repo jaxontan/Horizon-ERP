@@ -2583,6 +2583,32 @@ async function upsertFulfillmentRows(rows) {
             }
           }
 
+          // Clear any previous allocation records for this order to prevent duplicate stacking on order updates/re-syncs
+          const sourceNum = sourceOrderNumber(sourceTable || 'orders', sourceRow || {});
+          if (sqlProxyConfigured) {
+            if (payload.fulfillment_id) {
+              await deleteSql({
+                schema: 'public',
+                table: 'production_fg_allocation',
+                filters: { eq: { fulfillment_id: payload.fulfillment_id } },
+              }).catch((delErr) => console.warn('[FIFO FG] Re-alloc cleanup (fulfillment_id) skipped:', delErr?.message || delErr));
+            }
+            if (sourceNum) {
+              await deleteSql({
+                schema: 'public',
+                table: 'production_fg_allocation',
+                filters: { eq: { source_order_number: sourceNum } },
+              }).catch((delErr) => console.warn('[FIFO FG] Re-alloc cleanup (source_order_number) skipped:', delErr?.message || delErr));
+            }
+          } else if (supabaseAdmin) {
+            if (payload.fulfillment_id) {
+              await supabaseAdmin.schema('public').from('production_fg_allocation').delete().eq('fulfillment_id', payload.fulfillment_id);
+            }
+            if (sourceNum) {
+              await supabaseAdmin.schema('public').from('production_fg_allocation').delete().eq('source_order_number', sourceNum);
+            }
+          }
+
           const allocs = await allocateFGFIFO(
             payload.fulfillment_id,
             sourceTable || 'orders',
@@ -2974,6 +3000,12 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
       const lineTotal = qtyAllocated * unitPrice;
       const segment = (sourceTable === 'retail_purchases') ? 'b2c' : 'b2b';
 
+      const rawStatus = String(orderRow.status || orderRow.shipping_status || '').trim().toLowerCase();
+      const isFulfilled = FULFILLED_SOURCE_STATUSES.has(rawStatus);
+      const fulfilledQty = isFulfilled ? qtyAllocated : 0;
+      const shipStatus = isFulfilled ? (orderRow.shipping_status || orderRow.status || 'Shipped') : (orderRow.shipping_status || 'Pending');
+      const shipDate = isFulfilled ? (orderRow.shipped_at || orderRow.shipment_date || orderRow.delivery_date || orderRow.updated_at || new Date().toISOString()) : null;
+
       const record = {
         fulfillment_record_id: fulfillmentId, // we'll set this after inserting fulfillment
         fulfillment_id: fulfillmentId,
@@ -2992,17 +3024,17 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
         product_name: productName,
         product_code: productCode,
         qty_allocated: qtyAllocated,
-        qty_fulfilled: 0,
+        qty_fulfilled: fulfilledQty,
         unit_price: unitPrice,
         line_total: Math.round(lineTotal * 100) / 100,
         fifo_order: fifoOrder,
-        allocated_at: new Date().toISOString(),
-        fulfilled_at: null,
+        allocated_at: orderRow.created_at || new Date().toISOString(),
+        fulfilled_at: isFulfilled ? shipDate : null,
         carrier: orderRow.carrier || null,
         tracking_number: orderRow.tracking_number || 'Pending',
-        shipped_at: null,
-        delivery_date: null,
-        shipping_status: 'Pending'
+        shipped_at: shipDate,
+        delivery_date: orderRow.delivery_date || null,
+        shipping_status: shipStatus
       };
 
       allocations.push(record);
@@ -3054,6 +3086,12 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
         const unitPrice = parseFloat(item.unit_price || item.price || 0);
         const lineTotal = qtyToTake * unitPrice;
         const segment = (sourceTable === 'retail_purchases') ? 'b2c' : 'b2b';
+        const rawStatusUnbatched = String(orderRow.status || orderRow.shipping_status || '').trim().toLowerCase();
+        const isFulfilledUnbatched = FULFILLED_SOURCE_STATUSES.has(rawStatusUnbatched);
+        const fulfilledQtyUnbatched = isFulfilledUnbatched ? qtyToTake : 0;
+        const shipStatusUnbatched = isFulfilledUnbatched ? (orderRow.shipping_status || orderRow.status || 'Shipped') : (orderRow.shipping_status || 'Pending');
+        const shipDateUnbatched = isFulfilledUnbatched ? (orderRow.shipped_at || orderRow.shipment_date || orderRow.delivery_date || orderRow.updated_at || new Date().toISOString()) : null;
+
         allocations.push({
           fulfillment_record_id: fulfillmentId,
           fulfillment_id: fulfillmentId,
@@ -3072,17 +3110,17 @@ async function allocateFGFIFO(fulfillmentId, sourceTable, sourceOrderId, orderRo
           product_name: productName,
           product_code: productCode,
           qty_allocated: qtyToTake,
-          qty_fulfilled: 0,
+          qty_fulfilled: fulfilledQtyUnbatched,
           unit_price: unitPrice,
           line_total: Math.round(lineTotal * 100) / 100,
           fifo_order: fifoOrder,
-          allocated_at: new Date().toISOString(),
-          fulfilled_at: null,
+          allocated_at: orderRow.created_at || new Date().toISOString(),
+          fulfilled_at: isFulfilledUnbatched ? shipDateUnbatched : null,
           carrier: orderRow.carrier || null,
           tracking_number: orderRow.tracking_number || 'Pending',
-          shipped_at: null,
-          delivery_date: null,
-          shipping_status: 'Pending'
+          shipped_at: shipDateUnbatched,
+          delivery_date: orderRow.delivery_date || null,
+          shipping_status: shipStatusUnbatched
         });
         remaining -= qtyToTake;
       }
@@ -3176,22 +3214,39 @@ async function sweepOrphanFGAllocations() {
   let released = 0;
   for (const [orderNumber, rows] of bySource) {
     let sourceFound = false;
+    let foundTable = null;
+    let foundRow = null;
     outer: for (const tbl of SOURCE_TABLES) {
       for (const col of SOURCE_NUMBER_COLUMNS) {
         try {
           const found = await selectRows({
             table: tbl,
-            columns: 'id',
             filters: { where: [{ column: col, operator: 'eq', value: orderNumber }] }
           });
           if (Array.isArray(found) && found.length > 0) {
             sourceFound = true;
+            foundTable = tbl;
+            foundRow = found[0];
             break outer;
           }
         } catch (_) { /* try next column */ }
       }
     }
-    if (sourceFound) continue;
+    if (sourceFound) {
+      // Deduplicate live order allocations: if multiple allocation passes exist for this order, re-sync it cleanly
+      const distinctFulfillments = new Set(rows.map(r => r.fulfillment_id).filter(Boolean));
+      const hasDuplicates = rows.length > 1 && (
+        new Set(rows.map(r => r.fifo_order)).size < rows.length ||
+        distinctFulfillments.size < rows.length
+      );
+      if (hasDuplicates && foundRow && foundTable) {
+        console.log(`[FIFO FG] Deduplicating allocations for live order ${orderNumber} (${rows.length} allocation rows found)`);
+        await upsertFulfillmentRows([{ ...foundRow, __sourceTable: foundTable }]).catch(err => {
+          console.warn(`[FIFO FG] Deduplication re-sync for ${orderNumber} failed:`, err?.message || err);
+        });
+      }
+      continue;
+    }
 
     for (const a of rows) {
       try {

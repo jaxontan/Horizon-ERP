@@ -658,19 +658,16 @@
                                 const fulfilled = Number(a.qty_fulfilled || 0);
                                 const remainingAlloc = Math.max(0, allocated - fulfilled);
                                 if (remainingAlloc > 0) {
-                                    const primaryKey = codeKey || nameKey;
-                                    if (primaryKey) reservedMap[primaryKey] = (reservedMap[primaryKey] || 0) + remainingAlloc;
+                                    if (codeKey) reservedMap[codeKey] = (reservedMap[codeKey] || 0) + remainingAlloc;
                                     if (nameKey && nameKey !== codeKey) reservedMap[nameKey] = (reservedMap[nameKey] || 0) + remainingAlloc;
                                 }
                             }
                             products.forEach(p => {
-                                const cKey = (p.item_code || '').trim().toLowerCase();
+                                const cKey = (p.item_code || p.product_code || '').trim().toLowerCase();
                                 const nKey = (p.name || '').trim().toLowerCase();
-                                const resQty = (cKey && reservedMap[cKey]) !== undefined
-                                    ? reservedMap[cKey]
-                                    : (nKey && reservedMap[nKey]) !== undefined
-                                        ? reservedMap[nKey]
-                                        : 0;
+                                const resQtyByCode = (cKey && reservedMap[cKey] !== undefined) ? Number(reservedMap[cKey]) || 0 : 0;
+                                const resQtyByName = (nKey && reservedMap[nKey] !== undefined) ? Number(reservedMap[nKey]) || 0 : 0;
+                                const resQty = Math.max(resQtyByCode, resQtyByName);
                                 p.current_stock = Math.max(0, (Number(p.current_stock) || 0) - resQty);
                             });
                         }
@@ -2668,14 +2665,17 @@
                 window.ERPRealtime.refreshOn('orders', syncOrdersFromBackend);
                 window.ERPRealtime.refreshOn('retail_purchases', syncOrdersFromBackend);
                 window.ERPRealtime.refreshOn('fulfillment_orders', syncOrdersFromBackend);
-                window.ERPRealtime.refreshOn('inventory', () => {
+                const refreshCatalog = () => {
                     loadProductsFromSupabase()
                         .then((liveProducts) => {
                             renderCatalog(liveProducts);
                             renderCart(); // refresh stock limit check on cart too
                         })
                         .catch((err) => console.warn('Product catalog refresh failed:', err));
-                });
+                };
+                window.ERPRealtime.refreshOn('inventory', refreshCatalog);
+                window.ERPRealtime.refreshOn('production_fg_allocation', refreshCatalog);
+                window.ERPRealtime.refreshOn('retail_purchases', refreshCatalog);
             }
 
             setInterval(syncOrdersFromBackend, 5000);
