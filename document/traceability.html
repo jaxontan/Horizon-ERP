@@ -224,10 +224,6 @@
                                 <span class="text-[10px] text-on-surface-variant font-medium">Operator</span>
                                 <span id="sum-operator" class="text-[11px] font-bold text-primary">--</span>
                             </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-[10px] text-on-surface-variant font-medium">Coordinator</span>
-                                <span id="sum-coordinator" class="text-[11px] font-bold text-primary">--</span>
-                            </div>
                         </div>
                     </div>
 
@@ -447,12 +443,10 @@
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">FIFO #</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Customer / Company</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Qty Taken</th>
-                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Qty Shipped</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Shipment Date</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Carrier</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Tracking #</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Total Amount</th>
-                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Payment</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
                                                 </tr>
                                             </thead>
@@ -481,12 +475,10 @@
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">FIFO #</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Customer Name</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Qty Taken</th>
-                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Qty Shipped</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Shipment Date</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Carrier</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Tracking #</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Total Amount</th>
-                                                    <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Payment</th>
                                                     <th class="p-4 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
                                                 </tr>
                                             </thead>
@@ -946,8 +938,53 @@
                     .eq('production_batch_code', batchCode)
                     .order('fifo_order', { ascending: true });
 
-                if (error) { console.warn('loadFGAllocations error:', error); return []; }
-                return data || [];
+                if (error || !Array.isArray(data)) { console.warn('loadFGAllocations error:', error); return []; }
+
+                // Enrich allocations with live fulfillment_records data + order total prices
+                try {
+                    const [frRes, ordersRes, b2cRes] = await Promise.all([
+                        client.from('fulfillment_records').select('fulfillment_id, order_id, courier, carrier, tracking_number, shipping_status, quantity_shipped, shipped_at, fulfilled_at'),
+                        client.from('orders').select('order_number, total_amount'),
+                        client.from('retail_purchases').select('purchase_number, total_amount')
+                    ]);
+                    const frRows = frRes.data || [];
+                    const ordersRows = ordersRes.data || [];
+                    const b2cRows = b2cRes.data || [];
+
+                    const frByFulfId = {};
+                    const frByOrderId = {};
+                    frRows.forEach(r => {
+                        if (r.fulfillment_id) frByFulfId[r.fulfillment_id] = r;
+                        if (r.order_id) frByOrderId[r.order_id] = r;
+                    });
+
+                    const totalByOrderNum = {};
+                    ordersRows.forEach(o => {
+                        const num = o.order_number || o.order_code;
+                        if (num) totalByOrderNum[num] = o.total_amount || 0;
+                    });
+                    b2cRows.forEach(r => {
+                        if (r.purchase_number) totalByOrderNum[r.purchase_number] = r.total_amount || 0;
+                    });
+
+                    return data.map(a => {
+                        const fr = frByFulfId[a.fulfillment_id] || frByOrderId[a.source_order_number];
+                        const liveTotal = totalByOrderNum[a.source_order_number] || a.line_total || 0;
+                        return {
+                            ...a,
+                            line_total: liveTotal || a.line_total || 0,
+                            carrier: fr ? (fr.courier || fr.carrier || a.carrier) : a.carrier,
+                            tracking_number: fr ? (fr.tracking_number || a.tracking_number) : a.tracking_number,
+                            shipping_status: (fr && fr.shipping_status && fr.shipping_status !== 'Pending') ? fr.shipping_status : a.shipping_status,
+                            shipped_at: fr ? (fr.shipped_at || fr.fulfilled_at || a.shipped_at) : a.shipped_at,
+                            qty_fulfilled: (fr && fr.quantity_shipped > 0) ? fr.quantity_shipped : a.qty_fulfilled
+                        };
+                    });
+                } catch (e) {
+                    console.warn('[loadFGAllocations] fulfillment_records enrichment exception:', e);
+                }
+
+                return data;
             } catch (err) {
                 console.warn('loadFGAllocations exception:', err);
                 return [];
@@ -1737,7 +1774,12 @@
 
             // ── B2B Table ──────────────────────────────────────────
             const b2bAllocs = fgAllocations.filter(a => a.segment === 'b2b');
-            document.getElementById('b2b-count-badge').textContent = b2bAllocs.length;
+            const b2bByFulfillment = {};
+            b2bAllocs.forEach(a => {
+                if (!b2bByFulfillment[a.fulfillment_id]) b2bByFulfillment[a.fulfillment_id] = [];
+                b2bByFulfillment[a.fulfillment_id].push(a);
+            });
+            document.getElementById('b2b-count-badge').textContent = Object.keys(b2bByFulfillment).length;
 
             if (b2bAllocs.length === 0) {
                 hide(b2bBody.parentElement);
@@ -1745,12 +1787,6 @@
             } else {
                 show(b2bBody.parentElement);
                 hide(b2bEmpty);
-
-                const b2bByFulfillment = {};
-                b2bAllocs.forEach(a => {
-                    if (!b2bByFulfillment[a.fulfillment_id]) b2bByFulfillment[a.fulfillment_id] = [];
-                    b2bByFulfillment[a.fulfillment_id].push(a);
-                });
 
                 Object.values(b2bByFulfillment).forEach(allocs => {
                     const first = allocs[0];
@@ -1770,18 +1806,10 @@
                         </td>
                         <td class="p-4 font-medium text-xs">${first.customer_name || '--'}</td>
                         <td class="p-4 text-right font-bold text-[#1e40af] font-mono text-xs">${totalQty.toFixed(0)}</td>
-                        <td class="p-4 text-right font-bold text-[#1e40af] font-mono text-xs">${totalShipped.toFixed(0)}</td>
                         <td class="p-4 text-xs">${fmt(first.shipped_at)}</td>
                         <td class="p-4 text-xs">${first.carrier || '--'}</td>
                         <td class="p-4 font-mono text-xs">${first.tracking_number || '--'}</td>
                         <td class="p-4 text-right font-bold text-[#1e40af] text-xs">${first.line_total ? '$' + parseFloat(first.line_total).toFixed(2) : '--'}</td>
-                        <td class="p-4">
-                            <span class="px-2 py-1 text-[10px] font-bold rounded-lg ${
-                                first.payment_status === 'Paid' ? 'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]' :
-                                first.payment_status === 'Refunded' ? 'bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]' :
-                                'bg-[#FFF7ED] text-[#C2410C] border border-[#FED7AA]'
-                            }">${first.payment_status || '--'}</span>
-                        </td>
                         <td class="p-4">
                             <span class="px-2 py-1 text-[10px] font-bold rounded-lg ${
                                 fulfilled === 'Delivered' ? 'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]' :
@@ -1796,7 +1824,12 @@
 
             // ── B2C Table ──────────────────────────────────────────
             const b2cAllocs = fgAllocations.filter(a => a.segment === 'b2c');
-            document.getElementById('b2c-count-badge').textContent = b2cAllocs.length;
+            const b2cByFulfillment = {};
+            b2cAllocs.forEach(a => {
+                if (!b2cByFulfillment[a.fulfillment_id]) b2cByFulfillment[a.fulfillment_id] = [];
+                b2cByFulfillment[a.fulfillment_id].push(a);
+            });
+            document.getElementById('b2c-count-badge').textContent = Object.keys(b2cByFulfillment).length;
 
             if (b2cAllocs.length === 0) {
                 hide(b2cBody.parentElement);
@@ -1804,12 +1837,6 @@
             } else {
                 show(b2cBody.parentElement);
                 hide(b2cEmpty);
-
-                const b2cByFulfillment = {};
-                b2cAllocs.forEach(a => {
-                    if (!b2cByFulfillment[a.fulfillment_id]) b2cByFulfillment[a.fulfillment_id] = [];
-                    b2cByFulfillment[a.fulfillment_id].push(a);
-                });
 
                 Object.values(b2cByFulfillment).forEach(allocs => {
                     const first = allocs[0];
@@ -1829,18 +1856,10 @@
                         </td>
                         <td class="p-4 font-medium text-xs">${first.customer_name || '--'}</td>
                         <td class="p-4 text-right font-bold text-[#1e40af] font-mono text-xs">${totalQty.toFixed(0)}</td>
-                        <td class="p-4 text-right font-bold text-[#1e40af] font-mono text-xs">${totalShipped.toFixed(0)}</td>
                         <td class="p-4 text-xs">${fmt(first.shipped_at)}</td>
                         <td class="p-4 text-xs">${first.carrier || '--'}</td>
                         <td class="p-4 font-mono text-xs">${first.tracking_number || '--'}</td>
                         <td class="p-4 text-right font-bold text-[#1e40af] text-xs">${first.line_total ? '$' + parseFloat(first.line_total).toFixed(2) : '--'}</td>
-                        <td class="p-4">
-                            <span class="px-2 py-1 text-[10px] font-bold rounded-lg ${
-                                first.payment_status === 'Paid' ? 'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]' :
-                                first.payment_status === 'Refunded' ? 'bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]' :
-                                'bg-[#FFF7ED] text-[#C2410C] border border-[#FED7AA]'
-                            }">${first.payment_status || '--'}</span>
-                        </td>
                         <td class="p-4">
                             <span class="px-2 py-1 text-[10px] font-bold rounded-lg ${
                                 fulfilled === 'Delivered' ? 'bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]' :
