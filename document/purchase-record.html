@@ -111,13 +111,13 @@
                     <table class="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr class="bg-surface-container-low text-on-surface-variant font-label-md text-[13px] uppercase tracking-wide">
-                                <th class="p-4 font-semibold border-b border-outline-variant">PO Number</th>
-                                <th class="p-4 font-semibold border-b border-outline-variant">Supplier</th>
-                                <th class="p-4 font-semibold border-b border-outline-variant">Raw Goods</th>
-                                <th class="p-4 font-semibold border-b border-outline-variant">Total Value</th>
-                                <th class="p-4 font-semibold border-b border-outline-variant">Order Date</th>
-                                <th class="p-4 font-semibold border-b border-outline-variant">Status</th>
-                                <th class="p-4 font-semibold border-b border-outline-variant text-right" data-rbac="procurement:delete">Actions</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant whitespace-nowrap">PO Number</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant whitespace-nowrap">Supplier</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant whitespace-nowrap">Raw Goods</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant whitespace-nowrap">Total Value</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant whitespace-nowrap">Order Date</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant whitespace-nowrap">Status</th>
+                                <th class="p-4 font-semibold border-b border-outline-variant text-right whitespace-nowrap min-w-[130px]" data-rbac="procurement:delete">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="po-table-body" class="divide-y divide-outline-variant text-body-md">
@@ -1191,7 +1191,7 @@
                             ${record.status}
                         </span>
                     </td>
-                    <td class="p-4 text-right" data-rbac="procurement:delete">
+                    <td class="p-4 text-right whitespace-nowrap" data-rbac="procurement:delete">
                         <button
                             type="button"
                             data-record-delete

@@ -1319,10 +1319,12 @@
                 });
 
                 const overheadsByMonth = {};
-                (factoryBookingData || []).forEach(item => {
-                    const d = new Date(item.booking_date);
-                    const key = `${d.getFullYear()}-${d.getMonth()}`;
-                    overheadsByMonth[key] = (overheadsByMonth[key] || 0) + (parseFloat(item.booking_fee) || 0);
+                (_overheadsCache || []).forEach(entry => {
+                    const d = new Date(entry.created_at || entry.from_date);
+                    if (!isNaN(d.getTime())) {
+                        const key = `${d.getFullYear()}-${d.getMonth()}`;
+                        overheadsByMonth[key] = (overheadsByMonth[key] || 0) + (parseFloat(entry.amount) || 0);
+                    }
                 });
 
                 console.log('[DEBUG H3] Chart overheadsByMonth:', overheadsByMonth, 'factoryBookingData:', factoryBookingData);
@@ -1540,19 +1542,7 @@
                             }
                         },
                         y1: {
-                            position: 'right',
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                color: '#10b981',
-                                font: {
-                                    size: 10
-                                },
-                                callback: function (value) {
-                                    return '$' + value.toLocaleString();
-                                }
-                            }
+                            display: false
                         }
                     }
                 }
